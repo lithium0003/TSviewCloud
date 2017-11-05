@@ -1,0 +1,3 @@
+[submodule "external"]
+	path = external
+	url = git@github.com:lithium0003/external-TSviewACD.git

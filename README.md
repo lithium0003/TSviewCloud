@@ -16,9 +16,9 @@ This program is compiled with Visual Studio 2017 C++.
 You need Microsoft Visual C++ Redistributable for Visual Studio 2017. 
 <https://go.microsoft.com/fwlink/?LinkId=746572>
 
-This program is compiled with c# .NET 4.5.2.
-If your system dosen't have runtime, please download Microsoft .NET Framework 4.5.2 runtime.
-<https://www.microsoft.com/en-us/download/details.aspx?id=42643>
+This program is compiled with c# .NET 4.6.1.
+If your system dosen't have runtime, please download Microsoft .NET Framework 4.6.1 runtime.
+<https://www.microsoft.com/en-us/download/details.aspx?id=49981>
 
 ## License
 These codes are licensed under CC0.
