@@ -27,7 +27,7 @@ namespace TSviewCloudPlugin
 
         public LocalSystemItem(IRemoteServer server, FileSystemInfo file, params IRemoteItem[] parent) : base(server, parent)
         {
-            if (parent == null) isRoot = true;
+            if (!(parent?.Length > 0)) isRoot = true;
 
             fullpath = file?.FullName;
 
@@ -88,7 +88,7 @@ namespace TSviewCloudPlugin
 
         private string FullpathToPath(string fullpath)
         {
-            return (IsRoot || string.IsNullOrEmpty(fullpath)) ? "" : new Uri((_server as LocalSystem).BasePath.TrimEnd('\\') + "\\").MakeRelativeUri(new Uri(fullpath)).ToString();
+            return (string.IsNullOrEmpty(fullpath) || (_server as LocalSystem).BasePath == fullpath) ? "" : new Uri((_server as LocalSystem).BasePath.TrimEnd('\\') + "\\").MakeRelativeUri(new Uri(fullpath)).ToString();
         }
 
         public override string ID => fullpath;
@@ -284,6 +284,8 @@ namespace TSviewCloudPlugin
                     remoteTarget.Children.AddOrUpdate(newitem.Path, newitem, (k, v) => newitem);
 
                     job.Result = newitem;
+                    job.ProgressStr = "Done";
+                    job.Progress = 1;
                 }
                 catch (Exception e)
                 {
@@ -419,13 +421,13 @@ namespace TSviewCloudPlugin
                     RemoveItem(deleteTarget.Path);
 
                     job.Result = parent;
+                    job.ProgressStr = "Done";
+                    job.Progress = 1;
                 }
                 catch (Exception e)
                 {
                     throw new RemoteServerErrorException("Upload Failed.", e);
                 }
-                job.ProgressStr = "Done";
-                job.Progress = 1;
                 SetUpdate(parent);
             });
             return job;

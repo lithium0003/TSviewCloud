@@ -301,14 +301,27 @@ namespace TSviewCloudPlugin
             return orgname;
         }
 
-        static string cachedir = Path.Combine(TSviewCloudConfig.Config.Config_BasePath, "Cache");
+        static string cachedir = Path.Combine(TSviewCloudConfig.Config.Config_BasePath, "Servers");
 
         static public void Save()
         {
-            if (Directory.Exists(cachedir))
+            int retry = 5;
+            do
             {
-                Directory.Delete(cachedir, true);
-            }
+                try
+                {
+                    if (Directory.Exists(cachedir))
+                    {
+                        Directory.Delete(cachedir, true);
+                    }
+                    break;
+                }
+                catch
+                {
+                    Task.Delay(500).Wait();
+                    continue;
+                }
+            } while (retry-- > 0);
             Directory.CreateDirectory(cachedir);
 
             foreach (var s in ServerList)
