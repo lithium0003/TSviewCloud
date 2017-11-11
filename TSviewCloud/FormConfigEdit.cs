@@ -188,6 +188,9 @@ namespace TSviewCloud
         {
             checkBox_SaveCacheCompressed.Checked = TSviewCloudConfig.Config.SaveGZConfig;
             checkBox_EncryptConfig.Checked = TSviewCloudConfig.Config.SaveEncrypted;
+            SetBandwidthInfo();
+            textBox_UploadParallel.Text = TSviewCloudConfig.Config.ParallelUpload.ToString();
+            textBox_DownloadParallel.Text = TSviewCloudConfig.Config.ParallelDownload.ToString();
 
             textBox_fontpath.Text = TSviewCloudConfig.ConfigFFplayer.FontFilePath;
             numericUpDown_FontPtSize.Value = TSviewCloudConfig.ConfigFFplayer.FontPtSize;
@@ -316,6 +319,33 @@ namespace TSviewCloud
             TSviewCloudConfig.Config.SaveGZConfig = checkBox_SaveCacheCompressed.Checked;
             TSviewCloudConfig.Config.SaveEncrypted = checkBox_EncryptConfig.Checked;
 
+            if (comboBox_UploadLimitUnit.SelectedIndex == comboBox_UploadLimitUnit.Items.IndexOf("Infinity"))
+            {
+                TSviewCloudConfig.Config.UploadLimit = double.PositiveInfinity;
+            }
+            else
+            {
+                try
+                {
+                    double value = double.Parse(textBox_UploadBandwidthLimit.Text);
+                    TSviewCloudConfig.Config.UploadLimit = ConvertUnit(value, (string)comboBox_UploadLimitUnit.SelectedItem);
+                }
+                catch { }
+            }
+            if (comboBox_DownloadLimitUnit.SelectedIndex == comboBox_DownloadLimitUnit.Items.IndexOf("Infinity"))
+            {
+                TSviewCloudConfig.Config.DownloadLimit = double.PositiveInfinity;
+            }
+            else
+            {
+                try
+                {
+                    double value = double.Parse(textBox_DownloadBandwidthLimit.Text);
+                    TSviewCloudConfig.Config.DownloadLimit = ConvertUnit(value, (string)comboBox_DownloadLimitUnit.SelectedItem);
+                }
+                catch { }
+            }
+
             if (File.Exists(textBox_fontpath.Text))
             {
                 TSviewCloudConfig.ConfigFFplayer.FontFilePath = textBox_fontpath.Text;
@@ -337,6 +367,182 @@ namespace TSviewCloud
 
             TSviewCloudConfig.Config.Save();
         }
+
+        private double ConvertUnit(double value, string Unit)
+        {
+            switch (Unit)
+            {
+                case "GiB/s":
+                    return value * 1024 * 1024 * 1024;
+                case "MiB/s":
+                    return value * 1024 * 1024;
+                case "KiB/s":
+                    return value * 1024;
+                case "GB/s":
+                    return value * 1000 * 1000 * 1000;
+                case "MB/s":
+                    return value * 1000 * 1000;
+                case "KB/s":
+                    return value * 1000;
+            }
+            return value;
+        }
+
+        private int SelectBase(double value)
+        {
+            double value10 = value / 1000;
+            double value2 = value / 1024;
+            if (value10 < 1000 || value2 < 1024)
+            {
+                if (value10 % 1.0 == 0)
+                {
+                    return 10;
+                }
+                if (value2 % 1.0 == 0)
+                {
+                    return 2;
+                }
+
+                if (value10 % 0.1 == 0)
+                {
+                    return 10;
+                }
+                if (value2 % 0.1 == 0)
+                {
+                    return 2;
+                }
+
+                if (value10 % 0.01 == 0)
+                {
+                    return 10;
+                }
+                if (value2 % 0.01 == 0)
+                {
+                    return 2;
+                }
+
+                return 2;
+            }
+            else
+            {
+                if (SelectBase(value10) == 10) return 10;
+                else return 2;
+            }
+        }
+
+        private void SetBandwidthInfo()
+        {
+            if (double.IsPositiveInfinity(TSviewCloudConfig.Config.UploadLimit) || TSviewCloudConfig.Config.UploadLimit <= 0)
+            {
+                TSviewCloudConfig.Config.UploadLimit = double.PositiveInfinity;
+                textBox_UploadBandwidthLimit.Text = "";
+                comboBox_UploadLimitUnit.SelectedIndex = comboBox_UploadLimitUnit.Items.IndexOf("Infinity");
+            }
+            else
+            {
+                double value = TSviewCloudConfig.Config.UploadLimit;
+                if (value < 1000)
+                {
+                    textBox_UploadBandwidthLimit.Text = value.ToString();
+                    comboBox_UploadLimitUnit.SelectedIndex = comboBox_UploadLimitUnit.Items.IndexOf("Byte/s");
+                }
+                else
+                {
+                    if (SelectBase(value) == 10)
+                    {
+                        if (value > 1000 * 1000 * 1000)
+                        {
+                            textBox_UploadBandwidthLimit.Text = (value / (1000 * 1000 * 1000)).ToString();
+                            comboBox_UploadLimitUnit.SelectedIndex = comboBox_UploadLimitUnit.Items.IndexOf("GB/s");
+                        }
+                        else if (value > 1000 * 1000)
+                        {
+                            textBox_UploadBandwidthLimit.Text = (value / (1000 * 1000)).ToString();
+                            comboBox_UploadLimitUnit.SelectedIndex = comboBox_UploadLimitUnit.Items.IndexOf("MB/s");
+                        }
+                        else
+                        {
+                            textBox_UploadBandwidthLimit.Text = (value / 1000).ToString();
+                            comboBox_UploadLimitUnit.SelectedIndex = comboBox_UploadLimitUnit.Items.IndexOf("KB/s");
+                        }
+                    }
+                    else
+                    {
+                        if (value > 1024 * 1024 * 1024)
+                        {
+                            textBox_UploadBandwidthLimit.Text = (value / (1024 * 1024 * 1024)).ToString();
+                            comboBox_UploadLimitUnit.SelectedIndex = comboBox_UploadLimitUnit.Items.IndexOf("GiB/s");
+                        }
+                        else if (value > 1024 * 1024)
+                        {
+                            textBox_UploadBandwidthLimit.Text = (value / (1024 * 1024)).ToString();
+                            comboBox_UploadLimitUnit.SelectedIndex = comboBox_UploadLimitUnit.Items.IndexOf("MiB/s");
+                        }
+                        else
+                        {
+                            textBox_UploadBandwidthLimit.Text = (value / 1024).ToString();
+                            comboBox_UploadLimitUnit.SelectedIndex = comboBox_UploadLimitUnit.Items.IndexOf("KiB/s");
+                        }
+                    }
+                }
+            }
+
+            if (double.IsPositiveInfinity(TSviewCloudConfig.Config.DownloadLimit) || TSviewCloudConfig.Config.DownloadLimit <= 0)
+            {
+                TSviewCloudConfig.Config.DownloadLimit = double.PositiveInfinity;
+                textBox_DownloadBandwidthLimit.Text = "";
+                comboBox_DownloadLimitUnit.SelectedIndex = comboBox_DownloadLimitUnit.Items.IndexOf("Infinity");
+            }
+            else
+            {
+                double value = TSviewCloudConfig.Config.DownloadLimit;
+                if (value < 1000)
+                {
+                    textBox_DownloadBandwidthLimit.Text = value.ToString();
+                    comboBox_DownloadLimitUnit.SelectedIndex = comboBox_DownloadLimitUnit.Items.IndexOf("Byte/s");
+                }
+                else
+                {
+                    if (SelectBase(value) == 10)
+                    {
+                        if (value > 1000 * 1000 * 1000)
+                        {
+                            textBox_DownloadBandwidthLimit.Text = (value / (1000 * 1000 * 1000)).ToString();
+                            comboBox_DownloadLimitUnit.SelectedIndex = comboBox_DownloadLimitUnit.Items.IndexOf("GB/s");
+                        }
+                        else if (value > 1000 * 1000)
+                        {
+                            textBox_DownloadBandwidthLimit.Text = (value / (1000 * 1000)).ToString();
+                            comboBox_DownloadLimitUnit.SelectedIndex = comboBox_DownloadLimitUnit.Items.IndexOf("MB/s");
+                        }
+                        else
+                        {
+                            textBox_DownloadBandwidthLimit.Text = (value / 1000).ToString();
+                            comboBox_DownloadLimitUnit.SelectedIndex = comboBox_DownloadLimitUnit.Items.IndexOf("KB/s");
+                        }
+                    }
+                    else
+                    {
+                        if (value > 1024 * 1024 * 1024)
+                        {
+                            textBox_DownloadBandwidthLimit.Text = (value / (1024 * 1024 * 1024)).ToString();
+                            comboBox_DownloadLimitUnit.SelectedIndex = comboBox_DownloadLimitUnit.Items.IndexOf("GiB/s");
+                        }
+                        else if (value > 1024 * 1024)
+                        {
+                            textBox_DownloadBandwidthLimit.Text = (value / (1024 * 1024)).ToString();
+                            comboBox_DownloadLimitUnit.SelectedIndex = comboBox_DownloadLimitUnit.Items.IndexOf("MiB/s");
+                        }
+                        else
+                        {
+                            textBox_DownloadBandwidthLimit.Text = (value / 1024).ToString();
+                            comboBox_DownloadLimitUnit.SelectedIndex = comboBox_DownloadLimitUnit.Items.IndexOf("KiB/s");
+                        }
+                    }
+                }
+            }
+        }
+
 
         private void FormConfigEdit_Load(object sender, EventArgs e)
         {
@@ -399,6 +605,46 @@ namespace TSviewCloud
                 using (var f = new FormMasterPass())
                     f.ShowDialog(this);
 
+            }
+        }
+
+        private void comboBox_UploadLimitUnit_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBox_UploadLimitUnit.SelectedIndex == comboBox_UploadLimitUnit.Items.IndexOf("Infinity"))
+            {
+                textBox_UploadBandwidthLimit.Text = "";
+            }
+        }
+
+        private void comboBox_DownloadLimitUnit_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBox_DownloadLimitUnit.SelectedIndex == comboBox_DownloadLimitUnit.Items.IndexOf("Infinity"))
+            {
+                textBox_DownloadBandwidthLimit.Text = "";
+            }
+        }
+
+        private void textBox_UploadBandwidthLimit_TextChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                double value = double.Parse(textBox_UploadBandwidthLimit.Text);
+            }
+            catch
+            {
+                textBox_UploadBandwidthLimit.Text = "";
+            }
+        }
+
+        private void textBox_DownloadBandwidthLimit_TextChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                double value = double.Parse(textBox_DownloadBandwidthLimit.Text);
+            }
+            catch
+            {
+                textBox_DownloadBandwidthLimit.Text = "";
             }
         }
     }

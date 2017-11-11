@@ -110,7 +110,8 @@ namespace TSviewCloudPlugin
                     {
                         try
                         {
-                            using (var f = new PositionStream(remotestream, remoteItem.Size ?? 0))
+                            using (var th = new ThrottleDownloadStream(remotestream, job.Ct))
+                            using (var f = new PositionStream(th, remoteItem.Size ?? 0))
                             {
                                 f.PosChangeEvent += (src, evnt) =>
                                 {

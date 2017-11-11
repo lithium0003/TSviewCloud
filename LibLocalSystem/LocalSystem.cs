@@ -327,7 +327,8 @@ namespace TSviewCloudPlugin
                     var uploadfullpath = Path.Combine(remoteTarget.ID, short_filename);
 
                     using (var filestream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read, 256 * 1024))
-                    using (var f = new PositionStream(filestream))
+                    using (var th = new ThrottleUploadStream(filestream, job.Ct))
+                    using (var f = new PositionStream(th))
                     {
                         f.PosChangeEvent += (src, evnt) =>
                         {

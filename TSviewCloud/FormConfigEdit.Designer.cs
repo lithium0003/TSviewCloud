@@ -33,7 +33,21 @@
             this.button_Cancel = new System.Windows.Forms.Button();
             this.button_OK = new System.Windows.Forms.Button();
             this.tabPage_general = new System.Windows.Forms.TabPage();
+            this.groupBox5 = new System.Windows.Forms.GroupBox();
+            this.label10 = new System.Windows.Forms.Label();
+            this.label9 = new System.Windows.Forms.Label();
+            this.textBox_DownloadParallel = new System.Windows.Forms.TextBox();
+            this.textBox_UploadParallel = new System.Windows.Forms.TextBox();
+            this.label8 = new System.Windows.Forms.Label();
+            this.label7 = new System.Windows.Forms.Label();
+            this.comboBox_DownloadLimitUnit = new System.Windows.Forms.ComboBox();
+            this.comboBox_UploadLimitUnit = new System.Windows.Forms.ComboBox();
+            this.textBox_DownloadBandwidthLimit = new System.Windows.Forms.TextBox();
+            this.textBox_UploadBandwidthLimit = new System.Windows.Forms.TextBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.label6 = new System.Windows.Forms.Label();
+            this.button_MasterPass = new System.Windows.Forms.Button();
+            this.checkBox_EncryptConfig = new System.Windows.Forms.CheckBox();
             this.checkBox_SaveCacheCompressed = new System.Windows.Forms.CheckBox();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabPage_FFplayer = new System.Windows.Forms.TabPage();
@@ -57,11 +71,9 @@
             this.label1 = new System.Windows.Forms.Label();
             this.textBox_fontpath = new System.Windows.Forms.TextBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-            this.checkBox_EncryptConfig = new System.Windows.Forms.CheckBox();
-            this.button_MasterPass = new System.Windows.Forms.Button();
-            this.label6 = new System.Windows.Forms.Label();
             this.panel1.SuspendLayout();
             this.tabPage_general.SuspendLayout();
+            this.groupBox5.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabPage_FFplayer.SuspendLayout();
@@ -109,6 +121,7 @@
             // 
             // tabPage_general
             // 
+            this.tabPage_general.Controls.Add(this.groupBox5);
             this.tabPage_general.Controls.Add(this.groupBox1);
             this.tabPage_general.Location = new System.Drawing.Point(4, 25);
             this.tabPage_general.Name = "tabPage_general";
@@ -117,6 +130,135 @@
             this.tabPage_general.TabIndex = 1;
             this.tabPage_general.Text = "General";
             this.tabPage_general.UseVisualStyleBackColor = true;
+            // 
+            // groupBox5
+            // 
+            this.groupBox5.Controls.Add(this.label10);
+            this.groupBox5.Controls.Add(this.label9);
+            this.groupBox5.Controls.Add(this.textBox_DownloadParallel);
+            this.groupBox5.Controls.Add(this.textBox_UploadParallel);
+            this.groupBox5.Controls.Add(this.label8);
+            this.groupBox5.Controls.Add(this.label7);
+            this.groupBox5.Controls.Add(this.comboBox_DownloadLimitUnit);
+            this.groupBox5.Controls.Add(this.comboBox_UploadLimitUnit);
+            this.groupBox5.Controls.Add(this.textBox_DownloadBandwidthLimit);
+            this.groupBox5.Controls.Add(this.textBox_UploadBandwidthLimit);
+            this.groupBox5.Dock = System.Windows.Forms.DockStyle.Top;
+            this.groupBox5.Location = new System.Drawing.Point(3, 99);
+            this.groupBox5.Name = "groupBox5";
+            this.groupBox5.Size = new System.Drawing.Size(559, 161);
+            this.groupBox5.TabIndex = 2;
+            this.groupBox5.TabStop = false;
+            this.groupBox5.Text = "Network";
+            // 
+            // label10
+            // 
+            this.label10.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.label10.AutoSize = true;
+            this.label10.Location = new System.Drawing.Point(293, 93);
+            this.label10.Name = "label10";
+            this.label10.Size = new System.Drawing.Size(153, 15);
+            this.label10.TabIndex = 9;
+            this.label10.Text = "Parallel download tasks";
+            // 
+            // label9
+            // 
+            this.label9.AutoSize = true;
+            this.label9.Location = new System.Drawing.Point(9, 93);
+            this.label9.Name = "label9";
+            this.label9.Size = new System.Drawing.Size(135, 15);
+            this.label9.TabIndex = 8;
+            this.label9.Text = "Parallel upload tasks";
+            // 
+            // textBox_DownloadParallel
+            // 
+            this.textBox_DownloadParallel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.textBox_DownloadParallel.Location = new System.Drawing.Point(423, 114);
+            this.textBox_DownloadParallel.Name = "textBox_DownloadParallel";
+            this.textBox_DownloadParallel.Size = new System.Drawing.Size(100, 22);
+            this.textBox_DownloadParallel.TabIndex = 7;
+            // 
+            // textBox_UploadParallel
+            // 
+            this.textBox_UploadParallel.Location = new System.Drawing.Point(133, 114);
+            this.textBox_UploadParallel.Name = "textBox_UploadParallel";
+            this.textBox_UploadParallel.Size = new System.Drawing.Size(100, 22);
+            this.textBox_UploadParallel.TabIndex = 6;
+            // 
+            // label8
+            // 
+            this.label8.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.label8.AutoSize = true;
+            this.label8.Location = new System.Drawing.Point(293, 27);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(165, 15);
+            this.label8.TabIndex = 5;
+            this.label8.Text = "Download bandwidth limit";
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.Location = new System.Drawing.Point(9, 27);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(146, 15);
+            this.label7.TabIndex = 4;
+            this.label7.Text = "Upload bandwidth limit";
+            // 
+            // comboBox_DownloadLimitUnit
+            // 
+            this.comboBox_DownloadLimitUnit.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.comboBox_DownloadLimitUnit.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboBox_DownloadLimitUnit.FormattingEnabled = true;
+            this.comboBox_DownloadLimitUnit.Items.AddRange(new object[] {
+            "Infinity",
+            "Byte/s",
+            "KiB/s",
+            "KB/s",
+            "MiB/s",
+            "MB/s",
+            "GiB/s",
+            "GB/s"});
+            this.comboBox_DownloadLimitUnit.Location = new System.Drawing.Point(402, 47);
+            this.comboBox_DownloadLimitUnit.Name = "comboBox_DownloadLimitUnit";
+            this.comboBox_DownloadLimitUnit.Size = new System.Drawing.Size(121, 23);
+            this.comboBox_DownloadLimitUnit.TabIndex = 3;
+            this.comboBox_DownloadLimitUnit.SelectedIndexChanged += new System.EventHandler(this.comboBox_DownloadLimitUnit_SelectedIndexChanged);
+            // 
+            // comboBox_UploadLimitUnit
+            // 
+            this.comboBox_UploadLimitUnit.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboBox_UploadLimitUnit.FormattingEnabled = true;
+            this.comboBox_UploadLimitUnit.Items.AddRange(new object[] {
+            "Infinity",
+            "Byte/s",
+            "KiB/s",
+            "KB/s",
+            "MiB/s",
+            "MB/s",
+            "GiB/s",
+            "GB/s"});
+            this.comboBox_UploadLimitUnit.Location = new System.Drawing.Point(112, 48);
+            this.comboBox_UploadLimitUnit.Name = "comboBox_UploadLimitUnit";
+            this.comboBox_UploadLimitUnit.Size = new System.Drawing.Size(121, 23);
+            this.comboBox_UploadLimitUnit.TabIndex = 2;
+            this.comboBox_UploadLimitUnit.SelectedIndexChanged += new System.EventHandler(this.comboBox_UploadLimitUnit_SelectedIndexChanged);
+            // 
+            // textBox_DownloadBandwidthLimit
+            // 
+            this.textBox_DownloadBandwidthLimit.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.textBox_DownloadBandwidthLimit.Location = new System.Drawing.Point(296, 48);
+            this.textBox_DownloadBandwidthLimit.Name = "textBox_DownloadBandwidthLimit";
+            this.textBox_DownloadBandwidthLimit.Size = new System.Drawing.Size(100, 22);
+            this.textBox_DownloadBandwidthLimit.TabIndex = 1;
+            this.textBox_DownloadBandwidthLimit.TextChanged += new System.EventHandler(this.textBox_DownloadBandwidthLimit_TextChanged);
+            // 
+            // textBox_UploadBandwidthLimit
+            // 
+            this.textBox_UploadBandwidthLimit.Location = new System.Drawing.Point(6, 48);
+            this.textBox_UploadBandwidthLimit.Name = "textBox_UploadBandwidthLimit";
+            this.textBox_UploadBandwidthLimit.Size = new System.Drawing.Size(100, 22);
+            this.textBox_UploadBandwidthLimit.TabIndex = 0;
+            this.textBox_UploadBandwidthLimit.TextChanged += new System.EventHandler(this.textBox_UploadBandwidthLimit_TextChanged);
             // 
             // groupBox1
             // 
@@ -131,6 +273,36 @@
             this.groupBox1.TabIndex = 0;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Server Configuration";
+            // 
+            // label6
+            // 
+            this.label6.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.label6.Location = new System.Drawing.Point(307, 9);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(246, 44);
+            this.label6.TabIndex = 3;
+            this.label6.Text = "If you set MasterPassword, need to enter it on lanch app.";
+            // 
+            // button_MasterPass
+            // 
+            this.button_MasterPass.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.button_MasterPass.Location = new System.Drawing.Point(366, 56);
+            this.button_MasterPass.Name = "button_MasterPass";
+            this.button_MasterPass.Size = new System.Drawing.Size(187, 23);
+            this.button_MasterPass.TabIndex = 2;
+            this.button_MasterPass.Text = "Change MasterPassword";
+            this.button_MasterPass.UseVisualStyleBackColor = true;
+            this.button_MasterPass.Click += new System.EventHandler(this.button_MasterPass_Click);
+            // 
+            // checkBox_EncryptConfig
+            // 
+            this.checkBox_EncryptConfig.AutoSize = true;
+            this.checkBox_EncryptConfig.Location = new System.Drawing.Point(6, 46);
+            this.checkBox_EncryptConfig.Name = "checkBox_EncryptConfig";
+            this.checkBox_EncryptConfig.Size = new System.Drawing.Size(152, 19);
+            this.checkBox_EncryptConfig.TabIndex = 1;
+            this.checkBox_EncryptConfig.Text = "Encrypt config data";
+            this.checkBox_EncryptConfig.UseVisualStyleBackColor = true;
             // 
             // checkBox_SaveCacheCompressed
             // 
@@ -375,36 +547,6 @@
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
-            // checkBox_EncryptConfig
-            // 
-            this.checkBox_EncryptConfig.AutoSize = true;
-            this.checkBox_EncryptConfig.Location = new System.Drawing.Point(6, 46);
-            this.checkBox_EncryptConfig.Name = "checkBox_EncryptConfig";
-            this.checkBox_EncryptConfig.Size = new System.Drawing.Size(152, 19);
-            this.checkBox_EncryptConfig.TabIndex = 1;
-            this.checkBox_EncryptConfig.Text = "Encrypt config data";
-            this.checkBox_EncryptConfig.UseVisualStyleBackColor = true;
-            // 
-            // button_MasterPass
-            // 
-            this.button_MasterPass.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.button_MasterPass.Location = new System.Drawing.Point(366, 56);
-            this.button_MasterPass.Name = "button_MasterPass";
-            this.button_MasterPass.Size = new System.Drawing.Size(187, 23);
-            this.button_MasterPass.TabIndex = 2;
-            this.button_MasterPass.Text = "Change MasterPassword";
-            this.button_MasterPass.UseVisualStyleBackColor = true;
-            this.button_MasterPass.Click += new System.EventHandler(this.button_MasterPass_Click);
-            // 
-            // label6
-            // 
-            this.label6.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.label6.Location = new System.Drawing.Point(307, 9);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(246, 44);
-            this.label6.TabIndex = 3;
-            this.label6.Text = "If you set MasterPassword, need to enter it on lanch app.";
-            // 
             // FormConfigEdit
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(120F, 120F);
@@ -418,6 +560,8 @@
             this.Load += new System.EventHandler(this.FormConfigEdit_Load);
             this.panel1.ResumeLayout(false);
             this.tabPage_general.ResumeLayout(false);
+            this.groupBox5.ResumeLayout(false);
+            this.groupBox5.PerformLayout();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             this.tabControl1.ResumeLayout(false);
@@ -468,5 +612,16 @@
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.Button button_MasterPass;
         private System.Windows.Forms.CheckBox checkBox_EncryptConfig;
+        private System.Windows.Forms.GroupBox groupBox5;
+        private System.Windows.Forms.ComboBox comboBox_DownloadLimitUnit;
+        private System.Windows.Forms.ComboBox comboBox_UploadLimitUnit;
+        private System.Windows.Forms.TextBox textBox_DownloadBandwidthLimit;
+        private System.Windows.Forms.TextBox textBox_UploadBandwidthLimit;
+        private System.Windows.Forms.Label label10;
+        private System.Windows.Forms.Label label9;
+        private System.Windows.Forms.TextBox textBox_DownloadParallel;
+        private System.Windows.Forms.TextBox textBox_UploadParallel;
+        private System.Windows.Forms.Label label8;
+        private System.Windows.Forms.Label label7;
     }
 }

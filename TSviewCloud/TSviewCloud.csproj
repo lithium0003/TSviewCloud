@@ -204,6 +204,7 @@
       <DependentUpon>Resource_text.resx</DependentUpon>
     </Compile>
     <Compile Include="ServicePluginBase.cs" />
+    <Compile Include="ThrottleStream.cs" />
     <EmbeddedResource Include="AboutBox1.resx">
       <DependentUpon>AboutBox1.cs</DependentUpon>
     </EmbeddedResource>
