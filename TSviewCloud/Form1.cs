@@ -686,7 +686,18 @@ namespace TSviewCloud
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            foreach(var dll in TSviewCloudPlugin.RemoteServerFactory.DllList)
+            if (!TSviewCloudConfig.Config.IsMasterPasswordCorrect)
+            {
+                using (var f = new FormMasterPass())
+                    f.ShowDialog();
+                if (!TSviewCloudConfig.Config.IsMasterPasswordCorrect)
+                {
+                    Close();
+                    return;
+                }
+            }
+
+            foreach (var dll in TSviewCloudPlugin.RemoteServerFactory.DllList)
             {
                 var plugin = TSviewCloudPlugin.RemoteServerFactory.Get(dll.Key, null);
                 var item = new ToolStripMenuItem(plugin.ServiceName, plugin.Icon.ToBitmap());

@@ -37,37 +37,40 @@
             this.checkBox_SaveCacheCompressed = new System.Windows.Forms.CheckBox();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabPage_FFplayer = new System.Windows.Forms.TabPage();
-            this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.textBox_fontpath = new System.Windows.Forms.TextBox();
-            this.label1 = new System.Windows.Forms.Label();
-            this.button_FontSelect = new System.Windows.Forms.Button();
-            this.numericUpDown_FontPtSize = new System.Windows.Forms.NumericUpDown();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.groupBox3 = new System.Windows.Forms.GroupBox();
             this.groupBox4 = new System.Windows.Forms.GroupBox();
-            this.checkBox_AutoResize = new System.Windows.Forms.CheckBox();
             this.label4 = new System.Windows.Forms.Label();
+            this.checkBox_AutoResize = new System.Windows.Forms.CheckBox();
+            this.groupBox3 = new System.Windows.Forms.GroupBox();
             this.listView1 = new System.Windows.Forms.ListView();
             this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.columnHeader2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.textBox_key = new System.Windows.Forms.TextBox();
-            this.label5 = new System.Windows.Forms.Label();
-            this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.deleteKeybindToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.panel2 = new System.Windows.Forms.Panel();
+            this.label5 = new System.Windows.Forms.Label();
+            this.textBox_key = new System.Windows.Forms.TextBox();
+            this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.label3 = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
+            this.numericUpDown_FontPtSize = new System.Windows.Forms.NumericUpDown();
+            this.button_FontSelect = new System.Windows.Forms.Button();
+            this.label1 = new System.Windows.Forms.Label();
+            this.textBox_fontpath = new System.Windows.Forms.TextBox();
+            this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+            this.checkBox_EncryptConfig = new System.Windows.Forms.CheckBox();
+            this.button_MasterPass = new System.Windows.Forms.Button();
+            this.label6 = new System.Windows.Forms.Label();
             this.panel1.SuspendLayout();
             this.tabPage_general.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabPage_FFplayer.SuspendLayout();
-            this.groupBox2.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_FontPtSize)).BeginInit();
-            this.groupBox3.SuspendLayout();
             this.groupBox4.SuspendLayout();
+            this.groupBox3.SuspendLayout();
             this.contextMenuStrip1.SuspendLayout();
             this.panel2.SuspendLayout();
+            this.groupBox2.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_FontPtSize)).BeginInit();
             this.SuspendLayout();
             // 
             // panel1
@@ -110,18 +113,21 @@
             this.tabPage_general.Location = new System.Drawing.Point(4, 25);
             this.tabPage_general.Name = "tabPage_general";
             this.tabPage_general.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage_general.Size = new System.Drawing.Size(600, 580);
+            this.tabPage_general.Size = new System.Drawing.Size(565, 508);
             this.tabPage_general.TabIndex = 1;
             this.tabPage_general.Text = "General";
             this.tabPage_general.UseVisualStyleBackColor = true;
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.label6);
+            this.groupBox1.Controls.Add(this.button_MasterPass);
+            this.groupBox1.Controls.Add(this.checkBox_EncryptConfig);
             this.groupBox1.Controls.Add(this.checkBox_SaveCacheCompressed);
             this.groupBox1.Dock = System.Windows.Forms.DockStyle.Top;
             this.groupBox1.Location = new System.Drawing.Point(3, 3);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(594, 55);
+            this.groupBox1.Size = new System.Drawing.Size(559, 96);
             this.groupBox1.TabIndex = 0;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Server Configuration";
@@ -160,103 +166,6 @@
             this.tabPage_FFplayer.Text = "FFplayer";
             this.tabPage_FFplayer.UseVisualStyleBackColor = true;
             // 
-            // groupBox2
-            // 
-            this.groupBox2.Controls.Add(this.label3);
-            this.groupBox2.Controls.Add(this.label2);
-            this.groupBox2.Controls.Add(this.numericUpDown_FontPtSize);
-            this.groupBox2.Controls.Add(this.button_FontSelect);
-            this.groupBox2.Controls.Add(this.label1);
-            this.groupBox2.Controls.Add(this.textBox_fontpath);
-            this.groupBox2.Dock = System.Windows.Forms.DockStyle.Top;
-            this.groupBox2.Location = new System.Drawing.Point(3, 3);
-            this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(559, 100);
-            this.groupBox2.TabIndex = 0;
-            this.groupBox2.TabStop = false;
-            this.groupBox2.Text = "Display Font";
-            // 
-            // textBox_fontpath
-            // 
-            this.textBox_fontpath.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBox_fontpath.Location = new System.Drawing.Point(6, 36);
-            this.textBox_fontpath.Name = "textBox_fontpath";
-            this.textBox_fontpath.Size = new System.Drawing.Size(511, 22);
-            this.textBox_fontpath.TabIndex = 0;
-            // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(6, 18);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(112, 15);
-            this.label1.TabIndex = 1;
-            this.label1.Text = "Path to Font file";
-            // 
-            // button_FontSelect
-            // 
-            this.button_FontSelect.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.button_FontSelect.Location = new System.Drawing.Point(523, 36);
-            this.button_FontSelect.Name = "button_FontSelect";
-            this.button_FontSelect.Size = new System.Drawing.Size(30, 23);
-            this.button_FontSelect.TabIndex = 2;
-            this.button_FontSelect.Text = "...";
-            this.button_FontSelect.UseVisualStyleBackColor = true;
-            this.button_FontSelect.Click += new System.EventHandler(this.button_FontSelect_Click);
-            // 
-            // numericUpDown_FontPtSize
-            // 
-            this.numericUpDown_FontPtSize.Location = new System.Drawing.Point(88, 68);
-            this.numericUpDown_FontPtSize.Maximum = new decimal(new int[] {
-            500,
-            0,
-            0,
-            0});
-            this.numericUpDown_FontPtSize.Minimum = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
-            this.numericUpDown_FontPtSize.Name = "numericUpDown_FontPtSize";
-            this.numericUpDown_FontPtSize.Size = new System.Drawing.Size(74, 22);
-            this.numericUpDown_FontPtSize.TabIndex = 3;
-            this.numericUpDown_FontPtSize.Value = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
-            // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(9, 70);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(66, 15);
-            this.label2.TabIndex = 4;
-            this.label2.Text = "Font size";
-            // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(168, 75);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(19, 15);
-            this.label3.TabIndex = 5;
-            this.label3.Text = "pt";
-            // 
-            // groupBox3
-            // 
-            this.groupBox3.Controls.Add(this.listView1);
-            this.groupBox3.Controls.Add(this.panel2);
-            this.groupBox3.Dock = System.Windows.Forms.DockStyle.Left;
-            this.groupBox3.Location = new System.Drawing.Point(3, 103);
-            this.groupBox3.Name = "groupBox3";
-            this.groupBox3.Size = new System.Drawing.Size(329, 402);
-            this.groupBox3.TabIndex = 1;
-            this.groupBox3.TabStop = false;
-            this.groupBox3.Text = "Key bind";
-            // 
             // groupBox4
             // 
             this.groupBox4.Controls.Add(this.label4);
@@ -269,6 +178,16 @@
             this.groupBox4.TabStop = false;
             this.groupBox4.Text = "DisplaySize";
             // 
+            // label4
+            // 
+            this.label4.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.label4.Location = new System.Drawing.Point(6, 18);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(218, 36);
+            this.label4.TabIndex = 1;
+            this.label4.Text = "Filt window size to video automatially";
+            // 
             // checkBox_AutoResize
             // 
             this.checkBox_AutoResize.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -280,15 +199,17 @@
             this.checkBox_AutoResize.Text = "Auto resize";
             this.checkBox_AutoResize.UseVisualStyleBackColor = true;
             // 
-            // label4
+            // groupBox3
             // 
-            this.label4.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.label4.Location = new System.Drawing.Point(6, 18);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(218, 36);
-            this.label4.TabIndex = 1;
-            this.label4.Text = "Filt window size to video automatially";
+            this.groupBox3.Controls.Add(this.listView1);
+            this.groupBox3.Controls.Add(this.panel2);
+            this.groupBox3.Dock = System.Windows.Forms.DockStyle.Left;
+            this.groupBox3.Location = new System.Drawing.Point(3, 103);
+            this.groupBox3.Name = "groupBox3";
+            this.groupBox3.Size = new System.Drawing.Size(329, 402);
+            this.groupBox3.TabIndex = 1;
+            this.groupBox3.TabStop = false;
+            this.groupBox3.Text = "Key bind";
             // 
             // listView1
             // 
@@ -321,28 +242,6 @@
             this.columnHeader2.Text = "Key";
             this.columnHeader2.Width = 100;
             // 
-            // textBox_key
-            // 
-            this.textBox_key.AcceptsReturn = true;
-            this.textBox_key.AcceptsTab = true;
-            this.textBox_key.Location = new System.Drawing.Point(177, 24);
-            this.textBox_key.Name = "textBox_key";
-            this.textBox_key.Size = new System.Drawing.Size(95, 22);
-            this.textBox_key.TabIndex = 1;
-            this.textBox_key.KeyDown += new System.Windows.Forms.KeyEventHandler(this.textBox_key_KeyDown);
-            // 
-            // label5
-            // 
-            this.label5.Location = new System.Drawing.Point(3, 14);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(168, 48);
-            this.label5.TabIndex = 2;
-            this.label5.Text = "Press any key in textbox to select key bind ->";
-            // 
-            // openFileDialog1
-            // 
-            this.openFileDialog1.FileName = "openFileDialog1";
-            // 
             // contextMenuStrip1
             // 
             this.contextMenuStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
@@ -369,6 +268,143 @@
             this.panel2.Size = new System.Drawing.Size(323, 70);
             this.panel2.TabIndex = 3;
             // 
+            // label5
+            // 
+            this.label5.Location = new System.Drawing.Point(3, 14);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(168, 48);
+            this.label5.TabIndex = 2;
+            this.label5.Text = "Press any key in textbox to select key bind ->";
+            // 
+            // textBox_key
+            // 
+            this.textBox_key.AcceptsReturn = true;
+            this.textBox_key.AcceptsTab = true;
+            this.textBox_key.Location = new System.Drawing.Point(177, 24);
+            this.textBox_key.Name = "textBox_key";
+            this.textBox_key.Size = new System.Drawing.Size(95, 22);
+            this.textBox_key.TabIndex = 1;
+            this.textBox_key.KeyDown += new System.Windows.Forms.KeyEventHandler(this.textBox_key_KeyDown);
+            // 
+            // groupBox2
+            // 
+            this.groupBox2.Controls.Add(this.label3);
+            this.groupBox2.Controls.Add(this.label2);
+            this.groupBox2.Controls.Add(this.numericUpDown_FontPtSize);
+            this.groupBox2.Controls.Add(this.button_FontSelect);
+            this.groupBox2.Controls.Add(this.label1);
+            this.groupBox2.Controls.Add(this.textBox_fontpath);
+            this.groupBox2.Dock = System.Windows.Forms.DockStyle.Top;
+            this.groupBox2.Location = new System.Drawing.Point(3, 3);
+            this.groupBox2.Name = "groupBox2";
+            this.groupBox2.Size = new System.Drawing.Size(559, 100);
+            this.groupBox2.TabIndex = 0;
+            this.groupBox2.TabStop = false;
+            this.groupBox2.Text = "Display Font";
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(168, 75);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(19, 15);
+            this.label3.TabIndex = 5;
+            this.label3.Text = "pt";
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(9, 70);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(66, 15);
+            this.label2.TabIndex = 4;
+            this.label2.Text = "Font size";
+            // 
+            // numericUpDown_FontPtSize
+            // 
+            this.numericUpDown_FontPtSize.Location = new System.Drawing.Point(88, 68);
+            this.numericUpDown_FontPtSize.Maximum = new decimal(new int[] {
+            500,
+            0,
+            0,
+            0});
+            this.numericUpDown_FontPtSize.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
+            this.numericUpDown_FontPtSize.Name = "numericUpDown_FontPtSize";
+            this.numericUpDown_FontPtSize.Size = new System.Drawing.Size(74, 22);
+            this.numericUpDown_FontPtSize.TabIndex = 3;
+            this.numericUpDown_FontPtSize.Value = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
+            // 
+            // button_FontSelect
+            // 
+            this.button_FontSelect.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.button_FontSelect.Location = new System.Drawing.Point(523, 36);
+            this.button_FontSelect.Name = "button_FontSelect";
+            this.button_FontSelect.Size = new System.Drawing.Size(30, 23);
+            this.button_FontSelect.TabIndex = 2;
+            this.button_FontSelect.Text = "...";
+            this.button_FontSelect.UseVisualStyleBackColor = true;
+            this.button_FontSelect.Click += new System.EventHandler(this.button_FontSelect_Click);
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(6, 18);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(112, 15);
+            this.label1.TabIndex = 1;
+            this.label1.Text = "Path to Font file";
+            // 
+            // textBox_fontpath
+            // 
+            this.textBox_fontpath.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.textBox_fontpath.Location = new System.Drawing.Point(6, 36);
+            this.textBox_fontpath.Name = "textBox_fontpath";
+            this.textBox_fontpath.Size = new System.Drawing.Size(511, 22);
+            this.textBox_fontpath.TabIndex = 0;
+            // 
+            // openFileDialog1
+            // 
+            this.openFileDialog1.FileName = "openFileDialog1";
+            // 
+            // checkBox_EncryptConfig
+            // 
+            this.checkBox_EncryptConfig.AutoSize = true;
+            this.checkBox_EncryptConfig.Location = new System.Drawing.Point(6, 46);
+            this.checkBox_EncryptConfig.Name = "checkBox_EncryptConfig";
+            this.checkBox_EncryptConfig.Size = new System.Drawing.Size(152, 19);
+            this.checkBox_EncryptConfig.TabIndex = 1;
+            this.checkBox_EncryptConfig.Text = "Encrypt config data";
+            this.checkBox_EncryptConfig.UseVisualStyleBackColor = true;
+            // 
+            // button_MasterPass
+            // 
+            this.button_MasterPass.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.button_MasterPass.Location = new System.Drawing.Point(366, 56);
+            this.button_MasterPass.Name = "button_MasterPass";
+            this.button_MasterPass.Size = new System.Drawing.Size(187, 23);
+            this.button_MasterPass.TabIndex = 2;
+            this.button_MasterPass.Text = "Change MasterPassword";
+            this.button_MasterPass.UseVisualStyleBackColor = true;
+            this.button_MasterPass.Click += new System.EventHandler(this.button_MasterPass_Click);
+            // 
+            // label6
+            // 
+            this.label6.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.label6.Location = new System.Drawing.Point(307, 9);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(246, 44);
+            this.label6.TabIndex = 3;
+            this.label6.Text = "If you set MasterPassword, need to enter it on lanch app.";
+            // 
             // FormConfigEdit
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(120F, 120F);
@@ -386,15 +422,15 @@
             this.groupBox1.PerformLayout();
             this.tabControl1.ResumeLayout(false);
             this.tabPage_FFplayer.ResumeLayout(false);
-            this.groupBox2.ResumeLayout(false);
-            this.groupBox2.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_FontPtSize)).EndInit();
-            this.groupBox3.ResumeLayout(false);
             this.groupBox4.ResumeLayout(false);
             this.groupBox4.PerformLayout();
+            this.groupBox3.ResumeLayout(false);
             this.contextMenuStrip1.ResumeLayout(false);
             this.panel2.ResumeLayout(false);
             this.panel2.PerformLayout();
+            this.groupBox2.ResumeLayout(false);
+            this.groupBox2.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_FontPtSize)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -429,5 +465,8 @@
         private System.Windows.Forms.ContextMenuStrip contextMenuStrip1;
         private System.Windows.Forms.ToolStripMenuItem deleteKeybindToolStripMenuItem;
         private System.Windows.Forms.Panel panel2;
+        private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.Button button_MasterPass;
+        private System.Windows.Forms.CheckBox checkBox_EncryptConfig;
     }
 }

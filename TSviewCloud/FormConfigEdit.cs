@@ -187,6 +187,7 @@ namespace TSviewCloud
         private void LoadData()
         {
             checkBox_SaveCacheCompressed.Checked = TSviewCloudConfig.Config.SaveGZConfig;
+            checkBox_EncryptConfig.Checked = TSviewCloudConfig.Config.SaveEncrypted;
 
             textBox_fontpath.Text = TSviewCloudConfig.ConfigFFplayer.FontFilePath;
             numericUpDown_FontPtSize.Value = TSviewCloudConfig.ConfigFFplayer.FontPtSize;
@@ -313,6 +314,7 @@ namespace TSviewCloud
         private void SaveData()
         {
             TSviewCloudConfig.Config.SaveGZConfig = checkBox_SaveCacheCompressed.Checked;
+            TSviewCloudConfig.Config.SaveEncrypted = checkBox_EncryptConfig.Checked;
 
             if (File.Exists(textBox_fontpath.Text))
             {
@@ -387,6 +389,16 @@ namespace TSviewCloud
             {
                 var item = listView1.SelectedItems[0];
                 item.SubItems[1].Text = Keys.None.ToString();
+            }
+        }
+
+        private void button_MasterPass_Click(object sender, EventArgs e)
+        {
+            if (TSviewCloudConfig.Config.IsMasterPasswordCorrect)
+            {
+                using (var f = new FormMasterPass())
+                    f.ShowDialog(this);
+
             }
         }
     }
