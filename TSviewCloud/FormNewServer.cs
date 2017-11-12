@@ -38,6 +38,7 @@ namespace TSviewCloud
             if (!_target.Add())
             {
                 DialogResult = DialogResult.Abort;
+                TSviewCloudPlugin.RemoteServerFactory.Delete(_target);
             }
         }
     }

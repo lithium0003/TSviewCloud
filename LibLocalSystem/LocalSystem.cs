@@ -53,25 +53,7 @@ namespace TSviewCloudPlugin
             }
         }
 
-        public void SetChildren(IEnumerable<IRemoteItem> children)
-        {
-            if (children == null)
-            {
-                _children.Clear();
-                ChildrenIDs = new string[0];
-                return;
-            }
-            Parallel.ForEach(children.ToDictionary(c => c.Path), (s) => {
-                _children.AddOrUpdate(s.Key, (k) => s.Value, (k, v) => s.Value);
-            });
-            foreach (var rm in _children.Values.Except(children))
-            {
-                IRemoteItem t;
-                _children.TryRemove(rm.Path, out t);
-            }
-            ChildrenIDs = Children.Select(x => x.Value.ID).ToArray();
-        }
-
+ 
         public override void FixChain(IRemoteServer server)
         {
             _server = server;
@@ -123,6 +105,7 @@ namespace TSviewCloudPlugin
             {
                 Parallel.ForEach(pathlist.Values.ToArray(), (x) => x.FixChain(this));
             }
+            _IsReady = true;
         }
 
         public string BasePath => localPathBase;
@@ -289,19 +272,19 @@ namespace TSviewCloudPlugin
                 }
                 catch (Exception e)
                 {
-                    throw new RemoteServerErrorException("Upload Failed.", e);
+                    throw new RemoteServerErrorException("Make folder Failed.", e);
                 }
                 SetUpdate(remoteTarget);
             });
             return job;
         }
 
-        public override Job<IRemoteItem> UploadFile(string filename, IRemoteItem remoteTarget, string uploadname = null, bool WeekDepend = false, params Job[] parentJob)
+        public override Job<IRemoteItem> UploadStream(Stream source, IRemoteItem remoteTarget, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob)
         {
             if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
-            var filesize = new FileInfo(filename).Length;
-            var short_filename = Path.GetFileName(filename);
+            var filesize = streamsize;
+            var short_filename = uploadname;
             var job = JobControler.CreateNewJob<IRemoteItem>(
                 type: JobClass.Upload,
                 info: new JobControler.SubInfo
@@ -311,13 +294,12 @@ namespace TSviewCloudPlugin
                 },
                 depends: parentJob);
             job.WeekDepend = WeekDepend;
-            job.DisplayName = filename;
+            job.DisplayName = uploadname;
             job.ProgressStr = "wait for upload.";
             var ct = job.Ct;
             JobControler.Run(job, (j) =>
             {
                 ct.ThrowIfCancellationRequested();
-                TSviewCloudConfig.Config.Log.LogOut("[Upload] File: " + filename);
 
                 job.ProgressStr = "Upload...";
                 job.Progress = 0;
@@ -325,9 +307,9 @@ namespace TSviewCloudPlugin
                 try
                 {
                     var uploadfullpath = Path.Combine(remoteTarget.ID, short_filename);
+                    TSviewCloudConfig.Config.Log.LogOut("[Upload] File: " + uploadfullpath);
 
-                    using (var filestream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read, 256 * 1024))
-                    using (var th = new ThrottleUploadStream(filestream, job.Ct))
+                    using (var th = new ThrottleUploadStream(source, job.Ct))
                     using (var f = new PositionStream(th))
                     {
                         f.PosChangeEvent += (src, evnt) =>
@@ -371,22 +353,51 @@ namespace TSviewCloudPlugin
             return job;
         }
 
-        public override Job<Stream> DownloadFile(IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] prevJob)
+        public override Job<IRemoteItem> UploadFile(string filename, IRemoteItem remoteTarget, string uploadname = null, bool WeekDepend = false, params Job[] parentJob)
+        {
+            if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
+
+            var filesize = new FileInfo(filename).Length;
+            var short_filename = Path.GetFileName(filename);
+
+            var filestream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read, 256 * 1024);
+            var job = UploadStream(filestream, remoteTarget, short_filename, filesize, WeekDepend, parentJob);
+
+            var clean = JobControler.CreateNewJob<IRemoteItem>(JobClass.Clean, depends: job);
+            clean.DoAlways = true;
+            JobControler.Run(clean, (j) =>
+            {
+                clean.Result = clean.ResultOfDepend[0];
+                filestream.Dispose();
+            });
+            return clean;
+        }
+
+        public override Job<Stream> DownloadItemRaw(IRemoteItem remoteTarget,long offset = 0, bool WeekDepend = false, bool hidden = false, params Job[] prevJob)
         {
             var job = JobControler.CreateNewJob<Stream>(JobClass.RemoteDownload, depends: prevJob);
             job.DisplayName = "Download item:" + remoteTarget.ID;
             job.ProgressStr = "wait for system...";
             job.WeekDepend = WeekDepend;
+            job.ForceHidden = hidden;
             JobControler.Run(job, (j) =>
             {
-                job.Progress = -1;
-                var stream = new LibLocalSystem.LocalFileStream(remoteTarget.ID, FileMode.Open);
+                (j as Job<Stream>).Progress = -1;
+
+                var stream = new LibLocalSystem.LocalFileStream(remoteTarget.ID, FileMode.Open, FileAccess.Read, FileShare.Read, 256*1024);
+                stream.Position += offset;
+
                 stream.MasterJob = job;
-                job.Result = stream;
-                job.Progress = 1;
-                job.ProgressStr = "ready";
+                (j as Job<Stream>).Result = stream;
+                (j as Job<Stream>).Progress = 1;
+                (j as Job<Stream>).ProgressStr = "ready";
             });
             return job;
+        }
+
+        public override Job<Stream> DownloadItem(IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] prevJob)
+        {
+            return DownloadItemRaw(remoteTarget, WeekDepend: WeekDepend, prevJob: prevJob);
         }
 
         public override Job<IRemoteItem> DeleteItem(IRemoteItem deleteTarget, bool WeekDepend = false, params Job[] prevJob)
@@ -427,7 +438,7 @@ namespace TSviewCloudPlugin
                 }
                 catch (Exception e)
                 {
-                    throw new RemoteServerErrorException("Upload Failed.", e);
+                    throw new RemoteServerErrorException("Delete Failed.", e);
                 }
                 SetUpdate(parent);
             });

@@ -623,11 +623,6 @@ namespace TSviewCloudPlugin
                     running_count = joblist_type[jobtype].Where(x => x.IsRunning).Count();
                     max_running = TSviewCloudConfig.Config.ParallelDownload;
                 }
-                else if (jobtype == JobClass.RemoteDownload)
-                {
-                    running_count = joblist_type[jobtype].Where(x => x.IsRunning).Count();
-                    max_running = TSviewCloudConfig.Config.ParallelDownload;
-                }
                 else if (jobtype == JobClass.Upload)
                 {
                     running_count = joblist_type[jobtype].Where(x => x.IsRunning).Count();

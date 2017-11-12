@@ -43,8 +43,6 @@ namespace TSviewCloud
         {
             InitializeComponent();
             listData = new RemoteListViewItemList(this);
-            synchronizationContext = SynchronizationContext.Current;
-            TSviewCloudPlugin.ItemControl.synchronizationContext = SynchronizationContext.Current;
         }
 
         private void Form1_Shown(object sender, EventArgs e)
@@ -57,6 +55,12 @@ namespace TSviewCloud
                 loadJob.ProgressStr = "Loading...";
 
                 TSviewCloudPlugin.RemoteServerFactory.Restore();
+
+                while(!TSviewCloudPlugin.RemoteServerFactory.ServerList.Values.All(x => x.IsReady))
+                {
+                    Task.Delay(500).Wait(loadJob.Ct);
+                }
+
                 Initialized = true;
 
                 loadJob.Progress = 1;
@@ -648,17 +652,21 @@ namespace TSviewCloud
 
         private void ConnectServer(object sender, EventArgs e)
         {
-            var f = new FormNewServer();
-            f.ServerName = (sender as ToolStripMenuItem).Tag as string;
+            var f = new FormNewServer
+            {
+                ServerName = (sender as ToolStripMenuItem).Tag as string
+            };
             if (f.ShowDialog() == DialogResult.OK)
             {
                 var server = f.Target;
                 listView1.SmallImageList.Images.Add(server.Icon);
                 listView1.LargeImageList.Images.Add(server.Icon);
- 
-                var root = new TreeNode(server.Name, treeView1.ImageList.Images.Count - 1, treeView1.ImageList.Images.Count - 1);
-                root.Name = server.Name;
-                root.Tag = server[""];
+
+                var root = new TreeNode(server.Name, treeView1.ImageList.Images.Count - 1, treeView1.ImageList.Images.Count - 1)
+                {
+                    Name = server.Name,
+                    Tag = server[""]
+                };
                 ExpandItem(root);
                 treeView1.Nodes.Add(root);
 
@@ -686,6 +694,9 @@ namespace TSviewCloud
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            synchronizationContext = SynchronizationContext.Current;
+            TSviewCloudPlugin.ItemControl.synchronizationContext = SynchronizationContext.Current;
+
             if (!TSviewCloudConfig.Config.IsMasterPasswordCorrect)
             {
                 using (var f = new FormMasterPass())

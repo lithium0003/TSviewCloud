@@ -120,6 +120,7 @@
       <DependentUpon>AboutBox1.cs</DependentUpon>
     </Compile>
     <Compile Include="Config.cs" />
+    <Compile Include="ConfigCarotDAV.cs" />
     <Compile Include="ConfigFFplayer.cs" />
     <Compile Include="Console.cs" />
     <Compile Include="DPIfunction.cs" />
@@ -183,6 +184,12 @@
     <Compile Include="FormTaskList.designer.cs">
       <DependentUpon>FormTaskList.cs</DependentUpon>
     </Compile>
+    <Compile Include="FormTreeSelect.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormTreeSelect.Designer.cs">
+      <DependentUpon>FormTreeSelect.cs</DependentUpon>
+    </Compile>
     <Compile Include="ItemControl.cs" />
     <Compile Include="ListViewNF.cs">
       <SubType>Component</SubType>
@@ -203,6 +210,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resource_text.resx</DependentUpon>
     </Compile>
+    <Compile Include="SeekableStream.cs" />
     <Compile Include="ServicePluginBase.cs" />
     <Compile Include="ThrottleStream.cs" />
     <EmbeddedResource Include="AboutBox1.resx">
@@ -237,6 +245,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="FormTaskList.resx">
       <DependentUpon>FormTaskList.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FormTreeSelect.resx">
+      <DependentUpon>FormTreeSelect.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="ListViewNF.resx">
       <DependentUpon>ListViewNF.cs</DependentUpon>

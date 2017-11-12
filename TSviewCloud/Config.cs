@@ -138,7 +138,7 @@ namespace TSviewCloudConfig
 
         private static byte[] _salt = Encoding.ASCII.GetBytes("TSviewCloud config crypt");
 
-        static string Encrypt(string plaintxt, string password)
+        public static string Encrypt(string plaintxt, string password)
         {
             RijndaelManaged aesAlg = null;              // RijndaelManaged object used to encrypt the data.
             try
@@ -178,7 +178,7 @@ namespace TSviewCloudConfig
             }
         }
 
-        static string Decrypt(string crypttxt, string password)
+        public static string Decrypt(string crypttxt, string password)
         {
             // Declare the RijndaelManaged object
             // used to decrypt the data.
@@ -311,6 +311,10 @@ namespace TSviewCloudConfig
                 var serializer = new DataContractSerializer(typeof(Savedata));
                 using (var xmlw = XmlWriter.Create(filepath, new XmlWriterSettings { Indent = true }))
                 {
+                    var ccarot = new SavedataCryptCarotDAV
+                    {
+                        CryptNameHeader = ConfigCarotDAV.CryptNameHeader,
+                    };
                     var ffdata = new SavedataFFplayer
                     {
                         FFmoduleKeybinds = ConfigFFplayer.FFmoduleKeybinds,
@@ -338,6 +342,7 @@ namespace TSviewCloudConfig
                         DownloadBufferSize = DownloadBufferSize,
                         UploadBufferSize = UploadBufferSize,
                         FFplayer = ffdata,
+                        CryptCarotDAV = ccarot,
                         DrivePasswordCheck = Enc_Check_drive_password,
                     };
                     serializer.WriteObject(xmlw, data);
@@ -373,5 +378,8 @@ namespace TSviewCloudConfig
 
         [DataMember]
         public SavedataFFplayer FFplayer;
+
+        [DataMember]
+        public SavedataCryptCarotDAV CryptCarotDAV;
     }
 }

@@ -14,6 +14,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ffmodule", "ffmodule\ffmodu
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ffmodule_conf", "ffmodule_conf\ffmodule_conf.csproj", "{35E17767-09AC-4999-954F-4B0B23D85F99}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibCryptCarotDAV", "LibCryptCarotDAV\LibCryptCarotDAV.csproj", "{9862671B-05A7-4C41-95CA-E70FB0FBB508}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -65,6 +67,16 @@ Global
 		{35E17767-09AC-4999-954F-4B0B23D85F99}.Release|x64.Build.0 = Release|x64
 		{35E17767-09AC-4999-954F-4B0B23D85F99}.Release|x86.ActiveCfg = Release|x86
 		{35E17767-09AC-4999-954F-4B0B23D85F99}.Release|x86.Build.0 = Release|x86
+		{9862671B-05A7-4C41-95CA-E70FB0FBB508}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9862671B-05A7-4C41-95CA-E70FB0FBB508}.Debug|x64.ActiveCfg = Debug|x64
+		{9862671B-05A7-4C41-95CA-E70FB0FBB508}.Debug|x64.Build.0 = Debug|x64
+		{9862671B-05A7-4C41-95CA-E70FB0FBB508}.Debug|x86.ActiveCfg = Debug|x86
+		{9862671B-05A7-4C41-95CA-E70FB0FBB508}.Debug|x86.Build.0 = Debug|x86
+		{9862671B-05A7-4C41-95CA-E70FB0FBB508}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9862671B-05A7-4C41-95CA-E70FB0FBB508}.Release|x64.ActiveCfg = Release|x64
+		{9862671B-05A7-4C41-95CA-E70FB0FBB508}.Release|x64.Build.0 = Release|x64
+		{9862671B-05A7-4C41-95CA-E70FB0FBB508}.Release|x86.ActiveCfg = Release|x86
+		{9862671B-05A7-4C41-95CA-E70FB0FBB508}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
