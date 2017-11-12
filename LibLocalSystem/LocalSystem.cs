@@ -112,7 +112,14 @@ namespace TSviewCloudPlugin
 
         public override IRemoteItem PeakItem(string path)
         {
-            return pathlist[path];
+            try
+            {
+                return pathlist[path];
+            }
+            catch
+            {
+                return null;
+            }
         }
         protected override void EnsureItem(string path, int depth = 0)
         {
@@ -175,7 +182,7 @@ namespace TSviewCloudPlugin
         private void LoadItems(string path, int depth = 0)
         {
             if (depth < 0) return;
-            TSviewCloudConfig.Config.Log.LogOut("[LoadItems] " + path);
+            TSviewCloudConfig.Config.Log.LogOut("[LoadItems(LocalSystem)] " + path);
             if (Directory.Exists(Path.Combine(localPathBase, Uri.UnescapeDataString(path))))
             {
                 try
@@ -235,6 +242,7 @@ namespace TSviewCloudPlugin
         {
             if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
+            TSviewCloudConfig.Config.Log.LogOut("[MakeFolder(LocalSystem)] " + foldername);
             var job = JobControler.CreateNewJob<IRemoteItem>(
                 type: JobClass.RemoteOperation,
                 depends: parentJob);
@@ -283,6 +291,7 @@ namespace TSviewCloudPlugin
         {
             if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
+            TSviewCloudConfig.Config.Log.LogOut("[UploadStream(LocalSystem)] " + uploadname);
             var filesize = streamsize;
             var short_filename = uploadname;
             var job = JobControler.CreateNewJob<IRemoteItem>(
@@ -357,6 +366,7 @@ namespace TSviewCloudPlugin
         {
             if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
+            TSviewCloudConfig.Config.Log.LogOut("[UploadFile(LocalSystem)] " + filename);
             var filesize = new FileInfo(filename).Length;
             var short_filename = Path.GetFileName(filename);
 
@@ -375,6 +385,8 @@ namespace TSviewCloudPlugin
 
         public override Job<Stream> DownloadItemRaw(IRemoteItem remoteTarget,long offset = 0, bool WeekDepend = false, bool hidden = false, params Job[] prevJob)
         {
+            if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
+            TSviewCloudConfig.Config.Log.LogOut("[DownloadItemRaw(LocalSystem)] " + remoteTarget.FullPath);
             var job = JobControler.CreateNewJob<Stream>(JobClass.RemoteDownload, depends: prevJob);
             job.DisplayName = "Download item:" + remoteTarget.ID;
             job.ProgressStr = "wait for system...";
@@ -404,6 +416,7 @@ namespace TSviewCloudPlugin
         {
             if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
+            TSviewCloudConfig.Config.Log.LogOut("[DeleteItem(LocalSystem)] " + deleteTarget.FullPath);
             var job = JobControler.CreateNewJob<IRemoteItem>(
                 type: JobClass.Trash,
                 depends: prevJob);
@@ -441,6 +454,63 @@ namespace TSviewCloudPlugin
                     throw new RemoteServerErrorException("Delete Failed.", e);
                 }
                 SetUpdate(parent);
+            });
+            return job;
+        }
+
+        protected override Job<IRemoteItem> MoveItemOnServer(IRemoteItem moveItem, IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob)
+        {
+            if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
+
+            TSviewCloudConfig.Config.Log.LogOut("[MoveItemOnServer(LocalSystem)] " + moveItem.FullPath);
+            var job = JobControler.CreateNewJob<IRemoteItem>(
+                type: JobClass.RemoteOperation,
+                depends: prevJob);
+            job.WeekDepend = WeekDepend;
+            job.DisplayName = "Move item : " + moveItem.Name;
+            job.ProgressStr = "wait for operation.";
+            var ct = job.Ct;
+            JobControler.Run(job, (j) =>
+            {
+                TSviewCloudConfig.Config.Log.LogOut("[Move] " + moveItem.Name);
+
+                job.ProgressStr = "Move...";
+                job.Progress = -1;
+
+                var oldparent = moveItem.Parents[0];
+                try
+                {
+                    if(moveToItem.ItemType == RemoteItemType.File)
+                    {
+                        File.Move(moveItem.ID, Path.Combine(moveToItem.ID, moveItem.Name));
+                    }
+                    else
+                    {
+                        Directory.Move(moveItem.ID, Path.Combine(moveToItem.ID, moveItem.Name));
+                    }
+
+                    var info = new DirectoryInfo(moveToItem.ID);
+                    var item = info.EnumerateFileSystemInfos().Where(x => x.FullName == moveItem.Name).FirstOrDefault();
+
+                    var newitem = new LocalSystemItem(this, item, moveToItem);
+                    pathlist.AddOrUpdate(newitem.Path, (k) => newitem, (k, v) =>
+                    {
+                        return updateItemChain(k, v, newitem);
+                    });
+
+                    moveToItem.Children.AddOrUpdate(newitem.Path, newitem, (k, v) => newitem);
+                    RemoveItem(moveItem.Path);
+
+                    job.Result = newitem;
+                    job.ProgressStr = "Done";
+                    job.Progress = 1;
+                }
+                catch (Exception e)
+                {
+                    throw new RemoteServerErrorException("Make folder Failed.", e);
+                }
+                SetUpdate(oldparent);
+                SetUpdate(moveToItem);
             });
             return job;
         }

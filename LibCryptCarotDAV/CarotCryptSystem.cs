@@ -89,7 +89,7 @@ namespace TSviewCloudPlugin
             decryptedPath = OrgPathToPath(orgpath);
             if (orgItem == null)
             {
-                (_server as CarotCryptSystem).RemoveItem(Path);
+                (_server as CarotCryptSystem)?.RemoveItem(Path);
                 return;
             }
             decryptedName = (_server as CarotCryptSystem).CryptCarot.DecryptFilename(orgItem.Name) ?? "";
@@ -194,7 +194,11 @@ namespace TSviewCloudPlugin
                 }
                 else
                 {
-                    Parallel.ForEach(pathlist.Values.ToArray(), (x) => x.FixChain(this));
+                    try
+                    {
+                        Parallel.ForEach(pathlist.Values.ToArray(), (x) => x.FixChain(this));
+                    }
+                    catch { }
                 }
 
                 job.ProgressStr = "Done";
@@ -206,7 +210,14 @@ namespace TSviewCloudPlugin
 
         public override IRemoteItem PeakItem(string path)
         {
-            return pathlist[path];
+            try
+            {
+                return pathlist[path];
+            }
+            catch
+            {
+                return null;
+            }
         }
         protected override void EnsureItem(string path, int depth = 0)
         {
@@ -260,9 +271,9 @@ namespace TSviewCloudPlugin
         private void LoadItems(string path, int depth = 0)
         {
             if (depth < 0) return;
-            TSviewCloudConfig.Config.Log.LogOut("[LoadItems] " + path);
+            TSviewCloudConfig.Config.Log.LogOut("[LoadItems(CarotCryptSystem)] " + path);
 
-            var orgitem = RemoteServerFactory.PathToItem(cryptRootPath + "/" + pathToCryptedpath(path));
+            var orgitem = RemoteServerFactory.PathToItem(cryptRootPath + "/" + pathToCryptedpath(path), ReloadType.Reload);
             if(orgitem.Children != null && orgitem.Children.Count > 0)
             {
                 var ret = new List<CarotCryptSystemItem>();
@@ -317,8 +328,8 @@ namespace TSviewCloudPlugin
         {
             if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
-            TSviewCloudConfig.Config.Log.LogOut("[MkFolder] " + foldername);
-
+            TSviewCloudConfig.Config.Log.LogOut("[MakeFolder(CarotCryptSystem)] " + foldername);
+ 
             var parent = pathlist[remoteTarget.Path];
             var orgmakejob = parent.orgItem.MakeFolder(CryptCarot.EncryptFilename(foldername), WeekDepend, parentJob);
 
@@ -355,24 +366,26 @@ namespace TSviewCloudPlugin
 
         internal void RemoveItem(string path)
         {
-            TSviewCloudConfig.Config.Log.LogOut("[RemoveItem] " + path);
+            TSviewCloudConfig.Config.Log.LogOut("[RemoveItem(CarotCryptSystem)] " + path);
             if (pathlist.TryRemove(path, out CarotCryptSystemItem target))
             {
-                var children = target.Children.Values.ToArray();
+                var children = target?.Children.Values.ToArray();
                 foreach (var child in children)
                 {
                     RemoveItem(child.Path);
                 }
                 foreach (var p in target.Parents)
                 {
-                    p.Children.TryRemove(path, out IRemoteItem tmp);
+                    p.Children?.TryRemove(path, out IRemoteItem tmp);
                 }
             }
         }
 
         public override Job<IRemoteItem> DeleteItem(IRemoteItem deleteTarget, bool WeekDepend = false, params Job[] prevJob)
         {
-            TSviewCloudConfig.Config.Log.LogOut("[Delete] " + deleteTarget.Name);
+            if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
+
+            TSviewCloudConfig.Config.Log.LogOut("[DeleteItem(CarotCryptSystem)] " + deleteTarget.Path);
 
             var job = JobControler.CreateNewJob<IRemoteItem>(
                 type: JobClass.Trash,
@@ -399,6 +412,9 @@ namespace TSviewCloudPlugin
 
         public override Job<Stream> DownloadItemRaw(IRemoteItem remoteTarget,long offset = 0, bool WeekDepend = false, bool hidden = false, params Job[] prevJob)
         {
+            if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
+
+            TSviewCloudConfig.Config.Log.LogOut("[DownloadItemRaw(CarotCryptSystem)] " + remoteTarget.Path);
             var djob = (remoteTarget as CarotCryptSystemItem).orgItem.DownloadItemRaw(offset, WeekDepend, hidden, prevJob);
 
             var job = JobControler.CreateNewJob<Stream>(JobClass.RemoteDownload, depends: djob);
@@ -417,6 +433,9 @@ namespace TSviewCloudPlugin
 
         public override Job<Stream> DownloadItem(IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] prevJob)
         {
+            if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
+
+            TSviewCloudConfig.Config.Log.LogOut("[DownloadItem(CarotCryptSystem)] " + remoteTarget.Path);
             var job = JobControler.CreateNewJob<Stream>(JobClass.RemoteDownload, depends: prevJob);
             job.DisplayName = "Download item:" + remoteTarget.Name;
             job.ProgressStr = "wait for system...";
@@ -434,6 +453,7 @@ namespace TSviewCloudPlugin
         {
             if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
+            TSviewCloudConfig.Config.Log.LogOut("[UploadFile(CarotCryptSystem)] " + filename);
             var filesize = new FileInfo(filename).Length;
             var short_filename = Path.GetFileName(filename);
 
@@ -454,6 +474,7 @@ namespace TSviewCloudPlugin
         {
             if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
+            TSviewCloudConfig.Config.Log.LogOut("[UploadStream(CarotCryptSystem)] " + uploadname);
             streamsize += (CryptCarotDAV.BlockSizeByte + CryptCarotDAV.CryptFooterByte + CryptCarotDAV.CryptFooterByte);
             var cname = CryptCarot.EncryptFilename(uploadname);
             var cstream = new CryptCarotDAV.CryptCarotDAV_CryptStream(CryptCarot, source);
@@ -474,5 +495,24 @@ namespace TSviewCloudPlugin
             return clean;
         }
 
-     }
+        protected override Job<IRemoteItem> MoveItemOnServer(IRemoteItem moveItem, IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob)
+        {
+            if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
+
+            TSviewCloudConfig.Config.Log.LogOut("[MoveItemOnServer(CarotCryptSystem)] " + moveItem.FullPath);
+            var job = (moveItem as CarotCryptSystemItem).orgItem.MoveItem((moveToItem as CarotCryptSystemItem).orgItem, WeekDepend, prevJob);
+
+            var waitjob = JobControler.CreateNewJob<IRemoteItem>(
+                type: JobClass.RemoteOperation,
+                depends: job);
+            JobControler.Run(waitjob, (j) =>
+            {
+                waitjob.Result = waitjob.ResultOfDepend[0];
+
+                SetUpdate(moveItem);
+                SetUpdate(moveToItem);
+            });
+            return waitjob;
+        }
+    }
 }

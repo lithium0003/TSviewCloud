@@ -38,6 +38,7 @@
             this.textBox_log.MaxLength = 0;
             this.textBox_log.Multiline = true;
             this.textBox_log.Name = "textBox_log";
+            this.textBox_log.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.textBox_log.Size = new System.Drawing.Size(609, 567);
             this.textBox_log.TabIndex = 0;
             // 

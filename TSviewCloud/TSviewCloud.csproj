@@ -119,6 +119,7 @@
     <Compile Include="AboutBox1.Designer.cs">
       <DependentUpon>AboutBox1.cs</DependentUpon>
     </Compile>
+    <Compile Include="Clipboard.cs" />
     <Compile Include="Config.cs" />
     <Compile Include="ConfigCarotDAV.cs" />
     <Compile Include="ConfigFFplayer.cs" />

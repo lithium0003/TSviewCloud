@@ -66,11 +66,13 @@ namespace TSviewCloudPlugin
         void ChangeParent(IRemoteItem oldp, IRemoteItem newp);
 
         Job<Stream> DownloadItemRaw(long offset = 0, bool WeekDepend = false, bool hidden = false, params Job[] prevJob);
-        Job<Stream> DownloadItem(bool WeekDepend = false, params Job[] prevJob);
+        Job<Stream> DownloadItemJob(bool WeekDepend = false, params Job[] prevJob);
+        Stream DownloadItem(bool WeekDepend = false, params Job[] prevJob);
         Job<IRemoteItem> UploadFile(string filename, string uploadname = null, bool WeekDepend = false, params Job[] parentJob);
         Job<IRemoteItem> UploadStream(Stream source, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob);
         Job<IRemoteItem> MakeFolder(string foldername, bool WeekDepend = false, params Job[] parentJob);
         Job<IRemoteItem> DeleteItem(bool WeekDepend = false, params Job[] prevJob); // returns parent item
+        Job<IRemoteItem> MoveItem(IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob);
     }
 
     public interface IRemoteServer
@@ -93,6 +95,7 @@ namespace TSviewCloudPlugin
         Job<Stream> DownloadItemRaw(IRemoteItem remoteTarget, long offset = 0, bool WeekDepend = false, bool hidden = false, params Job[] prevJob);
         Job<Stream> DownloadItem(IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] prevJob);
         Job<IRemoteItem> DeleteItem(IRemoteItem deleteTarget, bool WeekDepend = false, params Job[] prevJob); // returns parent item
+        Job<IRemoteItem> MoveItem(IRemoteItem moveItem, IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob); 
     }
 
 
@@ -204,9 +207,21 @@ namespace TSviewCloudPlugin
             return _server.UploadStream(source, this, uploadname, streamsize, WeekDepend, parentJob);
         }
 
-        public Job<Stream> DownloadItem(bool WeekDepend = false, params Job[] prevJob)
+        public Job<Stream> DownloadItemJob(bool WeekDepend = false, params Job[] prevJob)
         {
             return _server.DownloadItem(this, WeekDepend, prevJob);
+        }
+
+        public Stream DownloadItem(bool WeekDepend = false, params Job[] prevJob)
+        {
+            var job = DownloadItemJob(WeekDepend, prevJob);
+            job.Wait();
+            return job.Result;
+        }
+
+        public Job<IRemoteItem> MoveItem(IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob)
+        {
+            return _server.MoveItem(this, moveToItem, WeekDepend, prevJob);
         }
     }
 
@@ -230,7 +245,7 @@ namespace TSviewCloudPlugin
 
         public IRemoteItem this[string path] {
             get {
-                EnsureItem(path, 1);
+                EnsureItem(path);
                 return PeakItem(path);
             }
         }
@@ -253,6 +268,45 @@ namespace TSviewCloudPlugin
         public abstract Job<IRemoteItem> DeleteItem(IRemoteItem delteTarget, bool WeekDepend = false, params Job[] prevJob);
         public abstract Job<IRemoteItem> UploadStream(Stream source, IRemoteItem remoteTarget, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob);
         public abstract Job<Stream> DownloadItem(IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] prevJob);
+
+        public virtual Job<IRemoteItem> MoveItem(IRemoteItem moveItem, IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob)
+        {
+            if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
+            TSviewCloudConfig.Config.Log.LogOut("[MoveItem(RemoteServerBase)] " + moveItem.FullPath);
+
+            if (moveToItem.Server == moveItem.Parents[0].Server)
+                return MoveItemOnServer(moveItem, moveToItem, WeekDepend, prevJob);
+
+            if (moveItem.ItemType == RemoteItemType.File)
+                return moveToItem.UploadStream(moveItem.DownloadItem(WeekDepend, prevJob), moveItem.Name, moveItem.Size ?? 0, WeekDepend, prevJob);
+
+            var loadjob = RemoteServerFactory.PathToItemJob(moveItem.FullPath);
+
+            var job = JobControler.CreateNewJob<IRemoteItem>(
+                type: JobClass.Upload,
+                info: new JobControler.SubInfo
+                {
+                    type = JobControler.SubInfo.SubType.UploadDirectory,
+                },
+                depends: moveToItem.MakeFolder(moveItem.Name, WeekDepend, prevJob?.Concat(new[] { loadjob }).ToArray()??new[] { loadjob } ));
+            job.DisplayName = string.Format("Upload Folder {0} to {1}", moveItem.FullPath, moveToItem.FullPath);
+            job.ProgressStr = "wait for upload.";
+            JobControler.Run(job, (j) =>
+            {
+                job.Progress = -1;
+                job.ProgressStr = "upload...";
+                var newdir = job.ResultOfDepend[0];
+                var joblist = new List<Job<IRemoteItem>>();
+                joblist.AddRange(moveItem.Children?.Values.Select(x => x?.MoveItem(newdir, WeekDepend: true, prevJob: job)));
+                //Parallel.ForEach(joblist, (x) => x.Wait(ct: job.Ct));
+                job.Result = newdir;
+                job.Progress = 1;
+                job.ProgressStr = "done";
+            });
+            return job;
+        }
+
+        protected abstract Job<IRemoteItem> MoveItemOnServer(IRemoteItem moveItem, IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob);
     }
 
     public class RemoteServerFactory
@@ -262,8 +316,26 @@ namespace TSviewCloudPlugin
             Load();
         }
 
+        class ReloadResult
+        {
+            public IRemoteItem Result;
+            public DateTime Lastupdate;
+
+            public ReloadResult()
+            {
+            }
+
+            public ReloadResult(IRemoteItem result, DateTime lastupdate)
+            {
+                Result = result;
+                Lastupdate = lastupdate;
+            }
+        }
+
         static public ConcurrentDictionary<string, Type> DllList = new ConcurrentDictionary<string, Type>();
         static public ConcurrentDictionary<string, IRemoteServer> ServerList = new ConcurrentDictionary<string, IRemoteServer>();
+
+        static ConcurrentDictionary<string, (int c, ReloadResult r)> ReloadWait = new ConcurrentDictionary<string, (int, ReloadResult)>();
 
         static public string ServerFixedName(string class_name)
         {
@@ -520,17 +592,55 @@ namespace TSviewCloudPlugin
             return false;
         }
 
-        static public IRemoteItem PathToItem(string url, ReloadType reload = ReloadType.Cache)
+
+        static public IRemoteItem PathToItem(string url, ReloadType reload = ReloadType.Cache, CancellationToken ct = default(CancellationToken))
         {
             var m = Regex.Match(url, @"^(?<server>[^:]+)(://)(?<path>.*)$");
 
             if (!m.Success) return null;
 
+
+            IRemoteItem result = null;
+            DateTime result_date = default(DateTime);
+            bool slave = false;
+            bool cacheresult = false;
+            ReloadWait.AddOrUpdate(url, (1, new ReloadResult()), (k, v) =>
+            {
+                slave = (v.c > 1);
+                result_date = v.r.Lastupdate;
+                if(result_date.AddMinutes(1) < DateTime.Now)
+                {
+                    result = v.r.Result;
+                    cacheresult = true;
+                    return v;
+                }
+                return (v.c + 1, v.r);
+            });
+
+            if (cacheresult) return result;
+
+            if (slave)
+            {
+                (int c, ReloadResult r) newret = (0, new ReloadResult());
+                while (newret.r.Lastupdate.AddMinutes(1) < DateTime.Now)
+                {
+                    Task.Delay(1000).Wait(ct);
+                    ReloadWait.TryGetValue(url, out newret);
+                }
+                while(!ReloadWait.TryUpdate(url, (newret.c -1, newret.r), newret))
+                {
+                    Task.Delay(100).Wait(ct);
+                    ReloadWait.TryGetValue(url, out newret);
+                }
+                return newret.r.Result;
+            }
+
+
             try
             {
+                IRemoteItem current;
                 var server = ServerList[m.Groups["server"].Value];
 
-                IRemoteItem current;
                 if (ItemControl.ReloadRequest.TryRemove(server + "://", out int tmp))
                 {
                     current = server[""];
@@ -568,11 +678,22 @@ namespace TSviewCloudPlugin
                     }
                     fullpath = m.Groups["next"].Value;
                 }
+                result = current;
                 return current;
             }
             catch
             {
+                result = null;
                 return null;
+            }
+            finally
+            {
+                ReloadWait.TryGetValue(url, out (int c, ReloadResult r) newret);
+                while (!ReloadWait.TryUpdate(url, (newret.c - 1, new ReloadResult(result, DateTime.Now)), newret))
+                {
+                    Task.Delay(100).Wait(ct);
+                    ReloadWait.TryGetValue(url, out newret);
+                }
             }
         }
 

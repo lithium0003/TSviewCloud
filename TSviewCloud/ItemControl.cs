@@ -69,7 +69,7 @@ namespace TSviewCloudPlugin
         {
             Config.Log.LogOut("Download : " + remoteItem.Name);
 
-            var download = remoteItem.DownloadItem(prevJob: prevJob);
+            var download = remoteItem.DownloadItemJob(prevJob: prevJob);
             download.WeekDepend = weekdepend;
 
             var job = JobControler.CreateNewJob(
@@ -178,20 +178,29 @@ namespace TSviewCloudPlugin
 
         static public Job<IRemoteItem> UploadFolder(IRemoteItem targetItem, string uploadFolderName, bool WeekDepend = false, Job prevJob = null)
         {
-            var folderjob = targetItem.MakeFolder(Path.GetFileName(uploadFolderName), WeekDepend, prevJob);
-
             var job = JobControler.CreateNewJob<IRemoteItem>(
-                type: JobClass.ControlMaster,
-                depends: folderjob);
-            var ct = job.Ct;
+                type: JobClass.Upload,
+                info: new JobControler.SubInfo
+                {
+                    type = JobControler.SubInfo.SubType.UploadDirectory,
+                },
+                depends: targetItem.MakeFolder(Path.GetFileName(uploadFolderName), WeekDepend, prevJob));
+            job.DisplayName = string.Format("Upload Folder {0} to {1}", uploadFolderName, targetItem.FullPath);
             JobControler.Run(job, (j) =>
             {
                 var folder = job.ResultOfDepend[0];
                 job.Result = folder;
 
+                job.Progress = -1;
+                job.ProgressStr = "upload...";
+
                 var joblist = new List<Job<IRemoteItem>>();
-                Directory.EnumerateDirectories(uploadFolderName).Select(x => UploadFolder(folder, x, true, job));
-                UploadFiles(folder, Directory.EnumerateFiles(uploadFolderName), true, job);
+                joblist.AddRange(Directory.EnumerateDirectories(uploadFolderName).Select(x => UploadFolder(folder, x, true, job)));
+                joblist.AddRange(UploadFiles(folder, Directory.EnumerateFiles(uploadFolderName), true, job));
+
+                //Parallel.ForEach(joblist, (x)=>x.Wait(ct: job.Ct));
+                job.ProgressStr = "done";
+                job.Progress = 1;
             });
 
             return job;

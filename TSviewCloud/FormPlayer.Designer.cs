@@ -54,7 +54,7 @@
             // trackBar_Possition
             // 
             this.trackBar_Possition.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.trackBar_Possition.Location = new System.Drawing.Point(0, 82);
+            this.trackBar_Possition.Location = new System.Drawing.Point(0, 104);
             this.trackBar_Possition.Name = "trackBar_Possition";
             this.trackBar_Possition.Size = new System.Drawing.Size(710, 56);
             this.trackBar_Possition.TabIndex = 0;
@@ -79,13 +79,13 @@
             this.panel1.Controls.Add(this.label_Filename);
             this.panel1.Location = new System.Drawing.Point(0, 0);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(710, 76);
+            this.panel1.Size = new System.Drawing.Size(710, 98);
             this.panel1.TabIndex = 1;
             // 
             // button_Close
             // 
             this.button_Close.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.button_Close.Location = new System.Drawing.Point(635, 0);
+            this.button_Close.Location = new System.Drawing.Point(632, 5);
             this.button_Close.Name = "button_Close";
             this.button_Close.Size = new System.Drawing.Size(75, 23);
             this.button_Close.TabIndex = 13;
@@ -95,7 +95,7 @@
             // 
             // button_Prev
             // 
-            this.button_Prev.Location = new System.Drawing.Point(110, 27);
+            this.button_Prev.Location = new System.Drawing.Point(111, 38);
             this.button_Prev.Name = "button_Prev";
             this.button_Prev.Size = new System.Drawing.Size(63, 23);
             this.button_Prev.TabIndex = 12;
@@ -106,7 +106,7 @@
             // label_nextfile
             // 
             this.label_nextfile.AutoSize = true;
-            this.label_nextfile.Location = new System.Drawing.Point(107, 53);
+            this.label_nextfile.Location = new System.Drawing.Point(4, 76);
             this.label_nextfile.Name = "label_nextfile";
             this.label_nextfile.Size = new System.Drawing.Size(43, 15);
             this.label_nextfile.TabIndex = 11;
@@ -121,14 +121,14 @@
             this.comboBox_PlayerType.Items.AddRange(new object[] {
             "FFmpeg",
             "TS send"});
-            this.comboBox_PlayerType.Location = new System.Drawing.Point(260, 27);
+            this.comboBox_PlayerType.Location = new System.Drawing.Point(261, 38);
             this.comboBox_PlayerType.Name = "comboBox_PlayerType";
             this.comboBox_PlayerType.Size = new System.Drawing.Size(121, 23);
             this.comboBox_PlayerType.TabIndex = 10;
             // 
             // button_config
             // 
-            this.button_config.Location = new System.Drawing.Point(623, 51);
+            this.button_config.Location = new System.Drawing.Point(624, 62);
             this.button_config.Name = "button_config";
             this.button_config.Size = new System.Drawing.Size(75, 23);
             this.button_config.TabIndex = 9;
@@ -138,7 +138,7 @@
             // 
             // textBox_Duration
             // 
-            this.textBox_Duration.Location = new System.Drawing.Point(508, 52);
+            this.textBox_Duration.Location = new System.Drawing.Point(509, 63);
             this.textBox_Duration.Name = "textBox_Duration";
             this.textBox_Duration.Size = new System.Drawing.Size(100, 22);
             this.textBox_Duration.TabIndex = 8;
@@ -148,7 +148,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(396, 55);
+            this.label2.Location = new System.Drawing.Point(397, 66);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(87, 15);
             this.label2.TabIndex = 7;
@@ -156,7 +156,7 @@
             // 
             // textBox_StartSkip
             // 
-            this.textBox_StartSkip.Location = new System.Drawing.Point(508, 24);
+            this.textBox_StartSkip.Location = new System.Drawing.Point(509, 35);
             this.textBox_StartSkip.Name = "textBox_StartSkip";
             this.textBox_StartSkip.Size = new System.Drawing.Size(100, 22);
             this.textBox_StartSkip.TabIndex = 6;
@@ -166,7 +166,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(396, 27);
+            this.label1.Location = new System.Drawing.Point(397, 38);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(95, 15);
             this.label1.TabIndex = 5;
@@ -174,7 +174,7 @@
             // 
             // button_Next
             // 
-            this.button_Next.Location = new System.Drawing.Point(179, 27);
+            this.button_Next.Location = new System.Drawing.Point(180, 38);
             this.button_Next.Name = "button_Next";
             this.button_Next.Size = new System.Drawing.Size(63, 23);
             this.button_Next.TabIndex = 4;
@@ -186,7 +186,7 @@
             // 
             this.button_Stop.BackgroundImage = global::TSviewCloud.Properties.Resources.stop;
             this.button_Stop.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-            this.button_Stop.Location = new System.Drawing.Point(52, 27);
+            this.button_Stop.Location = new System.Drawing.Point(53, 38);
             this.button_Stop.Name = "button_Stop";
             this.button_Stop.Size = new System.Drawing.Size(40, 35);
             this.button_Stop.TabIndex = 3;
@@ -197,7 +197,7 @@
             // 
             this.button_Play.BackgroundImage = global::TSviewCloud.Properties.Resources.play1;
             this.button_Play.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-            this.button_Play.Location = new System.Drawing.Point(6, 27);
+            this.button_Play.Location = new System.Drawing.Point(7, 38);
             this.button_Play.Name = "button_Play";
             this.button_Play.Size = new System.Drawing.Size(40, 35);
             this.button_Play.TabIndex = 2;
@@ -207,7 +207,7 @@
             // label_Filename
             // 
             this.label_Filename.AutoSize = true;
-            this.label_Filename.Location = new System.Drawing.Point(12, 9);
+            this.label_Filename.Location = new System.Drawing.Point(4, 9);
             this.label_Filename.Name = "label_Filename";
             this.label_Filename.Size = new System.Drawing.Size(43, 15);
             this.label_Filename.TabIndex = 1;
@@ -217,7 +217,7 @@
             // 
             this.label_TIme.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label_TIme.AutoSize = true;
-            this.label_TIme.Location = new System.Drawing.Point(3, 114);
+            this.label_TIme.Location = new System.Drawing.Point(3, 136);
             this.label_TIme.Name = "label_TIme";
             this.label_TIme.Size = new System.Drawing.Size(43, 15);
             this.label_TIme.TabIndex = 0;
@@ -236,7 +236,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(710, 138);
+            this.ClientSize = new System.Drawing.Size(710, 160);
             this.Controls.Add(this.label_TIme);
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.trackBar_Possition);
