@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -16,6 +17,10 @@ namespace TSviewCloud
     {
         private SynchronizationContext synchronizationContext;
 
+        private MemoryStream backlog = null;
+        private DateTime lastLogDate;
+        private DateTime backlogDate;
+
         public FormLog()
         {
             InitializeComponent();
@@ -32,15 +37,72 @@ namespace TSviewCloud
 
         public void LogOut(string str)
         {
-            synchronizationContext.Post((o) =>
+            if(lastLogDate.AddSeconds(5) < DateTime.Now && backlog == null)
             {
-                textBox_log.AppendText(o as string + "\r\n");
-            }, str);
+                lastLogDate = DateTime.Now;
+
+                synchronizationContext.Post((o) =>
+                {
+                    textBox_log.AppendText(o as string + "\r\n");
+                }, str);
+                timer1.Enabled = false;
+            }
+            else
+            {
+                timer1.Enabled = true;
+                while (true)
+                {
+                    if (Interlocked.CompareExchange(ref backlog, new MemoryStream(), null) == null)
+                    {
+                        backlogDate = DateTime.Now;
+                    }
+
+                    MemoryStream tmplog;
+                    lock (tmplog = backlog)
+                    {
+                        if (tmplog.CanWrite)
+                        {
+                            var data = Encoding.UTF8.GetBytes(str + "\r\n");
+                            tmplog.Write(data, 0, data.Length);
+                            lastLogDate = DateTime.Now;
+                            break;
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
+                }
+            }
+            LogFinalize();
+        }
+
+        public void LogFinalize()
+        {
+            if (backlogDate.AddSeconds(1) < DateTime.Now && backlog != null)
+            {
+                MemoryStream oldms;
+                lock (oldms = Interlocked.CompareExchange(ref backlog, null, backlog))
+                {
+                    oldms.Position = 0;
+                    synchronizationContext.Post((o) =>
+                    {
+                        textBox_log.AppendText(o as string);
+                    }, Encoding.UTF8.GetString(oldms.ToArray()));
+                    oldms.Dispose();
+                }
+            }
+
         }
 
         public void LogOut(string format, params object[] args)
         {
             LogOut(string.Format(format, args));
+        }
+
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            LogFinalize();
         }
     }
 

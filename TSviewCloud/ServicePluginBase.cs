@@ -58,12 +58,14 @@ namespace TSviewCloudPlugin
         DateTime? CreatedDate { get; }
         string Hash { get; }
 
-        IRemoteItem[] Parents { get; }
-        ConcurrentDictionary<string, IRemoteItem> Children { get; }
+        IEnumerable<IRemoteItem> Parents { get; }
+        IEnumerable<IRemoteItem> Children { get; }
         RemoteItemType ItemType { get; }
 
         void FixChain(IRemoteServer server);
-        void ChangeParent(IRemoteItem oldp, IRemoteItem newp);
+        void SetParents(IEnumerable<IRemoteItem> newparents);
+        void SetParent(IRemoteItem newparent);
+        void SetChildren(IEnumerable<IRemoteItem> newchildren);
 
         Job<Stream> DownloadItemRaw(long offset = 0, bool WeekDepend = false, bool hidden = false, params Job[] prevJob);
         Job<Stream> DownloadItemJob(bool WeekDepend = false, params Job[] prevJob);
@@ -86,8 +88,8 @@ namespace TSviewCloudPlugin
         void Init();
         bool Add();
 
-        IRemoteItem this[string path] { get; }
-        IRemoteItem PeakItem(string path);
+        IRemoteItem this[string ID] { get; }
+        IRemoteItem PeakItem(string ID);
 
         Job<IRemoteItem> MakeFolder(string foldername, IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] parentJob);
         Job<IRemoteItem> UploadFile(string filename, IRemoteItem remoteTarget, string uploadname = null, bool WeekDepend = false, params Job[] parentJob);
@@ -103,8 +105,6 @@ namespace TSviewCloudPlugin
     public abstract class RemoteItemBase : IRemoteItem
     {
         protected IRemoteServer _server;
-        protected IRemoteItem[] _parents;
-        protected ConcurrentDictionary<string, IRemoteItem> _children;
 
 
         [DataMember(Name = "IsRoot")]
@@ -130,57 +130,50 @@ namespace TSviewCloudPlugin
 
         public RemoteItemBase()
         {
-            _children = new ConcurrentDictionary<string, IRemoteItem>();
         }
 
-        public RemoteItemBase(IRemoteServer server, params IRemoteItem[] parents): this()
+        public RemoteItemBase(IRemoteServer server, params IRemoteItem[] parents) : this()
         {
-            _parents = (parents?.Length > 0)? parents : new IRemoteItem[] { this };
+            SetParents(parents);
             _server = server;
             serverName = Server;
-            parentIDs = _parents.Select(x => x.ID).ToArray();
         }
 
         public abstract string ID { get; }
         public abstract string Path { get; }
         public abstract string Name { get; }
         public bool IsRoot => isRoot;
-        public IRemoteItem[] Parents => _parents;
-        public ConcurrentDictionary<string, IRemoteItem> Children => _children;
+        public virtual IEnumerable<IRemoteItem> Parents => parentIDs?.Select(x => _server[x])?.Where(x => x != null) ?? new List<IRemoteItem>();
+        public virtual IEnumerable<IRemoteItem> Children => ChildrenIDs?.Select(x => _server[x])?.Where(x => x != null) ?? new List<IRemoteItem>();
+
         public RemoteItemType ItemType => itemtype;
 
         public string Server => _server.Name;
 
-        public long? Size => size;
-        public DateTime? ModifiedDate => modifiedDate;
-        public DateTime? CreatedDate => createdDate;
-        public string Hash => hash;
-        public string FullPath => Server + "://" + Uri.UnescapeDataString(Path);
+        public virtual long? Size => size;
+        public virtual DateTime? ModifiedDate => modifiedDate;
+        public virtual DateTime? CreatedDate => createdDate;
+        public virtual string Hash => hash;
+        public virtual string FullPath => Server + "://" + Uri.UnescapeDataString(Path);
 
-        public virtual void SetChildren(IEnumerable<IRemoteItem> children)
+
+        public void SetParents(IEnumerable<IRemoteItem> newparents)
         {
-            if (children == null)
-            {
-                _children.Clear();
-                ChildrenIDs = new string[0];
-                return;
-            }
-            Parallel.ForEach(children.ToDictionary(c => c.Path), (s) => {
-                _children.AddOrUpdate(s.Key, (k) => s.Value, (k, v) => s.Value);
-            });
-            foreach (var rm in _children.Values.Except(children))
-            {
-                IRemoteItem t;
-                _children.TryRemove(rm.Path, out t);
-            }
-            ChildrenIDs = Children.Select(x => x.Value.ID).ToArray();
+            parentIDs = newparents?.Select(x => x?.ID).ToArray();
         }
+
+        public void SetParent(IRemoteItem newparent)
+        {
+            SetParents(new[] { newparent });
+        }
+
+        public void SetChildren(IEnumerable<IRemoteItem> newchildren)
+        {
+            ChildrenIDs = newchildren?.Select(x => x?.ID).ToArray();
+        }
+
 
         public abstract void FixChain(IRemoteServer server);
-        public virtual void ChangeParent(IRemoteItem oldp, IRemoteItem newp)
-        {
-            _parents = _parents.Where(x => x != oldp).Concat(new[] { newp }).ToArray();
-        }
 
         public virtual Job<Stream> DownloadItemRaw(long offset = 0, bool WeekDepend = false, bool hidden = false, params Job[] prevJob)
         {
@@ -192,38 +185,39 @@ namespace TSviewCloudPlugin
             return _server.UploadFile(filename, this, uploadname, WeekDepend, parentJob);
         }
 
-        public Job<IRemoteItem> MakeFolder(string foldername, bool WeekDepend = false, params Job[] parentJob)
+        public virtual Job<IRemoteItem> MakeFolder(string foldername, bool WeekDepend = false, params Job[] parentJob)
         {
             return _server.MakeFolder(foldername, this, WeekDepend, parentJob);
         }
 
-        public Job<IRemoteItem> DeleteItem(bool WeekDepend = false, params Job[] prevJob)
+        public virtual Job<IRemoteItem> DeleteItem(bool WeekDepend = false, params Job[] prevJob)
         {
             return _server.DeleteItem(this, WeekDepend, prevJob);
         }
 
-        public Job<IRemoteItem> UploadStream(Stream source, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob)
+        public virtual Job<IRemoteItem> UploadStream(Stream source, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob)
         {
             return _server.UploadStream(source, this, uploadname, streamsize, WeekDepend, parentJob);
         }
 
-        public Job<Stream> DownloadItemJob(bool WeekDepend = false, params Job[] prevJob)
+        public virtual Job<Stream> DownloadItemJob(bool WeekDepend = false, params Job[] prevJob)
         {
             return _server.DownloadItem(this, WeekDepend, prevJob);
         }
 
-        public Stream DownloadItem(bool WeekDepend = false, params Job[] prevJob)
+        public virtual Stream DownloadItem(bool WeekDepend = false, params Job[] prevJob)
         {
             var job = DownloadItemJob(WeekDepend, prevJob);
             job.Wait();
             return job.Result;
         }
 
-        public Job<IRemoteItem> MoveItem(IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob)
+        public virtual Job<IRemoteItem> MoveItem(IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob)
         {
             return _server.MoveItem(this, moveToItem, WeekDepend, prevJob);
         }
-    }
+
+     }
 
     [DataContract]
     public abstract class RemoteServerBase : IRemoteServer
@@ -243,14 +237,25 @@ namespace TSviewCloudPlugin
 
         public string DependsOnService => _dependService;
 
-        public IRemoteItem this[string path] {
+        protected abstract string RootID { get; }
+
+        public virtual IRemoteItem this[string ID] {
             get {
-                EnsureItem(path);
-                return PeakItem(path);
+                try
+                {
+                    if (ID == null) return null;
+                    if (ID == RootID) ID = "";
+                    EnsureItem(ID);
+                    return PeakItem(ID);
+                }
+                catch
+                {
+                    return null;
+                }
             }
         }
-        public abstract IRemoteItem PeakItem(string path);
-        protected abstract void EnsureItem(string path, int depth = 0);
+        public abstract IRemoteItem PeakItem(string ID);
+        protected abstract void EnsureItem(string ID, int depth = 0);
 
         public abstract void Init();
         public abstract bool Add();
@@ -274,7 +279,7 @@ namespace TSviewCloudPlugin
             if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
             TSviewCloudConfig.Config.Log.LogOut("[MoveItem(RemoteServerBase)] " + moveItem.FullPath);
 
-            if (moveToItem.Server == moveItem.Parents[0].Server)
+            if (moveToItem.Server == moveItem.Parents?.FirstOrDefault()?.Server)
                 return MoveItemOnServer(moveItem, moveToItem, WeekDepend, prevJob);
 
             if (moveItem.ItemType == RemoteItemType.File)
@@ -297,7 +302,7 @@ namespace TSviewCloudPlugin
                 job.ProgressStr = "upload...";
                 var newdir = job.ResultOfDepend[0];
                 var joblist = new List<Job<IRemoteItem>>();
-                joblist.AddRange(moveItem.Children?.Values.Select(x => x?.MoveItem(newdir, WeekDepend: true, prevJob: job)));
+                joblist.AddRange(moveItem.Children?.Select(x => x?.MoveItem(newdir, WeekDepend: true, prevJob: job)));
                 //Parallel.ForEach(joblist, (x) => x.Wait(ct: job.Ct));
                 job.Result = newdir;
                 job.Progress = 1;
@@ -599,43 +604,6 @@ namespace TSviewCloudPlugin
 
             if (!m.Success) return null;
 
-
-            IRemoteItem result = null;
-            DateTime result_date = default(DateTime);
-            bool slave = false;
-            bool cacheresult = false;
-            ReloadWait.AddOrUpdate(url, (1, new ReloadResult()), (k, v) =>
-            {
-                slave = (v.c > 1);
-                result_date = v.r.Lastupdate;
-                if(result_date.AddMinutes(1) < DateTime.Now)
-                {
-                    result = v.r.Result;
-                    cacheresult = true;
-                    return v;
-                }
-                return (v.c + 1, v.r);
-            });
-
-            if (cacheresult) return result;
-
-            if (slave)
-            {
-                (int c, ReloadResult r) newret = (0, new ReloadResult());
-                while (newret.r.Lastupdate.AddMinutes(1) < DateTime.Now)
-                {
-                    Task.Delay(1000).Wait(ct);
-                    ReloadWait.TryGetValue(url, out newret);
-                }
-                while(!ReloadWait.TryUpdate(url, (newret.c -1, newret.r), newret))
-                {
-                    Task.Delay(100).Wait(ct);
-                    ReloadWait.TryGetValue(url, out newret);
-                }
-                return newret.r.Result;
-            }
-
-
             try
             {
                 IRemoteItem current;
@@ -656,17 +624,17 @@ namespace TSviewCloudPlugin
                     m = Regex.Match(fullpath, @"^(?<current>[^/\\]*)(/|\\)?(?<next>.*)$");
                     if (!string.IsNullOrEmpty(m.Groups["current"].Value))
                     {
-                        var child = current.Children.Values.Where(x => x.Name == m.Groups["current"].Value).FirstOrDefault();
-                        if ((child == null || child.Children.Count == 0) && reload == ReloadType.Cache)
+                        var child = current.Children.Where(x => x.Name == m.Groups["current"].Value).FirstOrDefault();
+                        if (!(child?.Children?.Count() > 0) && reload == ReloadType.Cache)
                         {
                             if (child == null)
                             {
-                                current = server[current.Path];
-                                current = current.Children.Values.Where(x => x.Name == m.Groups["current"].Value).First();
+                                current = server[current.ID];
+                                current = current.Children.Where(x => x.Name == m.Groups["current"].Value).First();
                             }
                             else
                             {
-                                current = server[child.Path];
+                                current = server[child.ID];
                             }
                         }
                         else
@@ -674,26 +642,17 @@ namespace TSviewCloudPlugin
                             current = child;
                         }
                         if (reload == ReloadType.Reload || ItemControl.ReloadRequest.TryRemove(current.FullPath, out int tmp2))
-                            current = server[current.Path];
+                        {
+                            current = server[current.ID];
+                        }
                     }
                     fullpath = m.Groups["next"].Value;
                 }
-                result = current;
                 return current;
             }
             catch
             {
-                result = null;
                 return null;
-            }
-            finally
-            {
-                ReloadWait.TryGetValue(url, out (int c, ReloadResult r) newret);
-                while (!ReloadWait.TryUpdate(url, (newret.c - 1, new ReloadResult(result, DateTime.Now)), newret))
-                {
-                    Task.Delay(100).Wait(ct);
-                    ReloadWait.TryGetValue(url, out newret);
-                }
             }
         }
 
@@ -723,7 +682,7 @@ namespace TSviewCloudPlugin
             {
                 LoadJob.Progress = -1;
                 LoadJob.ProgressStr = "Loading...";
-                //LoadJob.ForceHidden = true;
+                LoadJob.ForceHidden = true;
 
                 LoadJob.Result = PathToItem(baseurl, relativeurl, reload);
 
@@ -766,21 +725,21 @@ namespace TSviewCloudPlugin
                     if (m.Groups["current"].Value == ".") continue;
                     if (m.Groups["current"].Value == "..")
                     {
-                        current = current.Parents[0];
+                        current = current.Parents?.FirstOrDefault() ?? server.PeakItem("");
                     }
                     else
                     {
-                        var child = current.Children.Values.Where(x => x.Name == m.Groups["current"].Value).FirstOrDefault();
-                        if ((child == null || child.Children.Count == 0) && reload == ReloadType.Cache)
+                        var child = current.Children.Where(x => x.Name == m.Groups["current"].Value).FirstOrDefault();
+                        if (!(child?.Children?.Count() > 0) && reload == ReloadType.Cache)
                         {
                             if (child == null)
                             {
-                                current = server[current.Path];
-                                current = current.Children.Values.Where(x => x.Name == m.Groups["current"].Value).First();
+                                current = server[current.ID];
+                                current = current.Children.Where(x => x.Name == m.Groups["current"].Value).First();
                             }
                             else
                             {
-                                current = server[child.Path];
+                                current = server[child.ID];
                             }
                         }
                         else
@@ -788,7 +747,7 @@ namespace TSviewCloudPlugin
                             current = child;
                         }
                         if (reload == ReloadType.Reload || ItemControl.ReloadRequest.TryRemove(current.FullPath, out int tmp2))
-                            current = server[current.Path];
+                            current = server[current.ID];
                     }
                 }
                 return current;
@@ -818,17 +777,17 @@ namespace TSviewCloudPlugin
                     m = Regex.Match(fullpath, @"^(?<current>[^/\\]*)(/|\\)?(?<next>.*)$");
                     if (!string.IsNullOrEmpty(m.Groups["current"].Value))
                     {
-                        var child = current.Children.Values.Where(x => x.Name == m.Groups["current"].Value).FirstOrDefault();
-                        if ((child == null || child.Children.Count == 0) && reload == ReloadType.Cache)
+                        var child = current.Children.Where(x => x.Name == m.Groups["current"].Value).FirstOrDefault();
+                        if (!(child?.Children?.Count() > 0) && reload == ReloadType.Cache)
                         {
                             if (child == null)
                             {
-                                current = server[current.Path];
-                                current = current.Children.Values.Where(x => x.Name == m.Groups["current"].Value).First();
+                                current = server[current.ID];
+                                current = current.Children.Where(x => x.Name == m.Groups["current"].Value).First();
                             }
                             else
                             {
-                                current = server[child.Path];
+                                current = server[child.ID];
                             }
                         }
                         else
@@ -836,7 +795,7 @@ namespace TSviewCloudPlugin
                             current = child;
                         }
                         if (reload == ReloadType.Reload)
-                            current = server[current.Path];
+                            current = server[current.ID];
                         ret.Add(current);
                     }
                     fullpath = m.Groups["next"].Value;

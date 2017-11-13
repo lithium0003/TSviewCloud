@@ -51,21 +51,14 @@ namespace TSviewCloudPlugin
                 itemtype = RemoteItemType.Folder;
                 fullpath = "";
             }
+
+            if (isRoot) SetParent(this);
         }
 
  
         public override void FixChain(IRemoteServer server)
         {
             _server = server;
-            _parents = parentIDs?.Select(x => _server.PeakItem(FullpathToPath(x))).ToArray();
-            Interlocked.CompareExchange(ref _children, new ConcurrentDictionary<string, IRemoteItem>(), null);
-            if (ChildrenIDs != null)
-            {
-                Parallel.ForEach(ChildrenIDs.ToDictionary(k => FullpathToPath(k), v => _server.PeakItem(FullpathToPath(v))), (s) =>
-                {
-                    _children.AddOrUpdate(s.Key, (k) => s.Value, (k, v) => s.Value);
-                });
-            }
         }
 
         private string FullpathToPath(string fullpath)
@@ -109,24 +102,27 @@ namespace TSviewCloudPlugin
         }
 
         public string BasePath => localPathBase;
+        protected override string RootID => localPathBase;
 
-        public override IRemoteItem PeakItem(string path)
+        public override IRemoteItem PeakItem(string ID)
         {
+            if (ID == RootID) ID = RootID;
             try
             {
-                return pathlist[path];
+                return pathlist[ID];
             }
             catch
             {
                 return null;
             }
         }
-        protected override void EnsureItem(string path, int depth = 0)
+        protected override void EnsureItem(string ID, int depth = 0)
         {
-            var item = pathlist[path];
+            if (ID == RootID) ID = RootID;
+            var item = pathlist[ID];
             if (item.ItemType == RemoteItemType.Folder)
-                LoadItems(item.Path, depth);
-            item = pathlist[path];
+                LoadItems(ID, depth);
+            item = pathlist[ID];
         }
 
         public override void Init()
@@ -153,6 +149,7 @@ namespace TSviewCloudPlugin
                 localPathBase = picker.SelectedPath;
                 var root = new LocalSystemItem(this, new DirectoryInfo(localPathBase), null);
                 pathlist.AddOrUpdate("", (k)=>root, (k,v)=>root);
+                EnsureItem("", 1);
                 _IsReady = true;
                 TSviewCloudConfig.Config.Log.LogOut("[Add] LocalSystem {0} as {1}", localPathBase, Name);
                 return true;
@@ -161,45 +158,29 @@ namespace TSviewCloudPlugin
         }
 
 
-        private LocalSystemItem updateItemChain(string key, LocalSystemItem olditem, LocalSystemItem newitem)
-        {
-            foreach(var p in olditem.Parents)
-            {
-                IRemoteItem tmp;
-                p.Children.TryRemove(key, out tmp);
-            }
-
-            newitem.SetChildren(olditem.Children.Values);
-
-            foreach(var c in olditem.Children.Values)
-            {
-                c.ChangeParent(olditem, newitem);
-            }
-
-            return newitem;
-        }
-
-        private void LoadItems(string path, int depth = 0)
+        private void LoadItems(string ID, int depth = 0)
         {
             if (depth < 0) return;
-            TSviewCloudConfig.Config.Log.LogOut("[LoadItems(LocalSystem)] " + path);
-            if (Directory.Exists(Path.Combine(localPathBase, Uri.UnescapeDataString(path))))
+            ID = ID ?? "";
+
+            TSviewCloudConfig.Config.Log.LogOut("[LoadItems(LocalSystem)] " + ID);
+            var dirname = (string.IsNullOrEmpty(ID)) ? localPathBase : ID;
+            if (!dirname.StartsWith(localPathBase))
+                throw new ArgumentException("ID is not in localPathBase", "ID");
+            if (Directory.Exists(dirname))
             {
                 try
                 {
                     var ret = new List<LocalSystemItem>();
-                    var info = new DirectoryInfo(Path.Combine(localPathBase, Uri.UnescapeDataString(path)));
+                    var info = new DirectoryInfo(dirname);
                     Parallel.ForEach(
                         info.EnumerateFileSystemInfos()
                             .Where(i => !(i.Attributes.HasFlag(FileAttributes.Directory) && (i.Name == "." || i.Name == ".."))),
                         () => new List<LocalSystemItem>(),
                         (x, state, local) =>
                         {
-                            var item = new LocalSystemItem(this, x, pathlist[path]);
-                            pathlist.AddOrUpdate(item.Path, (k) => item, (k, v) => 
-                            {
-                                return updateItemChain(k, v, item);
-                            });
+                            var item = new LocalSystemItem(this, x, pathlist[ID]);
+                            pathlist.AddOrUpdate(item.ID, (k) => item, (k, v) => item);
                             local.Add(item);
                             return local;
                         },
@@ -209,31 +190,34 @@ namespace TSviewCloudPlugin
                                  ret.AddRange(result);
                          }
                     );
-                    pathlist[path].SetChildren(ret);
+                    pathlist[ID].SetChildren(ret);
                     if(depth > 0)
-                        Parallel.ForEach(pathlist[path].Children.Values, (x) => { LoadItems(x.Path, depth - 1); });
+                        Parallel.ForEach(pathlist[ID].Children, (x) => { LoadItems(x.ID, depth - 1); });
                 }
                 catch { }
             }
             else
             {
-                pathlist[path].SetChildren(null);
+                pathlist[ID].SetChildren(null);
             }
         }
 
-        private void RemoveItem(string path)
+        private void RemoveItem(string ID)
         {
-            TSviewCloudConfig.Config.Log.LogOut("[RemoveItem] " + path);
-            if (pathlist.TryRemove(path, out LocalSystemItem target))
+            TSviewCloudConfig.Config.Log.LogOut("[RemoveItem] " + ID);
+            if (pathlist.TryRemove(ID, out LocalSystemItem target))
             {
-                var children = target.Children.Values.ToArray();
-                foreach(var child in children)
+                if (target != null)
                 {
-                    RemoveItem(child.Path);
-                }
-                foreach (var p in target.Parents)
-                {
-                    p.Children.TryRemove(path, out IRemoteItem tmp);
+                    var children = target.Children.ToArray();
+                    foreach (var child in children)
+                    {
+                        RemoveItem(child.ID);
+                    }
+                    foreach (var p in target.Parents)
+                    {
+                        p?.SetChildren(p.Children.Where(x => x.ID != target.ID));
+                    }
                 }
             }
         }
@@ -267,16 +251,17 @@ namespace TSviewCloudPlugin
                     var item = info.EnumerateFileSystemInfos().Where(x => x.FullName == uploadfullpath).FirstOrDefault();
 
                     var newitem = new LocalSystemItem(this, item, remoteTarget);
-                    pathlist.AddOrUpdate(newitem.Path, (k) => newitem, (k, v) =>
-                    {
-                        return updateItemChain(k, v, newitem);
-                    });
+                    pathlist.AddOrUpdate(newitem.ID, (k) => newitem, (k, v) => newitem);
 
-                    remoteTarget.Children.AddOrUpdate(newitem.Path, newitem, (k, v) => newitem);
+                    remoteTarget.SetChildren(remoteTarget.Children.Concat(new[] { newitem }));
 
                     job.Result = newitem;
                     job.ProgressStr = "Done";
                     job.Progress = 1;
+                }
+                catch (OperationCanceledException)
+                {
+
                 }
                 catch (Exception e)
                 {
@@ -343,14 +328,15 @@ namespace TSviewCloudPlugin
                     var item = info.EnumerateFileSystemInfos().Where(x => x.FullName == uploadfullpath).FirstOrDefault();
 
                     var newitem = new LocalSystemItem(this, item, remoteTarget);
-                    pathlist.AddOrUpdate(newitem.Path, (k) => newitem, (k, v) =>
-                    {
-                        return updateItemChain(k, v, newitem);
-                    });
+                    pathlist.AddOrUpdate(newitem.ID, (k) => newitem, (k, v) => newitem);
 
-                    remoteTarget.Children.AddOrUpdate(newitem.Path, newitem, (k, v) => newitem);
+                    remoteTarget.SetChildren(remoteTarget.Children.Concat(new[] { newitem }));
 
                     job.Result = newitem;
+                }
+                catch (OperationCanceledException)
+                {
+
                 }
                 catch (Exception e)
                 {
@@ -431,7 +417,7 @@ namespace TSviewCloudPlugin
                 job.ProgressStr = "Delete...";
                 job.Progress = -1;
 
-                var parent = deleteTarget.Parents[0];
+                var parent = deleteTarget.Parents.First();
                 try
                 {
                     if (Directory.Exists(deleteTarget.ID))
@@ -443,11 +429,15 @@ namespace TSviewCloudPlugin
                         File.Delete(deleteTarget.ID);
                     }
 
-                    RemoveItem(deleteTarget.Path);
+                    RemoveItem(deleteTarget.ID);
 
                     job.Result = parent;
                     job.ProgressStr = "Done";
                     job.Progress = 1;
+                }
+                catch (OperationCanceledException)
+                {
+
                 }
                 catch (Exception e)
                 {
@@ -477,7 +467,7 @@ namespace TSviewCloudPlugin
                 job.ProgressStr = "Move...";
                 job.Progress = -1;
 
-                var oldparent = moveItem.Parents[0];
+                var oldparent = moveItem.Parents.First();
                 try
                 {
                     if(moveToItem.ItemType == RemoteItemType.File)
@@ -493,17 +483,19 @@ namespace TSviewCloudPlugin
                     var item = info.EnumerateFileSystemInfos().Where(x => x.FullName == moveItem.Name).FirstOrDefault();
 
                     var newitem = new LocalSystemItem(this, item, moveToItem);
-                    pathlist.AddOrUpdate(newitem.Path, (k) => newitem, (k, v) =>
-                    {
-                        return updateItemChain(k, v, newitem);
-                    });
+                    pathlist.AddOrUpdate(newitem.ID, (k) => newitem, (k, v) => newitem);
 
-                    moveToItem.Children.AddOrUpdate(newitem.Path, newitem, (k, v) => newitem);
-                    RemoveItem(moveItem.Path);
+                    moveToItem.SetChildren(moveToItem.Children.Concat(new[] { newitem }));
+
+                    RemoveItem(moveItem.ID);
 
                     job.Result = newitem;
                     job.ProgressStr = "Done";
                     job.Progress = 1;
+                }
+                catch (OperationCanceledException)
+                {
+
                 }
                 catch (Exception e)
                 {

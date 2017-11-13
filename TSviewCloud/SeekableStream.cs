@@ -147,15 +147,28 @@ namespace ProjectUtil
 
             //Config.Log.LogOut(string.Format("AmazonDriveStream : start to download slot {0} offset {1:#,0} - ", slotno, start));
             var cjob = new JobForToken(cts_1.Token);
-            var djob = targetItem.DownloadItemRaw(start, hidden: true, prevJob: cjob as Job );
+            var djob = targetItem.DownloadItemRaw(start, hidden: true, prevJob: cjob as Job);
 
             var job = JobControler.CreateNewJob<Stream>(JobClass.RemoteDownload, depends: djob);
             job.DisplayName = "Download slot :" + slotno + " item : " + targetItem.Name;
             job.ProgressStr = "wait for prepare...";
             job.ForceHidden = true;
+            job.DoAlways = true;
             JobControler.Run(job, (j) =>
             {
-                using(var stream = job.ResultOfDepend[0])
+                if (djob.IsError)
+                {
+                    cancel_cts.Cancel();
+                    StartDownload(slotno, slot, SlotBuffer);
+                    return;
+                }
+                if (djob.IsCanceled)
+                {
+                    done = true;
+                    return;
+                }
+
+                using (var stream = job.ResultOfDepend[0])
                 {
                     while (slotno <= lastslot)
                     {
@@ -238,6 +251,13 @@ namespace ProjectUtil
                         }
                     }
                 }
+            });
+            var cleanjob = JobControler.CreateNewJob<Stream>(JobClass.Clean, depends: job);
+            cleanjob.DoAlways = true;
+            JobControler.Run(cleanjob, (j) =>
+            {
+                if(!djob.IsError)
+                    done = true;
             });
         }
 

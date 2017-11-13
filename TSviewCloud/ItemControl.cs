@@ -25,9 +25,9 @@ namespace TSviewCloudPlugin
         static private void MakeSureItem(IRemoteItem item)
         {
             item = RemoteServerFactory.PathToItem(item.FullPath);
-            if (item.Children?.Count > 0)
+            if (item.Children?.Count() != 0)
             {
-                foreach (var c in item.Children.Values)
+                foreach (var c in item.Children)
                 {
                     MakeSureItem(c);
                 }
@@ -48,7 +48,7 @@ namespace TSviewCloudPlugin
                 {
                     var dname = Path.Combine(localfoldername, item.Name);
                     Directory.CreateDirectory(dname);
-                    ret.AddRange(__DoDownloadFolder(dname, item.Children.Values, prevJob));
+                    ret.AddRange(__DoDownloadFolder(dname, item.Children, prevJob));
                 }
             }
             return ret.ToArray();

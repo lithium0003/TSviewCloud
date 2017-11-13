@@ -14,7 +14,7 @@ namespace TSviewCloud
 {
     public partial class FormTreeSelect : Form
     {
-        SynchronizationContext synchronizationContext = SynchronizationContext.Current;
+        SynchronizationContext synchronizationContext;
 
         IRemoteItem _selectedItem;
 
@@ -23,6 +23,7 @@ namespace TSviewCloud
         public FormTreeSelect()
         {
             InitializeComponent();
+            synchronizationContext = SynchronizationContext.Current;
         }
 
         private void FormTreeSelect_Load(object sender, EventArgs e)
@@ -63,14 +64,14 @@ namespace TSviewCloud
                     DisplayJob.ProgressStr = "Loading...";
                     DisplayJob.ForceHidden = true;
 
-                    var children = DisplayJob.ResultOfDepend[0].Children.Values;
+                    var children = DisplayJob.ResultOfDepend[0].Children;
 
                     synchronizationContext.Send((o) =>
                     {
                         try
                         {
                             baseNode.Nodes.AddRange(
-                                GenerateTreeNode(o as ICollection<TSviewCloudPlugin.IRemoteItem>)
+                                GenerateTreeNode(o as IEnumerable<TSviewCloudPlugin.IRemoteItem>)
                                 .OrderByDescending(x => (x.Tag as TSviewCloudPlugin.IRemoteItem).ItemType)
                                 .ThenBy(x => (x.Tag as TSviewCloudPlugin.IRemoteItem).Name)
                                 .ToArray()
@@ -92,6 +93,7 @@ namespace TSviewCloud
         private IEnumerable<TreeNode> GenerateTreeNode(IEnumerable<TSviewCloudPlugin.IRemoteItem> children, int count = 0)
         {
             var ret = new List<TreeNode>();
+            if (children == null) return ret;
             Parallel.ForEach(children, () => new List<TreeNode>(), (x, state, local) =>
             {
                 int img = (x.ItemType == TSviewCloudPlugin.RemoteItemType.File) ? 0 : 1;
@@ -100,10 +102,10 @@ namespace TSviewCloud
                     Name = x.Name,
                     Tag = x
                 };
-                if (x.ItemType == TSviewCloudPlugin.RemoteItemType.Folder && count > 0 && x.Children.Count > 0)
+                if (x.ItemType == TSviewCloudPlugin.RemoteItemType.Folder && count > 0 && x.Children?.Count() != 0)
                 {
                     node.Nodes.AddRange(
-                        GenerateTreeNode(x.Children.Values, count - 1)
+                        GenerateTreeNode(x.Children, count - 1)
                             .OrderByDescending(y => (y.Tag as TSviewCloudPlugin.IRemoteItem).ItemType)
                             .ThenBy(y => (y.Tag as TSviewCloudPlugin.IRemoteItem).Name)
                             .ToArray());

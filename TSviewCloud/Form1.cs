@@ -354,7 +354,8 @@ namespace TSviewCloud
                     if (_currentViewItem != null)
                     {
                         remoteItemList.Clear();
-                        remoteItemList.AddRange(_currentViewItem.Children.OrderByDescending(x => x.Value.ItemType).ThenBy(x => x.Value.Name).Select(x => x.Value));
+                        if(_currentViewItem.Children != null)
+                            remoteItemList.AddRange(_currentViewItem.Children.OrderByDescending(x => x.ItemType).ThenBy(x => x.Name));
                         IsSearchResult = false;
                     }
                     else
@@ -372,7 +373,7 @@ namespace TSviewCloud
             }
             public TSviewCloudPlugin.IRemoteItem ParentViewItem
             {
-                get { return _currentViewItem?.Parents[0]; }
+                get { return _currentViewItem?.Parents?.FirstOrDefault(); }
             }
             public TSviewCloudPlugin.IRemoteItem this[int index]
             {
@@ -404,9 +405,11 @@ namespace TSviewCloud
                 get
                 {
                     if (CurrentViewItem == null) return remoteItemList;
-                    var ret = new List<TSviewCloudPlugin.IRemoteItem>();
-                    ret.Add(CurrentViewItem);
-                    ret.Add(ParentViewItem);
+                    var ret = new List<TSviewCloudPlugin.IRemoteItem>
+                    {
+                        CurrentViewItem,
+                        ParentViewItem
+                    };
                     ret.AddRange(remoteItemList);
                     return ret;
                 }
@@ -617,11 +620,11 @@ namespace TSviewCloud
                     else
                         return new ListViewItem(new string[6]);
                 }
-                listitem.SubItems.Add(item.Size?.ToString("N0"));
-                listitem.SubItems.Add(item.ModifiedDate.ToString());
-                listitem.SubItems.Add(item.CreatedDate.ToString());
-                listitem.SubItems.Add(item.FullPath);
-                listitem.SubItems.Add(item.Hash);
+                listitem.SubItems.Add(item?.Size?.ToString("N0"));
+                listitem.SubItems.Add(item?.ModifiedDate.ToString());
+                listitem.SubItems.Add(item?.CreatedDate.ToString());
+                listitem.SubItems.Add(item?.FullPath);
+                listitem.SubItems.Add(item?.Hash);
                 listitem.Tag = item;
                 return listitem;
             }
@@ -769,7 +772,7 @@ namespace TSviewCloud
                     DisplayJob.ProgressStr = "Loading...";
                     DisplayJob.ForceHidden = true;
 
-                    var children = DisplayJob.ResultOfDepend[0]?.Children.Values;
+                    var children = DisplayJob.ResultOfDepend[0]?.Children;
                     if (children == null)
                     {
                         DisplayJob.ProgressStr = "done.";
@@ -777,12 +780,12 @@ namespace TSviewCloud
                         return;
                     }
 
-                    synchronizationContext.Send((o) =>
+                    synchronizationContext.Send(async (o) =>
                     {
                         try
                         {
                             baseNode.Nodes.AddRange(
-                                GenerateTreeNode(o as ICollection<TSviewCloudPlugin.IRemoteItem>)
+                                (await GenerateTreeNode(o as IEnumerable<TSviewCloudPlugin.IRemoteItem>))
                                 .OrderByDescending(x => (x.Tag as TSviewCloudPlugin.IRemoteItem).ItemType)
                                 .ThenBy(x => (x.Tag as TSviewCloudPlugin.IRemoteItem).Name)
                                 .ToArray()
@@ -846,10 +849,10 @@ namespace TSviewCloud
                     try
                     {
                         var dispitem = DisplayJob.ResultOfDepend[0];
-                        if(dispitem.ItemType == TSviewCloudPlugin.RemoteItemType.Folder)
+                        if(dispitem?.ItemType == TSviewCloudPlugin.RemoteItemType.Folder)
                             ShowListViewItem(dispitem);
                         else
-                            ShowListViewItem(dispitem.Parents[0]);
+                            ShowListViewItem(dispitem?.Parents?.FirstOrDefault());
                     }
                     finally
                     {
@@ -863,6 +866,8 @@ namespace TSviewCloud
         private void ShowListViewItem(TSviewCloudPlugin.IRemoteItem item)
         {
             listData.CurrentViewItem = item;
+            if (item == null) return;
+
             textBox_address.Text = item.FullPath;
             if (AddressSelecting) return;
             if (AddressLogSelecting) return;
@@ -957,7 +962,7 @@ namespace TSviewCloud
                 var pathlist = TSviewCloudPlugin.RemoteServerFactory.PathToItemChain(target.FullPath);
                 var server = target.Server;
 
-                synchronizationContext.Send((o) =>
+                synchronizationContext.Send(async (o) =>
                 {
                     try
                     {
@@ -977,7 +982,7 @@ namespace TSviewCloud
                         {
                             if (p.i >= nodechain.Count) break;
                             node = nodechain[p.i];
-                            if (!p.p.Children.Values.Select(x => x.Name).OrderBy(x => x).SequenceEqual(node.Nodes.Cast<TreeNode>().Select(x => x.Name).OrderBy(x => x)))
+                            if (!p.p.Children?.Select(x => x.Name).OrderBy(x => x).SequenceEqual(node.Nodes.Cast<TreeNode>().Select(x => x.Name).OrderBy(x => x)) ?? true)
                                 break;
                             same_i = p.i;
                         }
@@ -996,10 +1001,10 @@ namespace TSviewCloud
                                     Name = p.Name,
                                     Tag = p
                                 };
-                                if (p.ItemType == TSviewCloudPlugin.RemoteItemType.Folder && p.Children.Count > 0)
+                                if (p.ItemType == TSviewCloudPlugin.RemoteItemType.Folder && p.Children?.Count() != 0)
                                 {
                                     newnode.Nodes.AddRange(
-                                        GenerateTreeNode(p.Children.Values, 1)
+                                        (await GenerateTreeNode(p.Children, 1))
                                             .OrderByDescending(y => (y.Tag as TSviewCloudPlugin.IRemoteItem).ItemType)
                                             .ThenBy(y => (y.Tag as TSviewCloudPlugin.IRemoteItem).Name)
                                             .ToArray());
@@ -1027,10 +1032,10 @@ namespace TSviewCloud
                                         Name = p.Name,
                                         Tag = p
                                     };
-                                    if (p.ItemType == TSviewCloudPlugin.RemoteItemType.Folder && p.Children.Count > 0)
+                                    if (p.ItemType == TSviewCloudPlugin.RemoteItemType.Folder && p.Children?.Count() != 0)
                                     {
                                         newnode.Nodes.AddRange(
-                                            GenerateTreeNode(p.Children.Values, 0)
+                                            (await GenerateTreeNode(p.Children, 0))
                                                 .OrderByDescending(y => (y.Tag as TSviewCloudPlugin.IRemoteItem).ItemType)
                                                 .ThenBy(y => (y.Tag as TSviewCloudPlugin.IRemoteItem).Name)
                                                 .ToArray());
@@ -1145,36 +1150,38 @@ namespace TSviewCloud
             listData.SortColum = (item.Tag as ListColums?).Value;
         }
 
-        private IEnumerable<TreeNode> GenerateTreeNode(IEnumerable<TSviewCloudPlugin.IRemoteItem> children, int count = 0)
+        private async Task<IEnumerable<TreeNode>> GenerateTreeNode(IEnumerable<TSviewCloudPlugin.IRemoteItem> children, int count = 0)
         {
             var ret = new List<TreeNode>();
             if (children == null) return ret;
-            Parallel.ForEach(children, () => new List<TreeNode>(), (x, state, local) =>
-            {
-                int img = (x.ItemType == TSviewCloudPlugin.RemoteItemType.File) ? 0 : 1;
-                var node = new TreeNode(x.Name, img, img)
+            return await Task.Run(() => {
+                Parallel.ForEach(children, () => new List<TreeNode>(), (x, state, local) =>
                 {
-                    Name = x.Name,
-                    Tag = x
-                };
-                if (x.ItemType == TSviewCloudPlugin.RemoteItemType.Folder && count > 0 && x.Children?.Count > 0)
+                    int img = (x.ItemType == TSviewCloudPlugin.RemoteItemType.File) ? 0 : 1;
+                    var node = new TreeNode(x.Name, img, img)
+                    {
+                        Name = x.Name,
+                        Tag = x
+                    };
+                    if (x.ItemType == TSviewCloudPlugin.RemoteItemType.Folder && count > 0 && x.Children?.Count() != 0)
+                    {
+                        node.Nodes.AddRange(
+                            GenerateTreeNode(x.Children, count - 1).Result
+                                .OrderByDescending(y => (y.Tag as TSviewCloudPlugin.IRemoteItem).ItemType)
+                                .ThenBy(y => (y.Tag as TSviewCloudPlugin.IRemoteItem).Name)
+                                .ToArray());
+                    }
+                    local.Add(node);
+                    return local;
+                },
+                (result) =>
                 {
-                    node.Nodes.AddRange(
-                        GenerateTreeNode(x.Children.Values, count - 1)
-                            .OrderByDescending(y => (y.Tag as TSviewCloudPlugin.IRemoteItem).ItemType)
-                            .ThenBy(y => (y.Tag as TSviewCloudPlugin.IRemoteItem).Name)
-                            .ToArray());
+                    lock (ret)
+                        ret.AddRange(result);
                 }
-                local.Add(node);
-                return local;
-            },
-            (result) =>
-            {
-                lock (ret)
-                    ret.AddRange(result);
-            }
-            );
-            return ret;
+                );
+                return ret;
+            });
         }
 
         private void reloadToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1271,7 +1278,7 @@ namespace TSviewCloud
                 var downitem = player.Tag as TSviewCloudPlugin.IRemoteItem;
                 ImageCodecInfo[] decoders = ImageCodecInfo.GetImageDecoders();
                 string filename = downitem.Name;
-                var target = downitem.Parents[0].Children.Where(x => x.Value.Name.StartsWith(Path.GetFileNameWithoutExtension(filename)));
+                var target = downitem.Parents?.FirstOrDefault()?.Children?.Where(x => x.Name.StartsWith(Path.GetFileNameWithoutExtension(filename)));
 
                 var wjob = new TSviewCloudPlugin.Job(player.ct);
 
@@ -1279,13 +1286,13 @@ namespace TSviewCloud
 
                 foreach (var t in target)
                 {
-                    var ext = Path.GetExtension(t.Value.Name).ToLower();
+                    var ext = Path.GetExtension(t.Name).ToLower();
                     foreach (var ici in decoders)
                     {
                         var decext = ici.FilenameExtension.Split(';').Select(x => Path.GetExtension(x).ToLower()).ToArray();
                         if (decext.Contains(ext))
                         {
-                            var download = t.Value.DownloadItemJob(prevJob: wjob);
+                            var download = t.DownloadItemJob(prevJob: wjob);
                             jobs.Add(download);
                         }
                     }
@@ -1467,15 +1474,19 @@ namespace TSviewCloud
                 };
                 PlayControler.NextCallback += (s, evnt) => {
                     if (!PlayControler.IsPlaying) return;
-
-                    ffplayer?.Stop();
+                    lock (this)
+                    {
+                        ffplayer?.Stop();
+                    }
                 };
                 PlayControler.PrevCallback += (s, evnt) =>
                 {
                     if (!PlayControler.IsPlaying) return;
-
-                    PlayControler.PlayIndex--;
-                    ffplayer?.Stop();
+                    lock (this)
+                    {
+                        PlayControler.PlayIndex--;
+                        ffplayer?.Stop();
+                    }
                 };
                 PlayControler.PositionRequest += (s, evnt) =>
                 {
@@ -1733,7 +1744,7 @@ namespace TSviewCloud
             listView1.DoDragDrop(data, DragDropEffects.Copy | DragDropEffects.Move);
         }
 
-        private TSviewCloudPlugin.IRemoteItem[] GetSelectedItemsFromDataObject(System.Windows.Forms.IDataObject data)
+        private IEnumerable<TSviewCloudPlugin.IRemoteItem> GetSelectedItemsFromDataObject(System.Windows.Forms.IDataObject data)
         {
             object ret = null;
             FORMATETC fmt = new FORMATETC { cfFormat = ClipboardRemoteDrive.CF_CLOUD_DRIVE_ITEMS, dwAspect = DVASPECT.DVASPECT_CONTENT, lindex = -2, ptd = IntPtr.Zero, tymed = TYMED.TYMED_ISTREAM };
@@ -1746,7 +1757,7 @@ namespace TSviewCloud
             var bf = new BinaryFormatter();
             ret = bf.Deserialize(st);
             ClipboardRemoteDrive.ReleaseStgMedium(ref media);
-            return (ret as string[]).Select(x => TSviewCloudPlugin.RemoteServerFactory.PathToItem(x)).ToArray();
+            return (ret as string[]).Select(x => TSviewCloudPlugin.RemoteServerFactory.PathToItem(x));
         }
 
         private void listView1_DragOver(object sender, DragEventArgs e)
@@ -1776,7 +1787,7 @@ namespace TSviewCloud
                         else
                         {
                             var selectedItems = GetSelectedItemsFromDataObject(e.Data);
-                            if ((!selectedItems?.Select(x => x.FullPath).Contains(current.FullPath) ?? false) && !current.Children.Values.Select(x => x.FullPath).Intersect(selectedItems.Select(x => x.FullPath)).Any())
+                            if ((!selectedItems?.Select(x => x.FullPath).Contains(current.FullPath) ?? false) && (!current.Children?.Select(x => x.FullPath).Intersect(selectedItems.Select(x => x.FullPath)).Any() ?? true))
                             {
                                 e.Effect = DragDropEffects.Move;
                             }

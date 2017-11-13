@@ -54,7 +54,7 @@
             // trackBar_Possition
             // 
             this.trackBar_Possition.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.trackBar_Possition.Location = new System.Drawing.Point(0, 104);
+            this.trackBar_Possition.Location = new System.Drawing.Point(0, 117);
             this.trackBar_Possition.Name = "trackBar_Possition";
             this.trackBar_Possition.Size = new System.Drawing.Size(710, 56);
             this.trackBar_Possition.TabIndex = 0;
@@ -79,7 +79,7 @@
             this.panel1.Controls.Add(this.label_Filename);
             this.panel1.Location = new System.Drawing.Point(0, 0);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(710, 98);
+            this.panel1.Size = new System.Drawing.Size(710, 111);
             this.panel1.TabIndex = 1;
             // 
             // button_Close
@@ -106,7 +106,7 @@
             // label_nextfile
             // 
             this.label_nextfile.AutoSize = true;
-            this.label_nextfile.Location = new System.Drawing.Point(4, 76);
+            this.label_nextfile.Location = new System.Drawing.Point(4, 87);
             this.label_nextfile.Name = "label_nextfile";
             this.label_nextfile.Size = new System.Drawing.Size(43, 15);
             this.label_nextfile.TabIndex = 11;
@@ -217,7 +217,7 @@
             // 
             this.label_TIme.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label_TIme.AutoSize = true;
-            this.label_TIme.Location = new System.Drawing.Point(3, 136);
+            this.label_TIme.Location = new System.Drawing.Point(3, 149);
             this.label_TIme.Name = "label_TIme";
             this.label_TIme.Size = new System.Drawing.Size(43, 15);
             this.label_TIme.TabIndex = 0;
@@ -236,7 +236,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(710, 160);
+            this.ClientSize = new System.Drawing.Size(710, 173);
             this.Controls.Add(this.label_TIme);
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.trackBar_Possition);

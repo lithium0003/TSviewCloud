@@ -340,9 +340,7 @@ namespace TSviewCloud
         {
             public StreamWrapper(Stream stream)
             {
-                if (stream == null)
-                    throw new ArgumentNullException("stream", "Can't wrap null stream.");
-                this.stream = stream;
+                this.stream = stream ?? throw new ArgumentNullException("stream", "Can't wrap null stream.");
             }
 
             Stream stream;
@@ -446,7 +444,7 @@ namespace TSviewCloud
             {
                 if(items.Children.Count() > 0)
                 {
-                    Parallel.ForEach(items.Children.Values, () => new Dictionary<string, IRemoteItem>(), (x, state, local) =>
+                    Parallel.ForEach(items.Children, () => new Dictionary<string, IRemoteItem>(), (x, state, local) =>
                     {
                         return local.Concat(ExpandPath(basepath + filename + "\\", x)).ToDictionary(y => y.Key, y => y.Value);
                     },
@@ -513,7 +511,7 @@ namespace TSviewCloud
             {
                 var mem = new MemoryStream();
                 var bf = new BinaryFormatter();
-                bf.Serialize(mem, baseItems.Select(x => x.FullPath).ToArray());
+                bf.Serialize(mem, baseItems.Select(x => x.FullPath).ToArray()); // copy string[] contains "server://path/to/item"
                 mem.Position = 0;
                 medium.tymed = TYMED.TYMED_ISTREAM;
                 medium.unionmember = Marshal.GetComInterfaceForObject(new StreamWrapper(mem), typeof(IStream));

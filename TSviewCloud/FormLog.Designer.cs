@@ -28,7 +28,9 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.textBox_log = new System.Windows.Forms.TextBox();
+            this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.SuspendLayout();
             // 
             // textBox_log
@@ -41,6 +43,11 @@
             this.textBox_log.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.textBox_log.Size = new System.Drawing.Size(609, 567);
             this.textBox_log.TabIndex = 0;
+            // 
+            // timer1
+            // 
+            this.timer1.Interval = 1000;
+            this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
             // FormLog
             // 
@@ -59,5 +66,6 @@
         #endregion
 
         private System.Windows.Forms.TextBox textBox_log;
+        private System.Windows.Forms.Timer timer1;
     }
 }

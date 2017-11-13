@@ -44,6 +44,8 @@ namespace TSviewCloudPlugin
 
             decryptedName = (_server as CarotCryptSystem).CryptCarot.DecryptFilename(orgItem.Name) ?? "";
             decryptedPath = OrgPathToPath(orgpath);
+
+            if (isRoot) SetParent(this);
         }
 
         public override string ID => orgpath;
@@ -82,23 +84,21 @@ namespace TSviewCloudPlugin
 
         public override void FixChain(IRemoteServer server)
         {
-            _server = server;
-            orgItem = RemoteServerFactory.PathToItem(orgpath);
-            Interlocked.CompareExchange(ref _children, new ConcurrentDictionary<string, IRemoteItem>(), null);
-            _parents = parentIDs?.Select(x => _server.PeakItem(OrgPathToPath(x))).ToArray();
-            decryptedPath = OrgPathToPath(orgpath);
-            if (orgItem == null)
+            try
             {
-                (_server as CarotCryptSystem)?.RemoveItem(Path);
-                return;
-            }
-            decryptedName = (_server as CarotCryptSystem).CryptCarot.DecryptFilename(orgItem.Name) ?? "";
-            if (ChildrenIDs != null)
-            {
-                Parallel.ForEach(ChildrenIDs.ToDictionary(k => OrgPathToPath(k), v => _server.PeakItem(OrgPathToPath(v))), (s) =>
+                _server = server;
+                orgItem = RemoteServerFactory.PathToItem(orgpath);
+                if (orgItem == null)
                 {
-                    _children.AddOrUpdate(s.Key, (k) => s.Value, (k, v) => s.Value);
-                });
+                    (_server as CarotCryptSystem)?.RemoveItem(ID);
+                    return;
+                }
+                decryptedPath = OrgPathToPath(orgpath);
+                decryptedName = (_server as CarotCryptSystem).CryptCarot.DecryptFilename(orgItem.Name) ?? "";
+            }
+            catch
+            {
+                System.Diagnostics.Debug.WriteLine(ID);
             }
         }
 
@@ -111,11 +111,11 @@ namespace TSviewCloudPlugin
         private string cryptNameHeader;
         [DataMember(Name = "CryptRootPath")]
         internal string cryptRootPath;
-        [DataMember(Name = "Cache")]
-        private ConcurrentDictionary<string, CarotCryptSystemItem> pathlist;
-
         [DataMember(Name = "Password")]
         public string _DrivePassword;
+
+        private ConcurrentDictionary<string, CarotCryptSystemItem> pathlist;
+
 
         const string hidden_pass = "CarotDAV Drive Password";
         public string DrivePassword
@@ -162,6 +162,7 @@ namespace TSviewCloudPlugin
             _dependService = picker.SelectedItem.Server;
             var root = new CarotCryptSystemItem(this, picker.SelectedItem, null);
             pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
+            EnsureItem("", 1);
 
             _IsReady = true;
             TSviewCloudConfig.Config.Log.LogOut("[Add] CarotCryptSystem {0} as {1}", cryptRootPath, Name);
@@ -186,19 +187,19 @@ namespace TSviewCloudPlugin
                 job.ProgressStr = "Loading...";
                 job.Progress = -1;
 
+                while (!RemoteServerFactory.ServerList[_dependService].IsReady)
+                    Task.Delay(50).Wait(job.Ct);
+
                 if (pathlist == null)
                 {
                     pathlist = new ConcurrentDictionary<string, CarotCryptSystemItem>();
                     var root = new CarotCryptSystemItem(this, RemoteServerFactory.PathToItem(cryptRootPath), null);
                     pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
+                    EnsureItem("", 1);
                 }
                 else
                 {
-                    try
-                    {
-                        Parallel.ForEach(pathlist.Values.ToArray(), (x) => x.FixChain(this));
-                    }
-                    catch { }
+                    Parallel.ForEach(pathlist.Values.ToArray(), (x) => x.FixChain(this));
                 }
 
                 job.ProgressStr = "Done";
@@ -208,41 +209,27 @@ namespace TSviewCloudPlugin
             });
         }
 
-        public override IRemoteItem PeakItem(string path)
+        protected override string RootID => cryptRootPath;
+
+        public override IRemoteItem PeakItem(string ID)
         {
+            if (ID == RootID) ID = "";
             try
             {
-                return pathlist[path];
+                return pathlist[ID];
             }
             catch
             {
                 return null;
             }
         }
-        protected override void EnsureItem(string path, int depth = 0)
+        protected override void EnsureItem(string ID, int depth = 0)
         {
-            var item = pathlist[path];
+            if (ID == RootID) ID = "";
+            var item = pathlist[ID];
             if (item.ItemType == RemoteItemType.Folder)
-                LoadItems(item.Path, depth);
-            item = pathlist[path];
-        }
-
-        private CarotCryptSystemItem updateItemChain(string key, CarotCryptSystemItem olditem, CarotCryptSystemItem newitem)
-        {
-            foreach (var p in olditem.Parents)
-            {
-                IRemoteItem tmp;
-                p.Children.TryRemove(key, out tmp);
-            }
-
-            newitem.SetChildren(olditem.Children.Values);
-
-            foreach (var c in olditem.Children.Values)
-            {
-                c.ChangeParent(olditem, newitem);
-            }
-
-            return newitem;
+                LoadItems(ID, depth);
+            item = pathlist[ID];
         }
 
         private string pathToCryptedpath(string path)
@@ -268,27 +255,28 @@ namespace TSviewCloudPlugin
             return string.Join("/", ret);
         }
 
-        private void LoadItems(string path, int depth = 0)
+        private void LoadItems(string ID, int depth = 0)
         {
             if (depth < 0) return;
-            TSviewCloudConfig.Config.Log.LogOut("[LoadItems(CarotCryptSystem)] " + path);
+            ID = ID ?? "";
+            TSviewCloudConfig.Config.Log.LogOut("[LoadItems(CarotCryptSystem)] " + ID);
 
-            var orgitem = RemoteServerFactory.PathToItem(cryptRootPath + "/" + pathToCryptedpath(path), ReloadType.Reload);
-            if(orgitem.Children != null && orgitem.Children.Count > 0)
+            var orgID = (string.IsNullOrEmpty(ID)) ? cryptRootPath : ID;
+            if (!orgID.StartsWith(cryptRootPath))
+                throw new ArgumentException("ID is not in root path", "ID");
+            var orgitem = RemoteServerFactory.PathToItem(orgID, ReloadType.Cache);
+            if(orgitem?.Children != null && orgitem.Children?.Count() != 0)
             {
                 var ret = new List<CarotCryptSystemItem>();
                 Parallel.ForEach(
-                    orgitem.Children.Values,
+                    orgitem.Children,
                     () => new List<CarotCryptSystemItem>(),
                     (x, state, local) =>
                     {
                         if (!x.Name.StartsWith(cryptNameHeader)) return local;
 
-                        var item = new CarotCryptSystemItem(this, x, pathlist[path]);
-                        pathlist.AddOrUpdate(item.Path, (k) => item, (k, v) =>
-                        {
-                            return updateItemChain(k, v, item);
-                        });
+                        var item = new CarotCryptSystemItem(this, x, pathlist[ID]);
+                        pathlist.AddOrUpdate(item.ID, (k) => item, (k, v) => item);
                         local.Add(item);
                         return local;
                     },
@@ -298,14 +286,14 @@ namespace TSviewCloudPlugin
                              ret.AddRange(result);
                      }
                 );
-                pathlist[path].SetChildren(ret);
+                pathlist[ID].SetChildren(ret);
                 if (depth > 0)
-                    Parallel.ForEach(pathlist[path].Children.Values, (x) => { LoadItems(x.Path, depth - 1); });
+                    Parallel.ForEach(pathlist[ID].Children, (x) => { LoadItems(x.ID, depth - 1); });
 
             }
             else
             {
-                pathlist[path].SetChildren(null);
+                pathlist[ID].SetChildren(null);
             }
         }
 
@@ -330,7 +318,7 @@ namespace TSviewCloudPlugin
 
             TSviewCloudConfig.Config.Log.LogOut("[MakeFolder(CarotCryptSystem)] " + foldername);
  
-            var parent = pathlist[remoteTarget.Path];
+            var parent = pathlist[remoteTarget.ID];
             var orgmakejob = parent.orgItem.MakeFolder(CryptCarot.EncryptFilename(foldername), WeekDepend, parentJob);
 
             var job = JobControler.CreateNewJob<IRemoteItem>(
@@ -347,12 +335,9 @@ namespace TSviewCloudPlugin
                 var item = job.ResultOfDepend[0];
 
                 var newitem = new CarotCryptSystemItem(this, item, remoteTarget);
-                pathlist.AddOrUpdate(newitem.Path, (k) => newitem, (k, v) =>
-                {
-                    return updateItemChain(k, v, newitem);
-                });
-
-                remoteTarget.Children.AddOrUpdate(newitem.Path, newitem, (k, v) => newitem);
+                pathlist.AddOrUpdate(newitem.ID, (k) => newitem, (k, v) => newitem);
+               
+                remoteTarget.SetChildren(remoteTarget.Children.Concat(new[] { newitem }));
 
                 job.Result = newitem;
 
@@ -364,19 +349,22 @@ namespace TSviewCloudPlugin
             return job;
         }
 
-        internal void RemoveItem(string path)
+        internal void RemoveItem(string ID)
         {
-            TSviewCloudConfig.Config.Log.LogOut("[RemoveItem(CarotCryptSystem)] " + path);
-            if (pathlist.TryRemove(path, out CarotCryptSystemItem target))
+            TSviewCloudConfig.Config.Log.LogOut("[RemoveItem(CarotCryptSystem)] " + ID);
+            if (pathlist.TryRemove(ID, out CarotCryptSystemItem target))
             {
-                var children = target?.Children.Values.ToArray();
-                foreach (var child in children)
+                if (target != null)
                 {
-                    RemoveItem(child.Path);
-                }
-                foreach (var p in target.Parents)
-                {
-                    p.Children?.TryRemove(path, out IRemoteItem tmp);
+                    var children = target.Children?.ToArray();
+                    foreach (var child in children)
+                    {
+                        RemoveItem(child.ID);
+                    }
+                    foreach (var p in target.Parents)
+                    {
+                        p?.SetChildren(p.Children?.Where(x => x?.ID != target.ID));
+                    }
                 }
             }
         }
@@ -398,8 +386,8 @@ namespace TSviewCloudPlugin
                 job.ProgressStr = "Delete...";
                 job.Progress = -1;
 
-                var parent = deleteTarget.Parents[0];
-                RemoveItem(deleteTarget.Path);
+                var parent = deleteTarget.Parents.First();
+                RemoveItem(deleteTarget.ID);
 
                 job.Result = parent;
                 job.ProgressStr = "Done";
@@ -464,7 +452,9 @@ namespace TSviewCloudPlugin
             clean.DoAlways = true;
             JobControler.Run(clean, (j) =>
             {
-                clean.Result = clean.ResultOfDepend[0];
+                if(!job.IsCanceled)
+                    clean.Result = clean.ResultOfDepend[0];
+
                 filestream.Dispose();
             });
             return clean;
@@ -487,10 +477,22 @@ namespace TSviewCloudPlugin
             clean.DoAlways = true;
             JobControler.Run(clean, (j) =>
             {
-                clean.Result = clean.ResultOfDepend[0];
                 cstream.Dispose();
 
-                SetUpdate(remoteTarget);
+                if (job.IsCanceled) return;
+
+                var item = clean.ResultOfDepend[0];
+                if (item != null)
+                {
+                    var newitem = new CarotCryptSystemItem(this, item, remoteTarget);
+                    pathlist.AddOrUpdate(newitem.ID, (k) => newitem, (k, v) => newitem);
+
+                    remoteTarget.SetChildren(remoteTarget.Children.Concat(new[] { newitem }));
+
+                    clean.Result = newitem;
+
+                    SetUpdate(remoteTarget);
+                }
             });
             return clean;
         }
