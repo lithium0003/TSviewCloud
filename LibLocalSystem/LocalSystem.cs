@@ -63,10 +63,12 @@ namespace TSviewCloudPlugin
 
         private string FullpathToPath(string fullpath)
         {
+            if(fullpath.StartsWith(@"\\?\"))
+                fullpath = fullpath.Substring(4);
             return (string.IsNullOrEmpty(fullpath) || (_server as LocalSystem).BasePath == fullpath) ? "" : new Uri((_server as LocalSystem).BasePath.TrimEnd('\\') + "\\").MakeRelativeUri(new Uri(fullpath)).ToString();
         }
 
-        public override string ID => fullpath;
+        public override string ID => (fullpath.StartsWith(@"\\?\"))? fullpath.Substring(4) : fullpath;
         public override string Path => FullpathToPath(fullpath);
         public override string Name => System.IO.Path.GetFileName(fullpath);
     }
@@ -147,7 +149,7 @@ namespace TSviewCloudPlugin
             if(picker.ShowDialog() == DialogResult.OK)
             {
                 localPathBase = picker.SelectedPath;
-                var root = new LocalSystemItem(this, new DirectoryInfo(localPathBase), null);
+                var root = new LocalSystemItem(this, new DirectoryInfo(@"\\?\"+localPathBase), null);
                 pathlist.AddOrUpdate("", (k)=>root, (k,v)=>root);
                 EnsureItem("", 1);
                 _IsReady = true;
@@ -167,12 +169,12 @@ namespace TSviewCloudPlugin
             var dirname = (string.IsNullOrEmpty(ID)) ? localPathBase : ID;
             if (!dirname.StartsWith(localPathBase))
                 throw new ArgumentException("ID is not in localPathBase", "ID");
-            if (Directory.Exists(dirname))
+            if (Directory.Exists(@"\\?\" + dirname))
             {
                 try
                 {
                     var ret = new List<LocalSystemItem>();
-                    var info = new DirectoryInfo(dirname);
+                    var info = new DirectoryInfo(@"\\?\" + dirname);
                     Parallel.ForEach(
                         info.EnumerateFileSystemInfos()
                             .Where(i => !(i.Attributes.HasFlag(FileAttributes.Directory) && (i.Name == "." || i.Name == ".."))),
@@ -245,9 +247,9 @@ namespace TSviewCloudPlugin
                 {
                     var uploadfullpath = Path.Combine(remoteTarget.ID, foldername);
 
-                    Directory.CreateDirectory(uploadfullpath);
+                    Directory.CreateDirectory(@"\\?\" + uploadfullpath);
 
-                    var info = new DirectoryInfo(remoteTarget.ID);
+                    var info = new DirectoryInfo(@"\\?\" + remoteTarget.ID);
                     var item = info.EnumerateFileSystemInfos().Where(x => x.FullName == uploadfullpath).FirstOrDefault();
 
                     var newitem = new LocalSystemItem(this, item, remoteTarget);
@@ -315,7 +317,7 @@ namespace TSviewCloudPlugin
                             job.JobInfo.pos = eo.Position;
                         };
 
-                        using (var destfilestream = new FileStream(uploadfullpath, FileMode.Create, FileAccess.Write, FileShare.Read, 256 * 1024))
+                        using (var destfilestream = new FileStream(@"\\?\" + uploadfullpath, FileMode.Create, FileAccess.Write, FileShare.Read, 256 * 1024))
                         {
                             f.CopyToAsync(destfilestream, TSviewCloudConfig.Config.UploadBufferSize, ct).Wait(ct);
                         }
@@ -324,7 +326,7 @@ namespace TSviewCloudPlugin
                     job.ProgressStr = "done.";
                     job.Progress = 1;
 
-                    var info = new DirectoryInfo(remoteTarget.ID);
+                    var info = new DirectoryInfo(@"\\?\" + remoteTarget.ID);
                     var item = info.EnumerateFileSystemInfos().Where(x => x.FullName == uploadfullpath).FirstOrDefault();
 
                     var newitem = new LocalSystemItem(this, item, remoteTarget);
@@ -356,7 +358,7 @@ namespace TSviewCloudPlugin
             var filesize = new FileInfo(filename).Length;
             var short_filename = Path.GetFileName(filename);
 
-            var filestream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read, 256 * 1024);
+            var filestream = new FileStream(@"\\?\" + filename, FileMode.Open, FileAccess.Read, FileShare.Read, 256 * 1024);
             var job = UploadStream(filestream, remoteTarget, short_filename, filesize, WeekDepend, parentJob);
 
             var clean = JobControler.CreateNewJob<IRemoteItem>(JobClass.Clean, depends: job);
@@ -420,9 +422,9 @@ namespace TSviewCloudPlugin
                 var parent = deleteTarget.Parents.First();
                 try
                 {
-                    if (Directory.Exists(deleteTarget.ID))
+                    if (Directory.Exists(@"\\?\" + deleteTarget.ID))
                     {
-                        Directory.Delete(deleteTarget.ID, true);
+                        Directory.Delete(@"\\?\" + deleteTarget.ID, true);
                     }
                     else
                     {
@@ -472,14 +474,14 @@ namespace TSviewCloudPlugin
                 {
                     if(moveToItem.ItemType == RemoteItemType.File)
                     {
-                        File.Move(moveItem.ID, Path.Combine(moveToItem.ID, moveItem.Name));
+                        File.Move(@"\\?\" + moveItem.ID, @"\\?\" + Path.Combine(moveToItem.ID, moveItem.Name));
                     }
                     else
                     {
-                        Directory.Move(moveItem.ID, Path.Combine(moveToItem.ID, moveItem.Name));
+                        Directory.Move(@"\\?\" + moveItem.ID, @"\\?\" + Path.Combine(moveToItem.ID, moveItem.Name));
                     }
 
-                    var info = new DirectoryInfo(moveToItem.ID);
+                    var info = new DirectoryInfo(@"\\?\" + moveToItem.ID);
                     var item = info.EnumerateFileSystemInfos().Where(x => x.FullName == moveItem.Name).FirstOrDefault();
 
                     var newitem = new LocalSystemItem(this, item, moveToItem);
