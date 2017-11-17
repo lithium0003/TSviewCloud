@@ -25,6 +25,21 @@ namespace LibCryptCarotDAV
         long pos;
         bool lengthSeek = false;
 
+        bool disposed;
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+            if (!disposed)
+            {
+                if (isDisposing)
+                {
+                    innerStream?.Dispose();
+                }
+                disposed = true;
+            }
+        }
+
         public string Hash
         {
             get

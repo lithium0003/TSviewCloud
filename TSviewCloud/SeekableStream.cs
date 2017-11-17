@@ -12,8 +12,8 @@ namespace ProjectUtil
 {
     class SeekableStreamConfig
     {
-        public const int slotsize = 2 * 1024 * 1024;
-        public const int slotbacklog = 64;
+        public const int slotsize = 4 * 1024 * 1024;
+        public const int slotbacklog = 32;
         public const int lockslotfirstnum = 4;
         public const int lockslotlastnum = 4;
         public const int preforwardnum = 10;
@@ -74,7 +74,7 @@ namespace ProjectUtil
         public void Dispose()
         {
             Dispose(true);
-            GC.SuppressFinalize(this);
+            //GC.SuppressFinalize(this);
         }
 
         protected void Dispose(bool isDisposing)
@@ -85,16 +85,16 @@ namespace ProjectUtil
                 {
                     //Config.Log.LogOut(string.Format("AmazonDriveStream : remove {0:#,0} - {1:#,0}", _offset, _offset + _length - 1));
                     Stream?.Dispose();
-                    Stream = null;
                 }
+                Stream = null;
                 disposed = true;
             }
         }
 
-        ~MemoryStreamSlot()
-        {
-            Dispose(false);
-        }
+        //~MemoryStreamSlot()
+        //{
+        //    Dispose(false);
+        //}
     }
 
     class SlotTask : IDisposable
@@ -105,6 +105,8 @@ namespace ProjectUtil
 
         CancellationTokenSource Internal_cts = new CancellationTokenSource();
         CancellationTokenSource cts;
+
+        Job<Stream> djob;
 
         long lastslot;
 
@@ -142,34 +144,39 @@ namespace ProjectUtil
             if (length <= 0) return;
             done = false;
             readslot = slotno;
-            CancellationTokenSource cancel_cts = new CancellationTokenSource();
-            var cts_1 = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancel_cts.Token);
+            //CancellationTokenSource cancel_cts = new CancellationTokenSource();
+            //var cts_1 = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancel_cts.Token);
 
             //Config.Log.LogOut(string.Format("AmazonDriveStream : start to download slot {0} offset {1:#,0} - ", slotno, start));
-            var cjob = new JobForToken(cts_1.Token);
-            var djob = targetItem.DownloadItemRaw(start, hidden: true, prevJob: cjob as Job);
+            var cjob = new JobForToken(cts.Token);
+            djob?.Cancel();
+            djob = targetItem.DownloadItemRawJob(start, hidden: true, prevJob: cjob as Job);
 
             var job = JobControler.CreateNewJob<Stream>(JobClass.RemoteDownload, depends: djob);
             job.DisplayName = "Download slot :" + slotno + " item : " + targetItem.Name;
             job.ProgressStr = "wait for prepare...";
             job.ForceHidden = true;
             job.DoAlways = true;
-            JobControler.Run(job, (j) =>
+            var cts_1 = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, job.Ct);
+            JobControler.Run<Stream>(job, (j) =>
             {
-                if (djob.IsError)
-                {
-                    cancel_cts.Cancel();
-                    StartDownload(slotno, slot, SlotBuffer);
+                var result =j.ResultOfDepend[0];
+                if (!result.TryGetTarget(out var stream))
                     return;
-                }
-                if (djob.IsCanceled)
+                using (stream)
                 {
-                    done = true;
-                    return;
-                }
+                    if ((j as Job<Stream>).IsError)
+                    {
+                        (j as Job<Stream>).Cancel();
+                        StartDownload(slotno, slot, SlotBuffer);
+                        return;
+                    }
+                    if ((j as Job<Stream>).IsCanceled)
+                    {
+                        done = true;
+                        return;
+                    }
 
-                using (var stream = job.ResultOfDepend[0])
-                {
                     while (slotno <= lastslot)
                     {
                         //Config.Log.LogOut(string.Format("AmazonDriveStream : download slot {0}", slotno));
@@ -180,6 +187,7 @@ namespace ProjectUtil
                         if (slot.TryGetValue(slotno, out o))
                         {
                             cts.Cancel();
+                            (j as Job<Stream>).Cancel();
                         }
 
                         readslot = slotno;
@@ -229,13 +237,19 @@ namespace ProjectUtil
                             if (!leadThread)
                             {
                                 if (slot.GetOrAdd(slotno, newslot) != newslot)
+                                {
                                     cts.Cancel();
+                                    (j as Job<Stream>).Cancel();
+                                }
                             }
                         }
                         else
                         {
                             if (slot.GetOrAdd(slotno, newslot) != newslot)
+                            {
                                 cts.Cancel();
+                                (j as Job<Stream>).Cancel();
+                            }
                         }
                         cts_1.Token.ThrowIfCancellationRequested();
 
@@ -254,17 +268,18 @@ namespace ProjectUtil
             });
             var cleanjob = JobControler.CreateNewJob<Stream>(JobClass.Clean, depends: job);
             cleanjob.DoAlways = true;
-            JobControler.Run(cleanjob, (j) =>
+            JobControler.Run<Stream>(cleanjob, (j) =>
             {
-                if(!djob.IsError)
+                if(!(djob?.IsError??true))
                     done = true;
+                djob = null;
             });
         }
 
         public void Dispose()
         {
             Dispose(true);
-            GC.SuppressFinalize(this);
+            //GC.SuppressFinalize(this);
         }
 
         protected void Dispose(bool isDisposing)
@@ -274,15 +289,17 @@ namespace ProjectUtil
                 if (isDisposing)
                 {
                     Internal_cts.Cancel(true);
+                    djob?.Cancel();
                 }
+                djob = null;
                 disposed = true;
             }
         }
 
-        ~SlotTask()
-        {
-            Dispose(false);
-        }
+        //~SlotTask()
+        //{
+        //    Dispose(false);
+        //}
     }
 
     class SlotMaster : IDisposable
@@ -522,7 +539,7 @@ namespace ProjectUtil
         public void Dispose()
         {
             Dispose(true);
-            GC.SuppressFinalize(this);
+            //GC.SuppressFinalize(this);
         }
 
         protected void Dispose(bool isDisposing)
@@ -562,10 +579,10 @@ namespace ProjectUtil
             }
         }
 
-        ~SlotMaster()
-        {
-            Dispose(false);
-        }
+        //~SlotMaster()
+        //{
+        //    Dispose(false);
+        //}
     }
 
     public class SeekableStream : Stream

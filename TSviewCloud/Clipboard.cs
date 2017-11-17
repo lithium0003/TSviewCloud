@@ -52,12 +52,7 @@ namespace TSviewCloud
 
         public IStreamWrapper(IStream stream)
         {
-            if (stream == null)
-            {
-                throw new ArgumentNullException();
-            }
-
-            m_stream = stream;
+            m_stream = stream ?? throw new ArgumentNullException();
         }
 
         public override bool CanRead
@@ -385,7 +380,10 @@ namespace TSviewCloud
 
         private byte[] fileGroupDescriptorBuffer;
         private IRemoteItem[] selectedItems;
-        private IRemoteItem[] baseItems;
+        //private IRemoteItem[] baseItems;
+        private string[] baseItemPaths;
+
+        private Stream dstream;
 
         private FORMATETC[] formatetc = new FORMATETC[] {
             new FORMATETC { cfFormat = CF_CLOUD_DRIVE_ITEMS,  dwAspect = DVASPECT.DVASPECT_CONTENT, lindex = -2, ptd = IntPtr.Zero, tymed = TYMED.TYMED_ISTREAM },
@@ -442,9 +440,10 @@ namespace TSviewCloud
             total.Add(new KeyValuePair<string, IRemoteItem>(basepath + filename, items));
             if (items.ItemType == RemoteItemType.Folder)
             {
-                if(items.Children.Count() > 0)
+                var children = items.Children;
+                if (children.Count() > 0)
                 {
-                    Parallel.ForEach(items.Children, () => new Dictionary<string, IRemoteItem>(), (x, state, local) =>
+                    Parallel.ForEach(children, () => new Dictionary<string, IRemoteItem>(), (x, state, local) =>
                     {
                         return local.Concat(ExpandPath(basepath + filename + "\\", x)).ToDictionary(y => y.Key, y => y.Value);
                     },
@@ -478,7 +477,7 @@ namespace TSviewCloud
                 });
             SortedDictionary<string, IRemoteItem> exItems = new SortedDictionary<string, IRemoteItem>(total.ToDictionary(y => y.Key, y => y.Value));
             selectedItems = exItems.Values.ToArray();
-            baseItems = items.ToArray();
+            baseItemPaths = items.Select(x => x.FullPath).ToArray();
 
             var flist = new List<FORMATETC>();
             using (var stream = new MemoryStream())
@@ -511,7 +510,7 @@ namespace TSviewCloud
             {
                 var mem = new MemoryStream();
                 var bf = new BinaryFormatter();
-                bf.Serialize(mem, baseItems.Select(x => x.FullPath).ToArray()); // copy string[] contains "server://path/to/item"
+                bf.Serialize(mem, baseItemPaths); // copy string[] contains "server://path/to/item"
                 mem.Position = 0;
                 medium.tymed = TYMED.TYMED_ISTREAM;
                 medium.unionmember = Marshal.GetComInterfaceForObject(new StreamWrapper(mem), typeof(IStream));
@@ -530,7 +529,8 @@ namespace TSviewCloud
                 if (format.lindex >= 0 && format.lindex < selectedItems.Length)
                 {
                     medium.tymed = TYMED.TYMED_ISTREAM;
-                    medium.unionmember = Marshal.GetComInterfaceForObject(new StreamWrapper(selectedItems[format.lindex].DownloadItem()), typeof(IStream));
+                    dstream?.Dispose();
+                    medium.unionmember = Marshal.GetComInterfaceForObject(new StreamWrapper(dstream = selectedItems[format.lindex].DownloadItemRaw()), typeof(IStream));
                     medium.pUnkForRelease = null;
                 }
                 else
@@ -606,6 +606,8 @@ namespace TSviewCloud
         override public void EndOperation(uint hResult, IBindCtx pbcReserved, uint dwEffects)
         {
             base.EndOperation(hResult, pbcReserved, dwEffects);
+            dstream?.Dispose();
+            dstream = null;
         }
     }
 }

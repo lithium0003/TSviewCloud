@@ -200,6 +200,7 @@ namespace LibCryptCarotDAV
             ICryptoTransform encryptor;
             int patlen;
             long cryptlen;
+            bool disposed;
 
             public CryptCarotDAV_CryptStream(CryptCarotDAV crypter, Stream baseStream) : base()
             {
@@ -223,6 +224,24 @@ namespace LibCryptCarotDAV
                 else
                     patlen = BlockSizeByte;
                 cryptlen = innerStream.Length + BlockSizeByte - patlen;
+            }
+
+            protected override void Dispose(bool isDisposing)
+            {
+                base.Dispose(isDisposing);
+                if (!disposed)
+                {
+                    if (isDisposing)
+                    {
+                        innerStream?.Dispose();
+                        cryptStream?.Dispose();
+                    }
+
+                    innerStream = null;
+                    cryptStream = null;
+
+                    disposed = true;
+                }
             }
 
             public override long Length { get { return innerStream.Length + BlockSizeByte + CryptHeaderByte + CryptFooterByte; } }
@@ -330,6 +349,27 @@ namespace LibCryptCarotDAV
             bool EOF = false;
             bool LengthSeek = false;
 
+            bool disposed;
+
+            protected override void Dispose(bool isDisposing)
+            {
+                if (!disposed)
+                {
+                    if (isDisposing)
+                    {
+                        hash?.Dispose();
+                        decryptStream?.Dispose();
+                        innerStream?.Dispose();
+                    }
+                    hash = null;
+                    decryptStream = null;
+                    innerStream = null;
+
+                    disposed = true;
+                }
+                base.Dispose(isDisposing);
+            }
+
             public CryptCarotDAV_DecryptStream(CryptCarotDAV crypter, Stream baseStream, long orignalOffset = 0, long cryptedOffset = 0, long cryptedLength = -1) : base()
             {
                 innerStream = baseStream;
@@ -383,11 +423,17 @@ namespace LibCryptCarotDAV
                     long clen = OrignalLength - (CryptPossiton - CryptHeaderByte);
                     if (len > clen) len = clen;
 
-                    byte[] buf = new byte[len];
-                    decryptStream.Read(buf, 0, buf.Length);
-                    offset -= len;
-                    CryptPossiton += len;
+                    const int readsize = 4 * 1024 * 1024;
+                    while (len > 0)
+                    {
+                        var readlen = (len > readsize) ? readsize : len;
 
+                        byte[] buf = new byte[readlen];
+                        readlen = decryptStream.Read(buf, 0, buf.Length);
+                        offset -= readlen;
+                        CryptPossiton += readlen;
+                        len -= readlen;
+                    }
                     if (offset > 0) EOF = true;
                 }
             }
@@ -441,15 +487,22 @@ namespace LibCryptCarotDAV
                 {
                     count = (int)(OrignalLength - CryptPossiton + CryptHeaderByte);
                 }
-                int len = decryptStream.Read(buffer, offset, count);
-                CryptPossiton += len;
-                _Possition += len;
-                if (CryptPossiton - CryptHeaderByte >= OrignalLength)
+                try
                 {
-                    EOF = true;
+                    int len = decryptStream.Read(buffer, offset, count);
+                    CryptPossiton += len;
+                    _Possition += len;
+                    if (CryptPossiton - CryptHeaderByte >= OrignalLength)
+                    {
+                        EOF = true;
+                    }
+                    CalcHash(buffer, offset, len);
+                    return len;
                 }
-                CalcHash(buffer, offset, len);
-                return len;
+                catch
+                {
+                    return 0;
+                }
             }
 
             public override long Seek(long offset, SeekOrigin origin)

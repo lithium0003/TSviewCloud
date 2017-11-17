@@ -346,6 +346,23 @@ namespace TSviewCloud
                 catch { }
             }
 
+            try
+            {
+                TSviewCloudConfig.Config.ParallelUpload = int.Parse(textBox_UploadParallel.Text);
+            }
+            catch
+            {
+                TSviewCloudConfig.Config.ParallelUpload = 1;
+            }
+            try
+            {
+                TSviewCloudConfig.Config.ParallelDownload = int.Parse(textBox_DownloadParallel.Text);
+            }
+            catch
+            {
+                TSviewCloudConfig.Config.ParallelDownload = 1;
+            }
+
             if (File.Exists(textBox_fontpath.Text))
             {
                 TSviewCloudConfig.ConfigFFplayer.FontFilePath = textBox_fontpath.Text;

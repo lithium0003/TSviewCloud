@@ -192,6 +192,7 @@
       <DependentUpon>FormTreeSelect.cs</DependentUpon>
     </Compile>
     <Compile Include="ItemControl.cs" />
+    <Compile Include="Job.cs" />
     <Compile Include="ListViewNF.cs">
       <SubType>Component</SubType>
     </Compile>

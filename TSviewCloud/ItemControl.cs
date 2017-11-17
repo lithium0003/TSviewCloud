@@ -12,13 +12,28 @@ using TSviewCloudConfig;
 
 namespace TSviewCloudPlugin
 {
-    class ItemControl
+    public class ItemControl
     {
         internal static SynchronizationContext synchronizationContext;
 
         static ConcurrentDictionary<string, int> _ReloadRequest = new ConcurrentDictionary<string, int>();
         public static ConcurrentDictionary<string, int> ReloadRequest { get => _ReloadRequest; set => _ReloadRequest = value; }
 
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        static public string GetLongFilename(string filename)
+        {
+            if (filename.StartsWith(@"\\")) return filename;
+            return @"\\?\" + filename;
+        } 
+            
+
+        static public string GetOrgFilename(string Longfilename)
+        {
+            if (Longfilename.StartsWith(@"\\?\")) return Longfilename.Substring(4);
+            return Longfilename;
+        }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -47,7 +62,7 @@ namespace TSviewCloudPlugin
                 else
                 {
                     var dname = Path.Combine(localfoldername, item.Name);
-                    Directory.CreateDirectory(dname);
+                    Directory.CreateDirectory(GetLongFilename(dname));
                     ret.AddRange(__DoDownloadFolder(dname, item.Children, prevJob));
                 }
             }
@@ -60,7 +75,7 @@ namespace TSviewCloudPlugin
             job.DisplayName = "Download items";
             JobControler.Run(job, (j) =>
             {
-                Task.WaitAll(__DoDownloadFolder(localfoldername, remoteItems, job).Select(x => x.WaitTask(ct: job.Ct)).ToArray(), job.Ct);
+                Task.WaitAll(__DoDownloadFolder(localfoldername, remoteItems, j).Select(x => x.WaitTask(ct: j.Ct)).ToArray(), j.Ct);
             });
             return job;
         }
@@ -69,10 +84,10 @@ namespace TSviewCloudPlugin
         {
             Config.Log.LogOut("Download : " + remoteItem.Name);
 
-            var download = remoteItem.DownloadItemJob(prevJob: prevJob);
+            var download = remoteItem.DownloadItemRawJob(prevJob: prevJob);
             download.WeekDepend = weekdepend;
 
-            var job = JobControler.CreateNewJob(
+            var job = JobControler.CreateNewJob<Stream>(
                  type: JobClass.Download,
                  info: new JobControler.SubInfo
                  {
@@ -83,57 +98,61 @@ namespace TSviewCloudPlugin
             job.DisplayName = remoteItem.Name;
             job.ProgressStr = "Wait for download";
 
-            JobControler.Run(job, (j) =>
+            JobControler.Run<Stream>(job, (j) =>
             {
-                using (var remotestream = job.resultOfDepend[0] as Stream)
+                var result = j.ResultOfDepend[0];
+                if(result.TryGetTarget(out var remotestream))
                 {
-                    FileStream outfile;
-                    try
+                    using (remotestream)
                     {
-                        outfile = new FileStream(localfilename, FileMode.CreateNew);
-                    }
-                    catch (IOException)
-                    {
-                        synchronizationContext.Send((o) =>
-                        {
-                            var ans = MessageBox.Show("Override file? " + localfilename, "File already exists", MessageBoxButtons.YesNoCancel);
-                            if (ans == DialogResult.Cancel)
-                                throw new OperationCanceledException("User cancel");
-                            if (ans == DialogResult.No)
-                                job.Cancel();
-                        }, null);
-
-                        if (job.IsCanceled) return;
-                        outfile = new FileStream(localfilename, FileMode.Create);
-                    }
-                    using (outfile)
-                    {
+                        FileStream outfile;
                         try
                         {
-                            using (var th = new ThrottleDownloadStream(remotestream, job.Ct))
-                            using (var f = new PositionStream(th, remoteItem.Size ?? 0))
+                            outfile = new FileStream(GetLongFilename(localfilename), FileMode.CreateNew);
+                        }
+                        catch (IOException)
+                        {
+                            synchronizationContext.Send((o) =>
                             {
-                                f.PosChangeEvent += (src, evnt) =>
+                                var ans = MessageBox.Show("Override file? " + localfilename, "File already exists", MessageBoxButtons.YesNoCancel);
+                                if (ans == DialogResult.Cancel)
+                                    throw new OperationCanceledException("User cancel");
+                                if (ans == DialogResult.No)
+                                    j.Cancel();
+                            }, null);
+
+                            if (j.IsCanceled) return;
+                            outfile = new FileStream(GetLongFilename(localfilename), FileMode.Create);
+                        }
+                        using (outfile)
+                        {
+                            try
+                            {
+                                using (var th = new ThrottleDownloadStream(remotestream, job.Ct))
+                                using (var f = new PositionStream(th, remoteItem.Size ?? 0))
                                 {
-                                    job.Progress = (double)evnt.Position / evnt.Length;
-                                    job.ProgressStr = evnt.Log;
-                                    job.JobInfo.pos = evnt.Position;
-                                };
-                                job.Ct.ThrowIfCancellationRequested();
-                                f.CopyToAsync(outfile, Config.DownloadBufferSize, job.Ct).Wait(job.Ct);
+                                    f.PosChangeEvent += (src, evnt) =>
+                                    {
+                                        j.Progress = (double)evnt.Position / evnt.Length;
+                                        j.ProgressStr = evnt.Log;
+                                        j.JobInfo.pos = evnt.Position;
+                                    };
+                                    j.Ct.ThrowIfCancellationRequested();
+                                    f.CopyToAsync(outfile, Config.DownloadBufferSize, j.Ct).Wait(j.Ct);
+                                }
+                                Config.Log.LogOut("Download : Done");
                             }
-                            Config.Log.LogOut("Download : Done");
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            throw;
-                        }
-                        catch (Exception ex)
-                        {
-                            Config.Log.LogOut("Download : Error " + ex.ToString());
-                            JobControler.ErrorOut("Download : Error {0}\n{1}", remoteItem.Name, ex.ToString());
-                            job.ProgressStr = "Error detected.";
-                            job.Progress = double.NaN;
+                            catch (OperationCanceledException)
+                            {
+                                throw;
+                            }
+                            catch (Exception ex)
+                            {
+                                Config.Log.LogOut("Download : Error " + ex.ToString());
+                                JobControler.ErrorOut("Download : Error {0}\n{1}", remoteItem.Name, ex.ToString());
+                                j.ProgressStr = "Error detected.";
+                                j.Progress = double.NaN;
+                            }
                         }
                     }
                 }
@@ -171,7 +190,9 @@ namespace TSviewCloudPlugin
 
             foreach(var upfile in uploadFilenames)
             {
-                joblist.Add(targetItem.UploadFile(upfile, WeekDepend: WeekDepend, parentJob: parentJob));
+                var job = targetItem.UploadFile(upfile, WeekDepend: WeekDepend, parentJob: parentJob);
+                job.DisplayName = string.Format("Upload File {0} to {1}", upfile, targetItem.FullPath);
+                joblist.Add(job);
             }
             return joblist;
         }
@@ -186,21 +207,23 @@ namespace TSviewCloudPlugin
                 },
                 depends: targetItem.MakeFolder(Path.GetFileName(uploadFolderName), WeekDepend, prevJob));
             job.DisplayName = string.Format("Upload Folder {0} to {1}", uploadFolderName, targetItem.FullPath);
-            JobControler.Run(job, (j) =>
+            JobControler.Run<IRemoteItem>(job, (j) =>
             {
-                var folder = job.ResultOfDepend[0];
-                job.Result = folder;
+                var result = j.ResultOfDepend[0];
+                if (result.TryGetTarget(out var folder))
+                {
+                    j.Result = folder;
 
-                job.Progress = -1;
-                job.ProgressStr = "upload...";
+                    j.Progress = -1;
+                    j.ProgressStr = "upload...";
 
-                var joblist = new List<Job<IRemoteItem>>();
-                joblist.AddRange(Directory.EnumerateDirectories(uploadFolderName).Select(x => UploadFolder(folder, x, true, job)));
-                joblist.AddRange(UploadFiles(folder, Directory.EnumerateFiles(uploadFolderName), true, job));
-
+                    var joblist = new List<Job<IRemoteItem>>();
+                    joblist.AddRange(Directory.EnumerateDirectories(GetLongFilename(uploadFolderName)).Select(x => UploadFolder(folder, GetOrgFilename(x), true, j)));
+                    joblist.AddRange(UploadFiles(folder, Directory.EnumerateFiles(GetLongFilename(uploadFolderName)), true, j));
+                }
                 //Parallel.ForEach(joblist, (x)=>x.Wait(ct: job.Ct));
-                job.ProgressStr = "done";
-                job.Progress = 1;
+                j.ProgressStr = "done";
+                j.Progress = 1;
             });
 
             return job;

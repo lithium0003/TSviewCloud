@@ -26,6 +26,16 @@ namespace TSviewCloudPlugin
         private string decryptedName;
         private string decryptedPath;
 
+        public override long? Size
+        {
+            get
+            {
+                return size = orgItem?.Size - (CryptCarotDAV.BlockSizeByte + CryptCarotDAV.CryptFooterByte + CryptCarotDAV.CryptFooterByte);
+            }
+        }
+        public override DateTime? ModifiedDate { get { return modifiedDate = orgItem?.ModifiedDate; } }
+        public override DateTime? CreatedDate { get { return createdDate = orgItem?.CreatedDate; } }
+
         public CarotCryptSystemItem() : base()
         {
 
@@ -100,6 +110,7 @@ namespace TSviewCloudPlugin
             {
                 System.Diagnostics.Debug.WriteLine(ID);
             }
+            base.FixChain(server);
         }
 
     }
@@ -116,6 +127,7 @@ namespace TSviewCloudPlugin
 
         private ConcurrentDictionary<string, CarotCryptSystemItem> pathlist;
 
+        private ConcurrentDictionary<string, ManualResetEventSlim> loadinglist;
 
         const string hidden_pass = "CarotDAV Drive Password";
         public string DrivePassword
@@ -135,6 +147,7 @@ namespace TSviewCloudPlugin
         public CarotCryptSystem()
         {
             pathlist = new ConcurrentDictionary<string, CarotCryptSystemItem>();
+            loadinglist = new ConcurrentDictionary<string, ManualResetEventSlim>();
         }
 
         public override bool Add()
@@ -177,6 +190,7 @@ namespace TSviewCloudPlugin
             {
                 Password = DrivePassword
             };
+            loadinglist = new ConcurrentDictionary<string, ManualResetEventSlim>();
 
             var job = JobControler.CreateNewJob();
             job.DisplayName = "CryptCarotDAV";
@@ -184,11 +198,23 @@ namespace TSviewCloudPlugin
 
             JobControler.Run(job, (j) =>
             {
-                job.ProgressStr = "Loading...";
-                job.Progress = -1;
+                j.ProgressStr = "Loading...";
+                j.Progress = -1;
 
-                while (!RemoteServerFactory.ServerList[_dependService].IsReady)
-                    Task.Delay(50).Wait(job.Ct);
+                try
+                {
+                    int waitcount = 500;
+                    while (!(RemoteServerFactory.ServerList.Keys.Contains(_dependService) && RemoteServerFactory.ServerList[_dependService].IsReady))
+                    {
+                        Task.Delay(50).Wait(job.Ct);
+                        if (waitcount-- == 0) throw new FileNotFoundException("Depend Service is not ready.", _dependService);
+                    }
+                }
+                catch
+                {
+                    RemoteServerFactory.Delete(this);
+                    return;
+                }
 
                 if (pathlist == null)
                 {
@@ -202,8 +228,8 @@ namespace TSviewCloudPlugin
                     Parallel.ForEach(pathlist.Values.ToArray(), (x) => x.FixChain(this));
                 }
 
-                job.ProgressStr = "Done";
-                job.Progress = 1;
+                j.ProgressStr = "Done";
+                j.Progress = 1;
 
                 _IsReady = true;
             });
@@ -226,10 +252,18 @@ namespace TSviewCloudPlugin
         protected override void EnsureItem(string ID, int depth = 0)
         {
             if (ID == RootID) ID = "";
-            var item = pathlist[ID];
-            if (item.ItemType == RemoteItemType.Folder)
+            try
+            {
+                TSviewCloudConfig.Config.Log.LogOut("[EnsureItem(CarotCryptSystem)] " + ID);
+                var item = pathlist[ID];
+                if (item.ItemType == RemoteItemType.Folder)
+                    LoadItems(ID, depth);
+                item = pathlist[ID];
+            }
+            catch
+            {
                 LoadItems(ID, depth);
-            item = pathlist[ID];
+            }
         }
 
         private string pathToCryptedpath(string path)
@@ -259,41 +293,72 @@ namespace TSviewCloudPlugin
         {
             if (depth < 0) return;
             ID = ID ?? "";
-            TSviewCloudConfig.Config.Log.LogOut("[LoadItems(CarotCryptSystem)] " + ID);
 
-            var orgID = (string.IsNullOrEmpty(ID)) ? cryptRootPath : ID;
-            if (!orgID.StartsWith(cryptRootPath))
-                throw new ArgumentException("ID is not in root path", "ID");
-            var orgitem = RemoteServerFactory.PathToItem(orgID, ReloadType.Cache);
-            if(orgitem?.Children != null && orgitem.Children?.Count() != 0)
+            bool master = true;
+            loadinglist.AddOrUpdate(ID, new ManualResetEventSlim(false), (k, v) =>
             {
-                var ret = new List<CarotCryptSystemItem>();
-                Parallel.ForEach(
-                    orgitem.Children,
-                    () => new List<CarotCryptSystemItem>(),
-                    (x, state, local) =>
-                    {
-                        if (!x.Name.StartsWith(cryptNameHeader)) return local;
+                if (v == null) return new ManualResetEventSlim(false);
+                master = false;
+                return v;
+            });
 
-                        var item = new CarotCryptSystemItem(this, x, pathlist[ID]);
-                        pathlist.AddOrUpdate(item.ID, (k) => item, (k, v) => item);
-                        local.Add(item);
-                        return local;
-                    },
-                     (result) =>
-                     {
-                         lock (ret)
-                             ret.AddRange(result);
-                     }
-                );
-                pathlist[ID].SetChildren(ret);
-                if (depth > 0)
-                    Parallel.ForEach(pathlist[ID].Children, (x) => { LoadItems(x.ID, depth - 1); });
-
+            if (!master)
+            {
+                while (loadinglist.TryGetValue(ID, out var tmp) && tmp != null)
+                {
+                    tmp.Wait();
+                }
+                return;
             }
-            else
+
+            try
             {
-                pathlist[ID].SetChildren(null);
+                TSviewCloudConfig.Config.Log.LogOut("[LoadItems(CarotCryptSystem)] " + ID);
+
+                var orgID = (string.IsNullOrEmpty(ID)) ? cryptRootPath : ID;
+                if (!orgID.StartsWith(cryptRootPath))
+                    throw new ArgumentException("ID is not in root path", "ID");
+                var orgitem = RemoteServerFactory.PathToItem(orgID, ReloadType.Reload);
+                if (orgitem?.Children != null && orgitem.Children?.Count() != 0)
+                {
+                    var ret = new List<CarotCryptSystemItem>();
+                    Parallel.ForEach(
+                        orgitem.Children,
+                        () => new List<CarotCryptSystemItem>(),
+                        (x, state, local) =>
+                        {
+                            if (!x.Name.StartsWith(cryptNameHeader)) return local;
+
+                            var item = new CarotCryptSystemItem(this, x, pathlist[ID]);
+                            pathlist.AddOrUpdate(item.ID, (k) => item, (k, v) => item = v);
+                            local.Add(item);
+                            return local;
+                        },
+                         (result) =>
+                         {
+                             lock (ret)
+                                 ret.AddRange(result);
+                         }
+                    );
+                    pathlist[ID].SetChildren(ret);
+                    if (depth > 0)
+                        Parallel.ForEach(pathlist[ID].Children, (x) => { LoadItems(x.ID, depth - 1); });
+
+                }
+                else
+                {
+                    pathlist[ID].SetChildren(null);
+                }
+            }
+            finally
+            {
+                Task.Delay(10).ContinueWith((t) =>
+                {
+                    ManualResetEventSlim tmp2;
+                    while (!loadinglist.TryRemove(ID, out tmp2))
+                        Thread.Sleep(10);
+                    tmp2.Set();
+                });
             }
         }
 
@@ -327,24 +392,26 @@ namespace TSviewCloudPlugin
             job.DisplayName = "Make folder : " + foldername;
             job.ProgressStr = "wait for operation.";
             var ct = job.Ct;
-            JobControler.Run(job, (j) =>
+            JobControler.Run<IRemoteItem>(job, (j) =>
             {
-                job.ProgressStr = "Make folder...";
-                job.Progress = -1;
+                var result = j.ResultOfDepend[0];
+                if (result.TryGetTarget(out var item))
+                {
+                    j.ProgressStr = "Make folder...";
+                    j.Progress = -1;
 
-                var item = job.ResultOfDepend[0];
 
-                var newitem = new CarotCryptSystemItem(this, item, remoteTarget);
-                pathlist.AddOrUpdate(newitem.ID, (k) => newitem, (k, v) => newitem);
-               
-                remoteTarget.SetChildren(remoteTarget.Children.Concat(new[] { newitem }));
+                    var newitem = new CarotCryptSystemItem(this, item, remoteTarget);
+                    pathlist.AddOrUpdate(newitem.ID, (k) => newitem, (k, v) => newitem);
 
-                job.Result = newitem;
+                    remoteTarget.SetChildren(remoteTarget.Children.Concat(new[] { newitem }));
 
-                job.ProgressStr = "Done";
-                job.Progress = 1;
+                    j.Result = newitem;
 
-                SetUpdate(remoteTarget);
+                    SetUpdate(remoteTarget);
+                }
+                j.ProgressStr = "Done";
+                j.Progress = 1;
             });
             return job;
         }
@@ -381,17 +448,17 @@ namespace TSviewCloudPlugin
             job.DisplayName = "Trash Item : " + deleteTarget.ID;
             job.ProgressStr = "wait for operation.";
             var ct = job.Ct;
-            JobControler.Run(job, (j) =>
+            JobControler.Run<IRemoteItem>(job, (j) =>
             {
-                job.ProgressStr = "Delete...";
-                job.Progress = -1;
+                j.ProgressStr = "Delete...";
+                j.Progress = -1;
 
                 var parent = deleteTarget.Parents.First();
                 RemoveItem(deleteTarget.ID);
 
-                job.Result = parent;
-                job.ProgressStr = "Done";
-                job.Progress = 1;
+                j.Result = parent;
+                j.ProgressStr = "Done";
+                j.Progress = 1;
                 SetUpdate(parent);
             });
             return job;
@@ -403,18 +470,22 @@ namespace TSviewCloudPlugin
             if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
             TSviewCloudConfig.Config.Log.LogOut("[DownloadItemRaw(CarotCryptSystem)] " + remoteTarget.Path);
-            var djob = (remoteTarget as CarotCryptSystemItem).orgItem.DownloadItemRaw(offset, WeekDepend, hidden, prevJob);
+            var djob = (remoteTarget as CarotCryptSystemItem).orgItem.DownloadItemRawJob(offset, WeekDepend, hidden, prevJob);
 
             var job = JobControler.CreateNewJob<Stream>(JobClass.RemoteDownload, depends: djob);
             job.DisplayName = "Download item:" + remoteTarget.Name;
             job.ProgressStr = "wait for system...";
             job.ForceHidden = hidden;
-            JobControler.Run(job, (j) =>
+            JobControler.Run<Stream>(job, (j) =>
             {
-                (j as Job<Stream>).Progress = -1;
-                (j as Job<Stream>).Result = new CryptCarotDAV.CryptCarotDAV_DecryptStream(CryptCarot, (j as Job<Stream>).ResultOfDepend[0], offset, offset, (remoteTarget as CarotCryptSystemItem).orgItem.Size ?? 0);
-                (j as Job<Stream>).Progress = 1;
-                (j as Job<Stream>).ProgressStr = "ready";
+                var result = j.ResultOfDepend[0];
+                if (result.TryGetTarget(out var stream))
+                {
+                    j.Progress = -1;
+                    j.Result = new CryptCarotDAV.CryptCarotDAV_DecryptStream(CryptCarot, stream, offset, offset, (remoteTarget as CarotCryptSystemItem).orgItem.Size ?? 0);
+                    j.Progress = 1;
+                    j.ProgressStr = "ready";
+                }
             });
             return job;
         }
@@ -428,11 +499,11 @@ namespace TSviewCloudPlugin
             job.DisplayName = "Download item:" + remoteTarget.Name;
             job.ProgressStr = "wait for system...";
             job.WeekDepend = WeekDepend;
-            JobControler.Run(job, (j) =>
+            JobControler.Run<Stream>(job, (j) =>
             {
-                (j as Job<Stream>).Result = new ProjectUtil.SeekableStream(remoteTarget);
-                (j as Job<Stream>).Progress = 1;
-                (j as Job<Stream>).ProgressStr = "ready";
+                j.Result = new ProjectUtil.SeekableStream(remoteTarget);
+                j.Progress = 1;
+                j.ProgressStr = "ready";
             });
             return job;
         }
@@ -441,23 +512,16 @@ namespace TSviewCloudPlugin
         {
             if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
-            TSviewCloudConfig.Config.Log.LogOut("[UploadFile(CarotCryptSystem)] " + filename);
-            var filesize = new FileInfo(filename).Length;
-            var short_filename = Path.GetFileName(filename);
+            filename = ItemControl.GetOrgFilename(filename);
 
-            var filestream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read, 256 * 1024);
+            TSviewCloudConfig.Config.Log.LogOut("[UploadFile(CarotCryptSystem)] " + filename);
+            var filesize = new FileInfo(ItemControl.GetLongFilename(filename)).Length;
+            var short_filename = Path.GetFileName(ItemControl.GetLongFilename(filename));
+
+            var filestream = new FileStream(ItemControl.GetLongFilename(filename), FileMode.Open, FileAccess.Read, FileShare.Read, 256 * 1024);
             var job = UploadStream(filestream, remoteTarget, short_filename, filesize, WeekDepend, parentJob);
 
-            var clean = JobControler.CreateNewJob<IRemoteItem>(JobClass.Clean, depends: job);
-            clean.DoAlways = true;
-            JobControler.Run(clean, (j) =>
-            {
-                if(!job.IsCanceled)
-                    clean.Result = clean.ResultOfDepend[0];
-
-                filestream.Dispose();
-            });
-            return clean;
+            return job;
         }
 
         public override Job<IRemoteItem> UploadStream(Stream source, IRemoteItem remoteTarget, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob)
@@ -472,24 +536,23 @@ namespace TSviewCloudPlugin
             TSviewCloudConfig.Config.Log.LogOut("[Upload] File: {0} -> {1}", uploadname, cname);
 
             var job = (remoteTarget as CarotCryptSystemItem).orgItem.UploadStream(cstream, cname, streamsize, WeekDepend, parentJob);
+            job.DisplayName = uploadname;
 
             var clean = JobControler.CreateNewJob<IRemoteItem>(JobClass.Clean, depends: job);
             clean.DoAlways = true;
-            JobControler.Run(clean, (j) =>
+            JobControler.Run<IRemoteItem>(clean, (j) =>
             {
-                cstream.Dispose();
-
                 if (job.IsCanceled) return;
 
-                var item = clean.ResultOfDepend[0];
-                if (item != null)
+                var result = clean.ResultOfDepend[0];
+                if (result.TryGetTarget(out var item) && item != null)
                 {
                     var newitem = new CarotCryptSystemItem(this, item, remoteTarget);
                     pathlist.AddOrUpdate(newitem.ID, (k) => newitem, (k, v) => newitem);
 
                     remoteTarget.SetChildren(remoteTarget.Children.Concat(new[] { newitem }));
 
-                    clean.Result = newitem;
+                    j.Result = newitem;
 
                     SetUpdate(remoteTarget);
                 }
@@ -507,12 +570,16 @@ namespace TSviewCloudPlugin
             var waitjob = JobControler.CreateNewJob<IRemoteItem>(
                 type: JobClass.RemoteOperation,
                 depends: job);
-            JobControler.Run(waitjob, (j) =>
+            JobControler.Run<IRemoteItem>(waitjob, (j) =>
             {
-                waitjob.Result = waitjob.ResultOfDepend[0];
+                var result = j.ResultOfDepend[0];
+                if (result.TryGetTarget(out var prevresult))
+                {
+                    j.Result = prevresult;
 
-                SetUpdate(moveItem);
-                SetUpdate(moveToItem);
+                    SetUpdate(moveItem);
+                    SetUpdate(moveToItem);
+                }
             });
             return waitjob;
         }

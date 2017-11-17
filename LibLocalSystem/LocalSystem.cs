@@ -30,6 +30,7 @@ namespace TSviewCloudPlugin
             if (!(parent?.Length > 0)) isRoot = true;
 
             fullpath = file?.FullName;
+            fullpath = ItemControl.GetOrgFilename(fullpath);
 
             if (!string.IsNullOrEmpty(fullpath))
             {
@@ -59,18 +60,17 @@ namespace TSviewCloudPlugin
         public override void FixChain(IRemoteServer server)
         {
             _server = server;
+            base.FixChain(server);
         }
 
         private string FullpathToPath(string fullpath)
         {
-            if(fullpath.StartsWith(@"\\?\"))
-                fullpath = fullpath.Substring(4);
             return (string.IsNullOrEmpty(fullpath) || (_server as LocalSystem).BasePath == fullpath) ? "" : new Uri((_server as LocalSystem).BasePath.TrimEnd('\\') + "\\").MakeRelativeUri(new Uri(fullpath)).ToString();
         }
 
-        public override string ID => (fullpath.StartsWith(@"\\?\"))? fullpath.Substring(4) : fullpath;
+        public override string ID => fullpath;
         public override string Path => FullpathToPath(fullpath);
-        public override string Name => System.IO.Path.GetFileName(fullpath);
+        public override string Name => System.IO.Path.GetFileName(ItemControl.GetLongFilename(fullpath));
     }
 
     [DataContract]
@@ -80,16 +80,21 @@ namespace TSviewCloudPlugin
         private string localPathBase;
         [DataMember(Name = "Cache")]
         private ConcurrentDictionary<string, LocalSystemItem> pathlist;
-        
+
+        private ConcurrentDictionary<string, ManualResetEventSlim> loadinglist;
+
         public LocalSystem()
         {
             pathlist = new ConcurrentDictionary<string, LocalSystemItem>();
+            loadinglist = new ConcurrentDictionary<string, ManualResetEventSlim>();
         }
 
         [OnDeserialized]
         public void OnDeserialized(StreamingContext c)
         {
             TSviewCloudConfig.Config.Log.LogOut("[Restore] LocalSystem {0} as {1}", localPathBase, Name);
+
+            loadinglist = new ConcurrentDictionary<string, ManualResetEventSlim>();
             if (pathlist == null)
             {
                 pathlist = new ConcurrentDictionary<string, LocalSystemItem>();
@@ -108,7 +113,7 @@ namespace TSviewCloudPlugin
 
         public override IRemoteItem PeakItem(string ID)
         {
-            if (ID == RootID) ID = RootID;
+            if (ID == RootID) ID = "";
             try
             {
                 return pathlist[ID];
@@ -120,11 +125,19 @@ namespace TSviewCloudPlugin
         }
         protected override void EnsureItem(string ID, int depth = 0)
         {
-            if (ID == RootID) ID = RootID;
-            var item = pathlist[ID];
-            if (item.ItemType == RemoteItemType.Folder)
+            if (ID == RootID) ID = "";
+            try
+            {
+                TSviewCloudConfig.Config.Log.LogOut("[EnsureItem(LocalSystem)] " + ID);
+                var item = pathlist[ID];
+                if (item.ItemType == RemoteItemType.Folder)
+                    LoadItems(ID, depth);
+                item = pathlist[ID];
+            }
+            catch
+            {
                 LoadItems(ID, depth);
-            item = pathlist[ID];
+            }
         }
 
         public override void Init()
@@ -149,7 +162,7 @@ namespace TSviewCloudPlugin
             if(picker.ShowDialog() == DialogResult.OK)
             {
                 localPathBase = picker.SelectedPath;
-                var root = new LocalSystemItem(this, new DirectoryInfo(@"\\?\"+localPathBase), null);
+                var root = new LocalSystemItem(this, new DirectoryInfo(ItemControl.GetLongFilename(localPathBase)), null);
                 pathlist.AddOrUpdate("", (k)=>root, (k,v)=>root);
                 EnsureItem("", 1);
                 _IsReady = true;
@@ -164,43 +177,73 @@ namespace TSviewCloudPlugin
         {
             if (depth < 0) return;
             ID = ID ?? "";
+            ID = ItemControl.GetOrgFilename(ID);
 
-            TSviewCloudConfig.Config.Log.LogOut("[LoadItems(LocalSystem)] " + ID);
-            var dirname = (string.IsNullOrEmpty(ID)) ? localPathBase : ID;
-            if (!dirname.StartsWith(localPathBase))
-                throw new ArgumentException("ID is not in localPathBase", "ID");
-            if (Directory.Exists(@"\\?\" + dirname))
+            bool master = true;
+            loadinglist.AddOrUpdate(ID, new ManualResetEventSlim(false), (k, v) =>
             {
-                try
+                if (v == null) return new ManualResetEventSlim(false);
+                master = false;
+                return v;
+            });
+
+            if (!master)
+            {
+                while(loadinglist.TryGetValue(ID, out var tmp) && tmp != null)
                 {
-                    var ret = new List<LocalSystemItem>();
-                    var info = new DirectoryInfo(@"\\?\" + dirname);
-                    Parallel.ForEach(
-                        info.EnumerateFileSystemInfos()
-                            .Where(i => !(i.Attributes.HasFlag(FileAttributes.Directory) && (i.Name == "." || i.Name == ".."))),
-                        () => new List<LocalSystemItem>(),
-                        (x, state, local) =>
-                        {
-                            var item = new LocalSystemItem(this, x, pathlist[ID]);
-                            pathlist.AddOrUpdate(item.ID, (k) => item, (k, v) => item);
-                            local.Add(item);
-                            return local;
-                        },
-                         (result) =>
-                         {
-                             lock (ret)
-                                 ret.AddRange(result);
-                         }
-                    );
-                    pathlist[ID].SetChildren(ret);
-                    if(depth > 0)
-                        Parallel.ForEach(pathlist[ID].Children, (x) => { LoadItems(x.ID, depth - 1); });
+                    tmp.Wait();
                 }
-                catch { }
+                return;
             }
-            else
+            try
             {
-                pathlist[ID].SetChildren(null);
+                TSviewCloudConfig.Config.Log.LogOut("[LoadItems(LocalSystem)] " + ID);
+                var dirname = (string.IsNullOrEmpty(ID)) ? localPathBase : ID;
+                if (!dirname.StartsWith(localPathBase))
+                    throw new ArgumentException("ID is not in localPathBase", "ID");
+                if (Directory.Exists(ItemControl.GetLongFilename(dirname)))
+                {
+                    try
+                    {
+                        var ret = new List<LocalSystemItem>();
+                        var info = new DirectoryInfo(ItemControl.GetLongFilename(dirname));
+                        Parallel.ForEach(
+                            info.EnumerateFileSystemInfos()
+                                .Where(i => !(i.Attributes.HasFlag(FileAttributes.Directory) && (i.Name == "." || i.Name == ".."))),
+                            () => new List<LocalSystemItem>(),
+                            (x, state, local) =>
+                            {
+                                var item = new LocalSystemItem(this, x, pathlist[ID]);
+                                pathlist.AddOrUpdate(item.ID, (k) => item, (k, v) => item);
+                                local.Add(item);
+                                return local;
+                            },
+                             (result) =>
+                             {
+                                 lock (ret)
+                                     ret.AddRange(result);
+                             }
+                        );
+                        pathlist[ID].SetChildren(ret);
+                        if (depth > 0)
+                            Parallel.ForEach(pathlist[ID].Children, (x) => { LoadItems(x.ID, depth - 1); });
+                    }
+                    catch { }
+                }
+                else
+                {
+                    pathlist[ID].SetChildren(null);
+                }
+            }
+            finally
+            {
+                Task.Delay(10).ContinueWith((t) =>
+                {
+                    ManualResetEventSlim tmp2;
+                    while (!loadinglist.TryRemove(ID, out tmp2))
+                        Thread.Sleep(10);
+                    tmp2.Set();
+                });
             }
         }
 
@@ -236,30 +279,30 @@ namespace TSviewCloudPlugin
             job.DisplayName = "Make folder : " + foldername;
             job.ProgressStr = "wait for operation.";
             var ct = job.Ct;
-            JobControler.Run(job, (j) =>
+            JobControler.Run<IRemoteItem>(job, (j) =>
             {
                 TSviewCloudConfig.Config.Log.LogOut("[MkFolder] " + foldername);
 
-                job.ProgressStr = "Make folder...";
-                job.Progress = -1;
+                j.ProgressStr = "Make folder...";
+                j.Progress = -1;
 
                 try
                 {
                     var uploadfullpath = Path.Combine(remoteTarget.ID, foldername);
 
-                    Directory.CreateDirectory(@"\\?\" + uploadfullpath);
+                    Directory.CreateDirectory(ItemControl.GetLongFilename(uploadfullpath));
 
-                    var info = new DirectoryInfo(@"\\?\" + remoteTarget.ID);
-                    var item = info.EnumerateFileSystemInfos().Where(x => x.FullName == uploadfullpath).FirstOrDefault();
+                    var info = new DirectoryInfo(ItemControl.GetLongFilename(remoteTarget.ID));
+                    var item = info.EnumerateFileSystemInfos().Where(x => x.FullName == ItemControl.GetLongFilename(uploadfullpath)).FirstOrDefault();
 
                     var newitem = new LocalSystemItem(this, item, remoteTarget);
                     pathlist.AddOrUpdate(newitem.ID, (k) => newitem, (k, v) => newitem);
 
                     remoteTarget.SetChildren(remoteTarget.Children.Concat(new[] { newitem }));
 
-                    job.Result = newitem;
-                    job.ProgressStr = "Done";
-                    job.Progress = 1;
+                    j.Result = newitem;
+                    j.ProgressStr = "Done";
+                    j.Progress = 1;
                 }
                 catch (OperationCanceledException)
                 {
@@ -293,18 +336,19 @@ namespace TSviewCloudPlugin
             job.DisplayName = uploadname;
             job.ProgressStr = "wait for upload.";
             var ct = job.Ct;
-            JobControler.Run(job, (j) =>
+            JobControler.Run<IRemoteItem>(job, (j) =>
             {
                 ct.ThrowIfCancellationRequested();
 
-                job.ProgressStr = "Upload...";
-                job.Progress = 0;
+                j.ProgressStr = "Upload...";
+                j.Progress = 0;
 
                 try
                 {
                     var uploadfullpath = Path.Combine(remoteTarget.ID, short_filename);
                     TSviewCloudConfig.Config.Log.LogOut("[Upload] File: " + uploadfullpath);
 
+                    using (source)
                     using (var th = new ThrottleUploadStream(source, job.Ct))
                     using (var f = new PositionStream(th))
                     {
@@ -312,29 +356,30 @@ namespace TSviewCloudPlugin
                         {
                             if (ct.IsCancellationRequested) return;
                             var eo = evnt;
-                            job.ProgressStr = eo.Log;
-                            job.Progress = (double)eo.Position / eo.Length;
-                            job.JobInfo.pos = eo.Position;
+                            j.ProgressStr = eo.Log;
+                            j.Progress = (double)eo.Position / eo.Length;
+                            j.JobInfo.pos = eo.Position;
                         };
 
-                        using (var destfilestream = new FileStream(@"\\?\" + uploadfullpath, FileMode.Create, FileAccess.Write, FileShare.Read, 256 * 1024))
+                        using (var destfilestream = new FileStream(ItemControl.GetLongFilename(uploadfullpath), FileMode.Create, FileAccess.Write, FileShare.Read, 256 * 1024))
                         {
                             f.CopyToAsync(destfilestream, TSviewCloudConfig.Config.UploadBufferSize, ct).Wait(ct);
                         }
                     }
+                    source = null;
 
-                    job.ProgressStr = "done.";
-                    job.Progress = 1;
+                    j.ProgressStr = "done.";
+                    j.Progress = 1;
 
-                    var info = new DirectoryInfo(@"\\?\" + remoteTarget.ID);
-                    var item = info.EnumerateFileSystemInfos().Where(x => x.FullName == uploadfullpath).FirstOrDefault();
+                    var info = new DirectoryInfo(ItemControl.GetLongFilename(remoteTarget.ID));
+                    var item = info.EnumerateFileSystemInfos().Where(x => x.FullName == ItemControl.GetLongFilename(uploadfullpath)).FirstOrDefault();
 
                     var newitem = new LocalSystemItem(this, item, remoteTarget);
                     pathlist.AddOrUpdate(newitem.ID, (k) => newitem, (k, v) => newitem);
 
                     remoteTarget.SetChildren(remoteTarget.Children.Concat(new[] { newitem }));
 
-                    job.Result = newitem;
+                    j.Result = newitem;
                 }
                 catch (OperationCanceledException)
                 {
@@ -354,21 +399,16 @@ namespace TSviewCloudPlugin
         {
             if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
+            filename = ItemControl.GetOrgFilename(filename);
+
             TSviewCloudConfig.Config.Log.LogOut("[UploadFile(LocalSystem)] " + filename);
             var filesize = new FileInfo(filename).Length;
             var short_filename = Path.GetFileName(filename);
 
-            var filestream = new FileStream(@"\\?\" + filename, FileMode.Open, FileAccess.Read, FileShare.Read, 256 * 1024);
+            var filestream = new FileStream(ItemControl.GetLongFilename(filename), FileMode.Open, FileAccess.Read, FileShare.Read, 256 * 1024);
             var job = UploadStream(filestream, remoteTarget, short_filename, filesize, WeekDepend, parentJob);
 
-            var clean = JobControler.CreateNewJob<IRemoteItem>(JobClass.Clean, depends: job);
-            clean.DoAlways = true;
-            JobControler.Run(clean, (j) =>
-            {
-                clean.Result = clean.ResultOfDepend[0];
-                filestream.Dispose();
-            });
-            return clean;
+            return job;
         }
 
         public override Job<Stream> DownloadItemRaw(IRemoteItem remoteTarget,long offset = 0, bool WeekDepend = false, bool hidden = false, params Job[] prevJob)
@@ -380,24 +420,42 @@ namespace TSviewCloudPlugin
             job.ProgressStr = "wait for system...";
             job.WeekDepend = WeekDepend;
             job.ForceHidden = hidden;
-            JobControler.Run(job, (j) =>
+            JobControler.Run<Stream>(job, (j) =>
             {
-                (j as Job<Stream>).Progress = -1;
+                if (j != null)
+                {
+                    j.Progress = -1;
 
-                var stream = new LibLocalSystem.LocalFileStream(remoteTarget.ID, FileMode.Open, FileAccess.Read, FileShare.Read, 256*1024);
-                stream.Position += offset;
+                    var stream = new LibLocalSystem.LocalFileStream(ItemControl.GetLongFilename(remoteTarget.ID), FileMode.Open, FileAccess.Read, FileShare.Read, 4 * 1024 * 1024);
+                    stream.Position += offset;
+                    stream.Cts = job.Cts;
 
-                stream.MasterJob = job;
-                (j as Job<Stream>).Result = stream;
-                (j as Job<Stream>).Progress = 1;
-                (j as Job<Stream>).ProgressStr = "ready";
+                    j.Result = stream;
+                    j.Progress = 1;
+                    j.ProgressStr = "ready";
+                }
             });
             return job;
         }
 
         public override Job<Stream> DownloadItem(IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] prevJob)
         {
+            if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
+
             return DownloadItemRaw(remoteTarget, WeekDepend: WeekDepend, prevJob: prevJob);
+
+            //TSviewCloudConfig.Config.Log.LogOut("[DownloadItem(LocalSystem)] " + remoteTarget.Path);
+            //var job = JobControler.CreateNewJob<Stream>(JobClass.RemoteDownload, depends: prevJob);
+            //job.DisplayName = "Download item:" + remoteTarget.Name;
+            //job.ProgressStr = "wait for system...";
+            //job.WeekDepend = WeekDepend;
+            //JobControler.Run<Stream>(job, (j) =>
+            //{
+            //    j.Result = new ProjectUtil.SeekableStream(remoteTarget);
+            //    j.Progress = 1;
+            //    j.ProgressStr = "ready";
+            //});
+            //return job;
         }
 
         public override Job<IRemoteItem> DeleteItem(IRemoteItem deleteTarget, bool WeekDepend = false, params Job[] prevJob)
@@ -412,19 +470,19 @@ namespace TSviewCloudPlugin
             job.DisplayName = "Trash Item : " + deleteTarget.ID;
             job.ProgressStr = "wait for operation.";
             var ct = job.Ct;
-            JobControler.Run(job, (j) =>
+            JobControler.Run<IRemoteItem>(job, (j) =>
             {
                 TSviewCloudConfig.Config.Log.LogOut("[Delete] " + deleteTarget.FullPath);
 
-                job.ProgressStr = "Delete...";
-                job.Progress = -1;
+                j.ProgressStr = "Delete...";
+                j.Progress = -1;
 
                 var parent = deleteTarget.Parents.First();
                 try
                 {
-                    if (Directory.Exists(@"\\?\" + deleteTarget.ID))
+                    if (Directory.Exists(ItemControl.GetLongFilename(deleteTarget.ID)))
                     {
-                        Directory.Delete(@"\\?\" + deleteTarget.ID, true);
+                        Directory.Delete(ItemControl.GetLongFilename(deleteTarget.ID), true);
                     }
                     else
                     {
@@ -433,9 +491,9 @@ namespace TSviewCloudPlugin
 
                     RemoveItem(deleteTarget.ID);
 
-                    job.Result = parent;
-                    job.ProgressStr = "Done";
-                    job.Progress = 1;
+                    j.Result = parent;
+                    j.ProgressStr = "Done";
+                    j.Progress = 1;
                 }
                 catch (OperationCanceledException)
                 {
@@ -462,26 +520,26 @@ namespace TSviewCloudPlugin
             job.DisplayName = "Move item : " + moveItem.Name;
             job.ProgressStr = "wait for operation.";
             var ct = job.Ct;
-            JobControler.Run(job, (j) =>
+            JobControler.Run<IRemoteItem>(job, (j) =>
             {
                 TSviewCloudConfig.Config.Log.LogOut("[Move] " + moveItem.Name);
 
-                job.ProgressStr = "Move...";
-                job.Progress = -1;
+                j.ProgressStr = "Move...";
+                j.Progress = -1;
 
                 var oldparent = moveItem.Parents.First();
                 try
                 {
                     if(moveToItem.ItemType == RemoteItemType.File)
                     {
-                        File.Move(@"\\?\" + moveItem.ID, @"\\?\" + Path.Combine(moveToItem.ID, moveItem.Name));
+                        File.Move(ItemControl.GetLongFilename(moveItem.ID), Path.Combine(ItemControl.GetLongFilename(moveToItem.ID), moveItem.Name));
                     }
                     else
                     {
-                        Directory.Move(@"\\?\" + moveItem.ID, @"\\?\" + Path.Combine(moveToItem.ID, moveItem.Name));
+                        Directory.Move(ItemControl.GetLongFilename(moveItem.ID),  Path.Combine(ItemControl.GetLongFilename(moveToItem.ID), moveItem.Name));
                     }
 
-                    var info = new DirectoryInfo(@"\\?\" + moveToItem.ID);
+                    var info = new DirectoryInfo(ItemControl.GetLongFilename(moveToItem.ID));
                     var item = info.EnumerateFileSystemInfos().Where(x => x.FullName == moveItem.Name).FirstOrDefault();
 
                     var newitem = new LocalSystemItem(this, item, moveToItem);
@@ -491,9 +549,9 @@ namespace TSviewCloudPlugin
 
                     RemoveItem(moveItem.ID);
 
-                    job.Result = newitem;
-                    job.ProgressStr = "Done";
-                    job.Progress = 1;
+                    j.Result = newitem;
+                    j.ProgressStr = "Done";
+                    j.Progress = 1;
                 }
                 catch (OperationCanceledException)
                 {

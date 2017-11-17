@@ -372,11 +372,11 @@ namespace TSviewCloudPlugin
         }
 
         static ConcurrentBag<Job> joblist = new ConcurrentBag<Job>();
-        static ConcurrentDictionary<JobClass, ConcurrentBag<Job>> joblist_type = new ConcurrentDictionary<JobClass, ConcurrentBag<Job>>();
-        static BlockingCollection<Job> StartQueue = new BlockingCollection<Job>();
+        static ConcurrentDictionary<JobClass, ConcurrentBag<WeakReference<Job>>> joblist_type = new ConcurrentDictionary<JobClass, ConcurrentBag<WeakReference<Job>>>();
+        static BlockingCollection<WeakReference<Job>> StartQueue = new BlockingCollection<WeakReference<Job>>();
         static BlockingCollection<Task> EndQueue = new BlockingCollection<Task>();
         static bool jobempty = true;
-        static internal AutoResetEvent joberaser = new AutoResetEvent(false);
+        static internal ManualResetEventSlim joberaser = new ManualResetEventSlim(false);
 
         static SynchronizationContext synchronizationContext = SynchronizationContext.Current;
 
@@ -484,13 +484,15 @@ namespace TSviewCloudPlugin
             joblist_type.AddOrUpdate(type,
                 (key) =>
                 {
-                    var newitem = new ConcurrentBag<Job>();
-                    newitem.Add(newjob);
+                    var newitem = new ConcurrentBag<WeakReference<Job>>
+                    {
+                        new WeakReference<Job>(newjob)
+                    };
                     return newitem;
                 },
                 (key, value) =>
                 {
-                    value.Add(newjob);
+                    value.Add(new WeakReference<Job>(newjob));
                     return value;
                 });
             return newjob;
@@ -498,7 +500,7 @@ namespace TSviewCloudPlugin
 
         static public Job CreateNewJob(JobClass type = JobClass.Normal, SubInfo info = null)
         {
-            return CreateNewJob<object>(type, info) as TSviewCloudPlugin.Job;
+            return CreateNewJob<object>(type, info) as Job;
         }
 
         static public Job<T> CreateNewJob<T>(JobClass type = JobClass.Normal, SubInfo info = null) where T: class
@@ -510,7 +512,7 @@ namespace TSviewCloudPlugin
 
         static public Job CreateNewJob(JobClass type = JobClass.Normal, SubInfo info = null, params Job[] depends)
         {
-            return CreateNewJob<object>(type, info, depends) as TSviewCloudPlugin.Job;
+            return CreateNewJob<object>(type, info, depends) as Job;
         }
 
         static public Job<T> CreateNewJob<T>(JobClass type = JobClass.Normal, SubInfo info = null, params Job[] depends) where T : class
@@ -519,21 +521,30 @@ namespace TSviewCloudPlugin
             foreach (var d in depends)
             {
                 if(d != null)
-                    newjob.DependsOn.Enqueue(d);
+                    newjob.DependsOn.Enqueue(new WeakReference<Job>(d));
             }
             TriggerDisplay();
             return newjob;
         }
 
-        static public void Run(Job target, Action<object> JobAction)
+        static public void Run(Job target, Action<Job> JobAction)
         {
+            if (target == null) return;
             target.JobAction = JobAction;
-            StartQueue.Add(target);
+            StartQueue.Add(new WeakReference<Job>(target));
+        }
+
+        static public void Run<T>(Job target, Action<Job<T>> JobAction) where T: class
+        {
+            if (target == null) return;
+            if(JobAction != null)
+                target.JobAction = (j)=> { JobAction?.Invoke(j as Job<T>); };
+            StartQueue.Add(new WeakReference<Job>(target));
         }
 
         static private bool CancelCheck(Job j)
         {
-            if (!j.DependsOn.IsEmpty && j.DependsOn.Any(x => x.IsCanceled || x.IsError))
+            if ((!(j.DependsOn?.IsEmpty ?? true) && j.DependsOn.Any(x => (x.TryGetTarget(out var y)? y.IsCanceled || y.IsError : false))))
             {
                 if (!j.DoAlways)
                 {
@@ -544,23 +555,31 @@ namespace TSviewCloudPlugin
             return false;
         }
 
+
+        static private int delcount = 0;
+
         static private void DeleteJob()
         {
+            if (Interlocked.Increment(ref delcount) > 1)
+            {
+                Interlocked.Decrement(ref delcount);
+                return;
+            }
             foreach (var key in joblist_type.Keys)
             {
-                if (joblist_type[key].All(x => x._isdeleted))
+                if (joblist_type[key].All(x => (x.TryGetTarget(out var tmp1)) ? tmp1._isdeleted : true))
                 {
-                    ConcurrentBag<Job> prevval;
+                    ConcurrentBag<WeakReference<Job>> prevval;
                     if (joblist_type.TryRemove(key, out prevval))
                     {
-                        if (prevval.Any(x => !x._isdeleted))
+                        if (prevval.Any(x => (x.TryGetTarget(out var tmp1)) ? !tmp1._isdeleted : false))
                         {
-                            foreach (var reJob in prevval.Where(x => !x._isdeleted))
+                            foreach (var reJob in prevval.Where(x => x.TryGetTarget(out var tmp1) ? !tmp1._isdeleted : false))
                             {
                                 joblist_type.AddOrUpdate(key,
                                     (key1) =>
                                     {
-                                        var newitem = new ConcurrentBag<Job>();
+                                        var newitem = new ConcurrentBag<WeakReference<Job>>();
                                         newitem.Add(reJob);
                                         return newitem;
                                     },
@@ -574,13 +593,47 @@ namespace TSviewCloudPlugin
                     }
                 }
             }
-            var oldjoblist = joblist;
-            if (oldjoblist.All(x => x._isdeleted))
+            var oldjoblist = joblist.ToArray();
+            var keepjob = new List<Job>();
+            foreach (var j in oldjoblist)
             {
-                joblist = new ConcurrentBag<Job>();
-                foreach (var j in oldjoblist.Where(x => !x._isdeleted))
-                    joblist.Add(j);
+                if (!j._isdeleted)
+                {
+                    keepjob.Add(j);
+                    foreach (var dj in j.DependsOn)
+                    {
+                        if(dj.TryGetTarget(out var t))
+                            keepjob.Add(t);
+                    }
+                }
+                else if (keepjob.Contains(j))
+                {
+                    foreach (var dj in j.DependsOn)
+                    {
+                        if (dj.TryGetTarget(out var t))
+                            keepjob.Add(t);
+                    }
+                }
             }
+            keepjob = keepjob.Distinct().ToList();
+            var dellist = oldjoblist.Except(keepjob).ToArray();
+            if (dellist.Count() > 0)
+            {
+                var newjoblist = new ConcurrentBag<Job>();
+                foreach (var j in keepjob)
+                {
+                    newjoblist.Add(j);
+                }
+                lock (joblist)
+                {
+                    joblist = newjoblist;
+                }
+                foreach (var rm in dellist)
+                {
+                    rm.Dispose();
+                }
+            }
+
             if (joblist.IsEmpty)
             {
                 Interlocked.Exchange(ref UploadAll, 0);
@@ -600,9 +653,15 @@ namespace TSviewCloudPlugin
                 Interlocked.Exchange(ref DownloadProgressDone, 0);
                 jobempty = true;
             }
+            else
+            {
+                Task.Delay(100).ContinueWith((t) => DeleteJob());
+            }
+            Interlocked.Decrement(ref delcount);
         }
 
         static System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+        static int jobcount = 0;
 
         static readonly JobClass[] singlejob =
             {
@@ -617,53 +676,61 @@ namespace TSviewCloudPlugin
             {
                 var running_count = 0;
                 var max_running = int.MaxValue;
-
-                if (jobtype == JobClass.Download)
+                try
                 {
-                    running_count = joblist_type[jobtype].Where(x => x.IsRunning).Count();
-                    max_running = TSviewCloudConfig.Config.ParallelDownload;
-                }
-                else if (jobtype == JobClass.Upload)
-                {
-                    running_count = joblist_type[jobtype].Where(x => x.IsRunning).Count();
-                    max_running = TSviewCloudConfig.Config.ParallelUpload;
-                }
-                else if (jobtype == JobClass.LoadItem)
-                {
-                    running_count = joblist_type[jobtype].Where(x => x.IsRunning).Count();
-                    max_running = 20;
-                }
-                else if (singlejob.Contains(jobtype))
-                {
-                    running_count = joblist_type[jobtype].Where(x => x.IsRunning).Count();
-                    max_running = 1;
-                }
-
-                foreach (var j in joblist_type[jobtype].Where(x => !x._delete).OrderBy(x => x.Index))
-                {
-                    if (j.JobTask != null)
+                    if (jobtype == JobClass.Download)
                     {
-                        var canceled = CancelCheck(j);
-                        if (!j.IsDone && !j.IsRunning)
-                        {
-                            if (!canceled && (j.DependsOn.IsEmpty || j.WeekDepend || j.DependsOn.All(x => x._delete || x.IsDone)))
-                            {
-                                j.resultOfDepend = j.DependsOn.Select(x => x.result).ToArray();
+                        running_count = joblist_type[jobtype].Where(x => (x.TryGetTarget(out var tmp)) ? tmp.IsRunning : false).Count();
+                        max_running = TSviewCloudConfig.Config.ParallelDownload;
+                    }
+                    else if (jobtype == JobClass.Upload)
+                    {
+                        running_count = joblist_type[jobtype].Where(x => (x.TryGetTarget(out var tmp)) ? tmp.IsRunning : false).Count();
+                        max_running = TSviewCloudConfig.Config.ParallelUpload;
+                    }
+                    else if (jobtype == JobClass.LoadItem)
+                    {
+                        running_count = joblist_type[jobtype].Where(x => (x.TryGetTarget(out var tmp)) ? tmp.IsRunning : false).Count();
+                        max_running = 20;
+                    }
+                    else if (singlejob.Contains(jobtype))
+                    {
+                        running_count = joblist_type[jobtype].Where(x => (x.TryGetTarget(out var tmp)) ? tmp.IsRunning : false).Count();
+                        max_running = 1;
+                    }
 
-                                if (running_count < max_running)
+                    foreach (var wj in joblist_type[jobtype]
+                        .Where(x => (x.TryGetTarget(out var tmp)) ? !tmp._delete : false)
+                        .OrderBy(x => (x.TryGetTarget(out var tmp)) ? tmp.Priority : 0)
+                        .ThenBy(x => (x.TryGetTarget(out var tmp)) ? tmp.QueueTime : default(DateTime)).ToArray())
+                    {
+                        if (!wj.TryGetTarget(out var j)) continue;
+                        if (j.JobTask != null)
+                        {
+                            var canceled = CancelCheck(j);
+                            if (!j.IsDone && !j.IsRunning)
+                            {
+                                if (!canceled && (j.DependsOn.IsEmpty || j.WeekDepend || j.DependsOn.All(x => (x.TryGetTarget(out var y))? y._delete || y.IsDone : true)))
                                 {
-                                    j.StartTime = DateTime.Now;
-                                    j.JobTask.Start();
-                                    running_count++;
-                                }
-                                if (running_count >= max_running)
-                                {
-                                    break;
+                                    j.resultOfDepend = j.DependsOn.Select(x => (x.TryGetTarget(out var y))? new WeakReference<object>(y.result): null).ToArray();
+
+                                    if (running_count < max_running)
+                                    {
+                                        j.StartTime = DateTime.Now;
+                                        running_count++;
+                                        Interlocked.Increment(ref jobcount);
+                                        j.JobTask.Start();
+                                    }
+                                    if (running_count >= max_running)
+                                    {
+                                        break;
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                catch { }
             });
             DeleteJob();
         }
@@ -677,8 +744,17 @@ namespace TSviewCloudPlugin
                 {
                     while (true)
                     {
-                        var startjob = StartQueue.Take();
-                        if (startjob.JobAction == null)
+                        var weakstartjob = StartQueue.Take();
+                        if (!weakstartjob.TryGetTarget(out var startjob))
+                        {
+                            RemoveJob(weakstartjob);
+                            continue;
+                        }
+                        else if(startjob == null)
+                        {
+                            continue;
+                        }
+                        else if(startjob.JobAction == null)
                         {
                             startjob._done = true;
                             RemoveJob(startjob);
@@ -694,16 +770,24 @@ namespace TSviewCloudPlugin
                         {
                             foreach (var i in joblist.Where(x => x != startjob).Where(x => x.JobType == JobClass.Play))
                                 i.Cancel();
-                            foreach (var i in joblist.Where(x => x.JobType == JobClass.PlayDownload).Where(x => !x.DependsOn.Contains(startjob)))
+                            foreach (var i in joblist.Where(x => x.JobType == JobClass.PlayDownload).Where(x => !x.DependsOn.Select(y => y.TryGetTarget(out var z) ? z : null).Contains(startjob)))
                                 i.Cancel();
                         }
                         startjob.QueueTime = DateTime.Now;
-                        startjob.JobTask = new Task(startjob.JobAction, startjob, startjob.Ct);
-                        EndQueue.Add(startjob.JobTask.ContinueWith((t, target) =>
+                        startjob.JobTask = new Task((o)=> {
+                            Job j = null;
+                            if((o as WeakReference<Job>).TryGetTarget(out j) && j != null)
+                                startjob.JobAction(j);
+                        }, new WeakReference<Job>(startjob), startjob.Ct);
+                        EndQueue.Add(startjob.JobTask.ContinueWith((t, weaktarget) =>
                         {
-                            var s = target as Job;
+                            Interlocked.Decrement(ref jobcount);
+                            if (!(weaktarget as WeakReference<Job>).TryGetTarget(out var s))
+                                return;
                             s._done = true;
                             s.FinishTime = DateTime.Now;
+                            s.JobAction = null;
+                            s.resultOfDepend = null;
                             if(s.JobInfo != null)
                             {
                                 long val;
@@ -799,7 +883,7 @@ namespace TSviewCloudPlugin
                                 Task.Delay(5000).ContinueWith((task) => RemoveJob(s));
                             }
                             joberaser.Set();
-                        }, startjob));
+                        }, new WeakReference<Job>(startjob)));
                         joberaser.Set();
                         startjob._start.Set();
                     }
@@ -811,11 +895,12 @@ namespace TSviewCloudPlugin
                 {
                     while (true)
                     {
-                        joberaser.WaitOne();
+                        joberaser.Wait();
+                        joberaser.Reset();
                         JobStartCheck();
                     }
                 }
-                catch { }
+                catch { throw; }
             });
             Task.Run(() => {
                 while (true)
@@ -833,6 +918,12 @@ namespace TSviewCloudPlugin
         static public void RemoveJob(Job doneJob)
         {
             doneJob._isdeleted = true;
+            joberaser.Set();
+        }
+        static public void RemoveJob(WeakReference<Job> doneJob)
+        {
+            if(doneJob.TryGetTarget(out var tmp))
+                tmp._isdeleted = true;
             joberaser.Set();
         }
 
@@ -877,10 +968,10 @@ namespace TSviewCloudPlugin
 
         static public int JobTypeCount(JobClass type)
         {
-            ConcurrentBag<Job> ret;
+            ConcurrentBag<WeakReference<Job>> ret;
             if (joblist_type.TryGetValue(type, out ret))
             {
-                return ret.Where(x => !x._isdeleted).Count();
+                return ret.Where(x => (x.TryGetTarget(out var tmp))? !tmp._isdeleted: false).Count();
             }
             else
             {
@@ -902,274 +993,6 @@ namespace TSviewCloudPlugin
                 return string.Format("{0:#,0.00}TiB/s", rate / 1024 / 1024 / 1024 / 1024);
             return string.Format("{0:#,0.00}PiB/s", rate / 1024 / 1024 / 1024 / 1024);
         }
-    }
-
-    public enum JobClass
-    {
-        Normal,
-        Display,
-        LoadItem,
-        Save,
-        RemoteDownload,
-        RemoteOperation,
-        Download,
-        Upload,
-        Trash,
-        Play,
-        PlayDownload,
-        Clean,
-        ControlMaster,
-        UploadInfo,
-        DownloadInfo,
-    }
-
-
-    public abstract class JobBase
-    {
-        private string _ProgressStr;
-        private string displayName;
-        public virtual string ProgressStr
-        {
-            get
-            {
-                switch (JobType)
-                {
-                    case JobClass.Upload:
-                        return string.Format("Upload({0}/{1}) : {2}", Index, JobControler.UploadAll, _ProgressStr);
-                    case JobClass.Download:
-                        return string.Format("Download({0}/{1}) : {2}", Index, JobControler.DownloadAll, _ProgressStr);
-                    case JobClass.UploadInfo:
-                        {
-                            var sb = new StringBuilder();
-                            var subtotal = JobControler.UploadProgress.Aggregate(0L, (acc, kvp) => acc + kvp.Value);
-                            sb.Append("Upload ");
-                            sb.AppendFormat("File({0}/{1}) ", JobControler.UploadFileDone, JobControler.UploadFileAll);
-                            sb.AppendFormat("Folder({0}/{1}) ", JobControler.UploadFolderDone, JobControler.UploadFolderAll);
-                            Progress = (double)(subtotal + JobControler.UploadProgressDone) / JobControler.UploadTotal;
-                            if (double.IsNaN(Progress)) Progress = 1;
-                            sb.AppendFormat("{0:#,0}/{1:#,0}({2:0.00%}) ", subtotal + JobControler.UploadProgressDone, JobControler.UploadTotal, Progress);
-                            var speed = (subtotal + JobControler.UploadProgressDone) / (DateTime.Now - StartTime).TotalSeconds;
-                            var togo = Math.Round((JobControler.UploadTotal - subtotal - JobControler.UploadProgressDone) / speed);
-                            togo = (double.IsInfinity(togo) || double.IsNaN(togo)) ? 0 : togo;
-                            sb.AppendFormat("{0} [to go {1}]", JobControler.ConvertUnit(speed), TimeSpan.FromSeconds(togo));
-                            return sb.ToString();
-                        }
-                    case JobClass.DownloadInfo:
-                        {
-                            var sb = new StringBuilder();
-                            var subtotal = JobControler.DownloadProgress.Aggregate(0L, (acc, kvp) => acc + kvp.Value);
-                            sb.Append("Download ");
-                            sb.AppendFormat("({0}/{1}) ", JobControler.DownloadDone, JobControler.DownloadAll);
-                            Progress = (double)(subtotal + JobControler.DownloadProgressDone) / JobControler.DownloadTotal;
-                            if (double.IsNaN(Progress)) Progress = 1;
-                            sb.AppendFormat("{0:#,0}/{1:#,0}({2:0.00%}) ", subtotal + JobControler.DownloadProgressDone, JobControler.DownloadTotal, Progress);
-                            var speed = (subtotal + JobControler.DownloadProgressDone) / (DateTime.Now - StartTime).TotalSeconds;
-                            var togo = Math.Round((JobControler.DownloadTotal - subtotal - JobControler.DownloadProgressDone) / speed);
-                            togo = (double.IsInfinity(togo) || double.IsNaN(togo)) ? 0 : togo;
-                            sb.AppendFormat("{0} [to go {1}]", JobControler.ConvertUnit(speed), TimeSpan.FromSeconds(togo));
-                            return sb.ToString();
-                        }
-                    default:
-                        return _ProgressStr;
-                }
-            }
-            set { _ProgressStr = value; }
-        }
-        public virtual bool IsInfo
-        {
-            get { return (JobType == JobClass.UploadInfo || JobType == JobClass.DownloadInfo) ? true : false; }
-        }
-        private double progress = 0;
-        internal object result;
-        internal object[] resultOfDepend;
-        private long index;
-        public virtual JobClass JobType
-        {
-            get; internal set;
-        }
-        public virtual JobControler.SubInfo JobInfo
-        {
-            get; internal set;
-        }
-        private CancellationTokenSource cts = new CancellationTokenSource();
-        internal ConcurrentQueue<Job> DependsOn = new ConcurrentQueue<Job>();
-        internal Action<object> JobAction;
-        internal Task JobTask;
-        internal bool _delete = false;
-        internal bool _isdeleted = false;
-        public virtual DateTime QueueTime
-        {
-            get; internal set;
-        }
-        public virtual DateTime StartTime
-        {
-            get; internal set;
-        }
-        public virtual DateTime FinishTime
-        {
-            get; internal set;
-        }
-        private bool isError = false;
-        private bool doAlways = false;
-        private bool weekDepend = false;
-        internal bool _done = false;
-        internal ManualResetEvent _start = new ManualResetEvent(false);
-        internal ManualResetEvent _run = new ManualResetEvent(false);
-
-        private bool forceHidden = false;
-
-        public virtual CancellationToken Ct
-        {
-            get { return cts.Token; }
-        }
-
-        public virtual void Cancel()
-        {
-            cts.Cancel();
-            if (!IsRunning)
-            {
-                _delete = true;
-                Task.Delay(5000).ContinueWith((task) => JobControler.RemoveJob(this as Job));
-                JobControler.joberaser.Set();
-            }
-        }
-
-        public virtual void Wait(int timeout = -1, CancellationToken ct = default(CancellationToken))
-        {
-            if (cts.IsCancellationRequested) return;
-            WaitHandle.WaitAny(new WaitHandle[] { _start, ct.WaitHandle });
-            JobTask?.Wait(timeout, ct);
-        }
-
-        public virtual Task WaitTask(int timeout = -1, CancellationToken ct = default(CancellationToken))
-        {
-            return Task.Run(() =>
-            {
-                WaitHandle.WaitAny(new WaitHandle[] { _start, ct.WaitHandle });
-                JobTask?.Wait(timeout, ct);
-            }, ct);
-        }
-
-        public virtual bool IsDone
-        {
-            get
-            {
-                return cts.Token.IsCancellationRequested
-                    || (JobTask?.IsCanceled ?? false)
-                    || (JobTask?.IsCompleted ?? false)
-                    || (JobTask?.IsFaulted ?? false)
-                    || _done;
-            }
-        }
-        public virtual bool IsCanceled
-        {
-            get
-            {
-                return cts.Token.IsCancellationRequested
-                    || ((DoAlways) ? false : DependsOn?.Any(x => x.IsCanceled) ?? false)
-                    || (JobTask?.IsCanceled ?? false);
-            }
-        }
-        public virtual bool IsRunning
-        {
-            get
-            {
-                return JobTask?.Status == TaskStatus.Running
-                  || JobTask?.Status == TaskStatus.WaitingToRun;
-            }
-        }
-        public virtual bool IsHidden
-        {
-            get
-            {
-                return JobType == JobClass.Clean
-                    || JobType == JobClass.ControlMaster
-                    || JobType == JobClass.Display
-                    || ForceHidden;
-            }
-        }
-        public virtual bool IsDelayShow
-        {
-            get
-            {
-                return (!IsHidden && JobType != JobClass.LoadItem)
-                    || (JobType == JobClass.LoadItem && !IsDone && QueueTime.AddSeconds(2) < DateTime.Now);
-            }
-        }
-
-        public virtual string DisplayName { get => displayName; set => displayName = value; }
-        public virtual double Progress { get => progress; set => progress = value; }
-        public virtual long Index { get => index; set => index = value; }
-        public virtual bool IsError { get => isError; set => isError = value; }
-        public virtual bool DoAlways { get => doAlways; set => doAlways = value; }
-        public virtual bool WeekDepend { get => weekDepend; set => weekDepend = value; }
-        public virtual bool ForceHidden { get => forceHidden; set => forceHidden = value; }
-
-        public virtual void Error(string str)
-        {
-            Progress = double.NaN;
-            IsError = true;
-            ProgressStr = str;
-        }
-    }
-
-    public class JobForToken : JobBase
-    {
-        protected CancellationToken prevCT;
-
-        public JobForToken() : base() { }
-
-        public JobForToken(CancellationToken ct): base()
-        {
-            prevCT = ct;
-            QueueTime = StartTime = FinishTime = DateTime.Now;
-        }
-
-        public override bool IsCanceled => (prevCT == default(CancellationToken))? base.IsCanceled : base.IsCanceled || prevCT.IsCancellationRequested;
-        public override bool IsDone => (prevCT == default(CancellationToken)) ? base.IsDone : true;
-        public override bool IsRunning => (prevCT == default(CancellationToken)) ? base.IsRunning : false;
-
-        public override void Wait(int timeout = -1, CancellationToken ct = default(CancellationToken))
-        {
-            if (prevCT == default(CancellationToken))
-                base.Wait(timeout, ct);
-            else
-                WaitHandle.WaitAny(new WaitHandle[] { prevCT.WaitHandle, ct.WaitHandle });
-        }
-
-        public override Task WaitTask(int timeout = -1, CancellationToken ct = default(CancellationToken))
-        {
-            if (prevCT == default(CancellationToken))
-                return base.WaitTask(timeout, ct);
-            else
-                return Task.Run(() =>
-                {
-                    WaitHandle.WaitAny(new WaitHandle[] { prevCT.WaitHandle, ct.WaitHandle });
-                }, ct);
-        }
-    }
-
-    public class Job : JobForToken
-    {
-        public Job() : base()
-        {
-        }
-        public Job(CancellationToken ct) : base(ct)
-        {
-        }
-    }
-
-    public class Job<T>: Job where T: class
-    {
-        public Job() : base()
-        {
-        }
-        public Job(CancellationToken ct) : base(ct)
-        {
-        }
-
-        public T Result { get => result as T; set => result = value; }
-        public T[] ResultOfDepend { get => resultOfDepend.Select(x => x as T).ToArray(); set => resultOfDepend = value; }
     }
 
  }

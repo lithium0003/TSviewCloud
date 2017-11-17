@@ -58,6 +58,8 @@ namespace TSviewCloudPlugin
         DateTime? CreatedDate { get; }
         string Hash { get; }
 
+        DateTime Age { get; }
+
         IEnumerable<IRemoteItem> Parents { get; }
         IEnumerable<IRemoteItem> Children { get; }
         RemoteItemType ItemType { get; }
@@ -67,9 +69,10 @@ namespace TSviewCloudPlugin
         void SetParent(IRemoteItem newparent);
         void SetChildren(IEnumerable<IRemoteItem> newchildren);
 
-        Job<Stream> DownloadItemRaw(long offset = 0, bool WeekDepend = false, bool hidden = false, params Job[] prevJob);
+        Job<Stream> DownloadItemRawJob(long offset = 0, bool WeekDepend = false, bool hidden = false, params Job[] prevJob);
         Job<Stream> DownloadItemJob(bool WeekDepend = false, params Job[] prevJob);
         Stream DownloadItem(bool WeekDepend = false, params Job[] prevJob);
+        Stream DownloadItemRaw(bool WeekDepend = false, params Job[] prevJob);
         Job<IRemoteItem> UploadFile(string filename, string uploadname = null, bool WeekDepend = false, params Job[] parentJob);
         Job<IRemoteItem> UploadStream(Stream source, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob);
         Job<IRemoteItem> MakeFolder(string foldername, bool WeekDepend = false, params Job[] parentJob);
@@ -127,6 +130,7 @@ namespace TSviewCloudPlugin
         [DataMember(Name = "Children")]
         protected string[] ChildrenIDs;
 
+        private DateTime age;
 
         public RemoteItemBase()
         {
@@ -137,14 +141,15 @@ namespace TSviewCloudPlugin
             SetParents(parents);
             _server = server;
             serverName = Server;
+            Age = DateTime.Now;
         }
 
         public abstract string ID { get; }
         public abstract string Path { get; }
         public abstract string Name { get; }
         public bool IsRoot => isRoot;
-        public virtual IEnumerable<IRemoteItem> Parents => parentIDs?.Select(x => _server[x])?.Where(x => x != null) ?? new List<IRemoteItem>();
-        public virtual IEnumerable<IRemoteItem> Children => ChildrenIDs?.Select(x => _server[x])?.Where(x => x != null) ?? new List<IRemoteItem>();
+        public virtual IEnumerable<IRemoteItem> Parents => parentIDs?.Select(x => _server.PeakItem(x))?.Where(x => x != null) ?? new List<IRemoteItem>();
+        public virtual IEnumerable<IRemoteItem> Children => ChildrenIDs?.Select(x => _server.PeakItem(x))?.Where(x => x != null) ?? new List<IRemoteItem>();
 
         public RemoteItemType ItemType => itemtype;
 
@@ -156,10 +161,12 @@ namespace TSviewCloudPlugin
         public virtual string Hash => hash;
         public virtual string FullPath => Server + "://" + Uri.UnescapeDataString(Path);
 
+        public virtual DateTime Age { get => age; set => age = value; }
 
         public void SetParents(IEnumerable<IRemoteItem> newparents)
         {
             parentIDs = newparents?.Select(x => x?.ID).ToArray();
+            Age = DateTime.Now;
         }
 
         public void SetParent(IRemoteItem newparent)
@@ -170,12 +177,16 @@ namespace TSviewCloudPlugin
         public void SetChildren(IEnumerable<IRemoteItem> newchildren)
         {
             ChildrenIDs = newchildren?.Select(x => x?.ID).ToArray();
+            Age = DateTime.Now;
         }
 
 
-        public abstract void FixChain(IRemoteServer server);
+        public virtual void FixChain(IRemoteServer server)
+        {
+            Age = DateTime.Now;
+        }
 
-        public virtual Job<Stream> DownloadItemRaw(long offset = 0, bool WeekDepend = false, bool hidden = false, params Job[] prevJob)
+        public virtual Job<Stream> DownloadItemRawJob(long offset = 0, bool WeekDepend = false, bool hidden = false, params Job[] prevJob)
         {
             return _server.DownloadItemRaw(this, offset, WeekDepend, hidden, prevJob);
         }
@@ -208,6 +219,13 @@ namespace TSviewCloudPlugin
         public virtual Stream DownloadItem(bool WeekDepend = false, params Job[] prevJob)
         {
             var job = DownloadItemJob(WeekDepend, prevJob);
+            job.Wait();
+            return job.Result;
+        }
+
+        public virtual Stream DownloadItemRaw(bool WeekDepend = false, params Job[] prevJob)
+        {
+            var job = DownloadItemRawJob(0, WeekDepend, prevJob: prevJob);
             job.Wait();
             return job.Result;
         }
@@ -296,17 +314,20 @@ namespace TSviewCloudPlugin
                 depends: moveToItem.MakeFolder(moveItem.Name, WeekDepend, prevJob?.Concat(new[] { loadjob }).ToArray()??new[] { loadjob } ));
             job.DisplayName = string.Format("Upload Folder {0} to {1}", moveItem.FullPath, moveToItem.FullPath);
             job.ProgressStr = "wait for upload.";
-            JobControler.Run(job, (j) =>
+            JobControler.Run<IRemoteItem>(job, (j) =>
             {
-                job.Progress = -1;
-                job.ProgressStr = "upload...";
-                var newdir = job.ResultOfDepend[0];
-                var joblist = new List<Job<IRemoteItem>>();
-                joblist.AddRange(moveItem.Children?.Select(x => x?.MoveItem(newdir, WeekDepend: true, prevJob: job)));
-                //Parallel.ForEach(joblist, (x) => x.Wait(ct: job.Ct));
-                job.Result = newdir;
-                job.Progress = 1;
-                job.ProgressStr = "done";
+                var result = j.ResultOfDepend[0];
+                if (result.TryGetTarget(out var newdir))
+                {
+                    j.Progress = -1;
+                    j.ProgressStr = "upload...";
+                    var joblist = new List<Job<IRemoteItem>>();
+                    joblist.AddRange(moveItem.Children?.Select(x => x?.MoveItem(newdir, WeekDepend: true, prevJob: j)));
+                    //Parallel.ForEach(joblist, (x) => x.Wait(ct: job.Ct));
+                    j.Result = newdir;
+                }
+                j.Progress = 1;
+                j.ProgressStr = "done";
             });
             return job;
         }
@@ -340,7 +361,9 @@ namespace TSviewCloudPlugin
         static public ConcurrentDictionary<string, Type> DllList = new ConcurrentDictionary<string, Type>();
         static public ConcurrentDictionary<string, IRemoteServer> ServerList = new ConcurrentDictionary<string, IRemoteServer>();
 
-        static ConcurrentDictionary<string, (int c, ReloadResult r)> ReloadWait = new ConcurrentDictionary<string, (int, ReloadResult)>();
+
+        static private ConcurrentDictionary<string, (string server, string ID)> itemCache = new ConcurrentDictionary<string, (string server, string ID)>();
+        static private ConcurrentDictionary<string, (int c, ReloadResult r)> ReloadWait = new ConcurrentDictionary<string, (int, ReloadResult)>();
 
         static public string ServerFixedName(string class_name)
         {
@@ -598,7 +621,7 @@ namespace TSviewCloudPlugin
         }
 
 
-        static public IRemoteItem PathToItem(string url, ReloadType reload = ReloadType.Cache, CancellationToken ct = default(CancellationToken))
+        static public IRemoteItem PathToItem(string url, ReloadType reload = ReloadType.Cache)
         {
             var m = Regex.Match(url, @"^(?<server>[^:]+)(://)(?<path>.*)$");
 
@@ -606,8 +629,21 @@ namespace TSviewCloudPlugin
 
             try
             {
-                IRemoteItem current;
                 var server = ServerList[m.Groups["server"].Value];
+                IRemoteItem current = null;
+                if (itemCache.TryGetValue(url, out var v))
+                {
+                    current = server.PeakItem(v.ID);
+                    if (reload == ReloadType.Cache && current != null && !ItemControl.ReloadRequest.TryRemove(current.FullPath, out int tmp2))
+                    {
+                        return current;
+                    }
+                    else
+                    {
+                        current = server[current.ID];
+                        if (current != null) return current;
+                    }
+                }
 
                 if (ItemControl.ReloadRequest.TryRemove(server + "://", out int tmp))
                 {
@@ -648,10 +684,12 @@ namespace TSviewCloudPlugin
                     }
                     fullpath = m.Groups["next"].Value;
                 }
+                itemCache.AddOrUpdate(url, (server.Name, current.ID), (key, val) => (server.Name, current.ID));
                 return current;
             }
             catch
             {
+                itemCache.TryRemove(url, out var tmp);
                 return null;
             }
         }
@@ -660,16 +698,16 @@ namespace TSviewCloudPlugin
         {
             var LoadJob = JobControler.CreateNewJob<IRemoteItem>(JobClass.LoadItem);
             LoadJob.DisplayName = "Loading  " + url;
-            JobControler.Run(LoadJob, (j) =>
+            JobControler.Run<IRemoteItem>(LoadJob, (j) =>
             {
-                LoadJob.Progress = -1;
-                LoadJob.ProgressStr = "Loading...";
+                j.Progress = -1;
+                j.ProgressStr = "Loading...";
                 //LoadJob.ForceHidden = true;
 
-                LoadJob.Result = PathToItem(url, reload);
+                j.Result = PathToItem(url, reload);
 
-                LoadJob.Progress = 1;
-                LoadJob.ProgressStr = "Done.";
+                j.Progress = 1;
+                j.ProgressStr = "Done.";
             });
             return LoadJob;
         }
@@ -678,16 +716,16 @@ namespace TSviewCloudPlugin
         {
             var LoadJob = JobControler.CreateNewJob<IRemoteItem>(JobClass.LoadItem);
             LoadJob.DisplayName = "Loading  " + relativeurl;
-            JobControler.Run(LoadJob, (j) =>
+            JobControler.Run<IRemoteItem>(LoadJob, (j) =>
             {
-                LoadJob.Progress = -1;
-                LoadJob.ProgressStr = "Loading...";
-                LoadJob.ForceHidden = true;
+                j.Progress = -1;
+                j.ProgressStr = "Loading...";
+                j.ForceHidden = true;
 
-                LoadJob.Result = PathToItem(baseurl, relativeurl, reload);
+                j.Result = PathToItem(baseurl, relativeurl, reload);
 
-                LoadJob.Progress = 1;
-                LoadJob.ProgressStr = "Done.";
+                j.Progress = 1;
+                j.ProgressStr = "Done.";
             });
             return LoadJob;
         }

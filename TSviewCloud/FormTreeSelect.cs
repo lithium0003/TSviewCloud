@@ -58,32 +58,39 @@ namespace TSviewCloud
 
                 var DisplayJob = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(TSviewCloudPlugin.JobClass.LoadItem, depends: loadjob);
                 DisplayJob.DisplayName = "Display  " + pitem.FullPath;
-                TSviewCloudPlugin.JobControler.Run(DisplayJob, (j) =>
+                TSviewCloudPlugin.JobControler.Run<IRemoteItem>(DisplayJob, (j) =>
                 {
-                    DisplayJob.Progress = -1;
-                    DisplayJob.ProgressStr = "Loading...";
-                    DisplayJob.ForceHidden = true;
+                    j.Progress = -1;
+                    j.ProgressStr = "Loading...";
+                    j.ForceHidden = true;
 
-                    var children = DisplayJob.ResultOfDepend[0].Children;
-
-                    synchronizationContext.Send((o) =>
+                    var result = j.ResultOfDepend[0];
+                    if(result.TryGetTarget(out var item))
                     {
-                        try
+                        synchronizationContext.Send((o) =>
                         {
-                            baseNode.Nodes.AddRange(
-                                GenerateTreeNode(o as IEnumerable<TSviewCloudPlugin.IRemoteItem>)
-                                .OrderByDescending(x => (x.Tag as TSviewCloudPlugin.IRemoteItem).ItemType)
-                                .ThenBy(x => (x.Tag as TSviewCloudPlugin.IRemoteItem).Name)
-                                .ToArray()
-                            );
-                        }
-                        finally
-                        {
+                            try
+                            {
+                                baseNode.Nodes.AddRange(
+                                    GenerateTreeNode(o as IEnumerable<TSviewCloudPlugin.IRemoteItem>)
+                                    .OrderByDescending(x => (x.Tag as TSviewCloudPlugin.IRemoteItem).ItemType)
+                                    .ThenBy(x => (x.Tag as TSviewCloudPlugin.IRemoteItem).Name)
+                                    .ToArray()
+                                );
+                            }
+                            finally
+                            {
 
-                            DisplayJob.ProgressStr = "done.";
-                            DisplayJob.Progress = 1;
-                        }
-                    }, children);
+                                j.ProgressStr = "done.";
+                                j.Progress = 1;
+                            }
+                        }, item.Children);
+                    }
+                    else
+                    {
+                        j.ProgressStr = "done.";
+                        j.Progress = 1;
+                    }
                 });
                 return DisplayJob;
             }

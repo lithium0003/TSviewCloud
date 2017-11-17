@@ -5,6 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -49,13 +50,13 @@ namespace TSviewCloud
         int showcount = 0;
         public void IncShowCount()
         {
-            showcount++;
+            Interlocked.Increment(ref showcount);
             Show();
         }
 
         public void DecShowCount()
         {
-            if (--showcount > 0) return;
+            if (Interlocked.Decrement(ref showcount) > 0) return;
             Close();
         }
     }

@@ -53,8 +53,8 @@ namespace TSviewCloud
             loadJob.DisplayName = "Load server list";
             TSviewCloudPlugin.JobControler.Run(loadJob, (j) =>
             {
-                loadJob.Progress = -1;
-                loadJob.ProgressStr = "Loading...";
+                j.Progress = -1;
+                j.ProgressStr = "Loading...";
 
                 TSviewCloudPlugin.RemoteServerFactory.Restore();
 
@@ -65,8 +65,8 @@ namespace TSviewCloud
 
                 Initialized = true;
 
-                loadJob.Progress = 1;
-                loadJob.ProgressStr = "Done.";
+                j.Progress = 1;
+                j.ProgressStr = "Done.";
             });
 
 
@@ -75,8 +75,8 @@ namespace TSviewCloud
             displayJob.DisplayName = "Display  server";
             TSviewCloudPlugin.JobControler.Run(displayJob, (j) =>
             {
-                displayJob.Progress = -1;
-                displayJob.ProgressStr = "Loading...";
+                j.Progress = -1;
+                j.ProgressStr = "Loading...";
 
                 synchronizationContext.Send((o) =>
                 {
@@ -96,15 +96,16 @@ namespace TSviewCloud
                         item.Tag = server;
                         disconnectToolStripMenuItem.DropDownItems.Add(item);
                     }
-                
-                    displayJob.Progress = 1;
-                    displayJob.ProgressStr = "Done.";
+
+                    j.Progress = 1;
+                    j.ProgressStr = "Done.";
                 }, null);
             });
 
-            var load2Job = TSviewCloudPlugin.JobControler.CreateNewJob(TSviewCloudPlugin.JobClass.ControlMaster, depends: displayJob);
+            var load2Job = TSviewCloudPlugin.JobControler.CreateNewJob(TSviewCloudPlugin.JobClass.ControlMaster);
             TSviewCloudPlugin.JobControler.Run(load2Job, (j) =>
             {
+                displayJob.Wait(ct: j.Ct);
                 var display2Job = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(
                     type: TSviewCloudPlugin.JobClass.LoadItem,
                     depends: TSviewCloudPlugin.RemoteServerFactory.ServerList.Values
@@ -112,19 +113,29 @@ namespace TSviewCloud
                 );
                 display2Job.DisplayName = "Display  server";
                 display2Job.ProgressStr = "wait for load";
-                TSviewCloudPlugin.JobControler.Run(display2Job, (j2j) =>
+                TSviewCloudPlugin.JobControler.Run<TSviewCloudPlugin.IRemoteItem>(display2Job, (j2j) =>
                 {
-                    display2Job.Progress = -1;
-                    display2Job.ProgressStr = "Loading...";
+                    displayJob.Wait(ct: j.Ct);
+                    j2j.Progress = -1;
+                    j2j.ProgressStr = "Loading...";
+                    var results = new List<TSviewCloudPlugin.IRemoteItem>();
+                    foreach (var item in j2j.ResultOfDepend)
+                    {
+                        if (item.TryGetTarget(out var result))
+                        {
+                            results.Add(result);
+                        }
+                    }
+
                     synchronizationContext.Send((o) =>
                     {
-                        foreach(var item in display2Job.ResultOfDepend)
+                        foreach (var item in o as IEnumerable<TSviewCloudPlugin.IRemoteItem>)
                         {
                             var treenode = treeView1.Nodes.Find(item.Server, false).First();
                             treenode.Tag = item;
                             ExpandItem(treenode);
                         }
-                    }, null);
+                    }, results);
                 });
             });
         }
@@ -140,14 +151,14 @@ namespace TSviewCloud
                 SaveConfigJob.DisplayName = "Save server list";
                 TSviewCloudPlugin.JobControler.Run(SaveConfigJob, (j) =>
                 {
-                    SaveConfigJob.Progress = -1;
-                    SaveConfigJob.ProgressStr = "Save...";
+                    j.Progress = -1;
+                    j.ProgressStr = "Save...";
 
                     TSviewCloudConfig.Config.Save();
                     TSviewCloudPlugin.RemoteServerFactory.Save();
 
-                    SaveConfigJob.Progress = 1;
-                    SaveConfigJob.ProgressStr = "Done.";
+                    j.Progress = 1;
+                    j.ProgressStr = "Done.";
                 });
             }
 
@@ -757,7 +768,7 @@ namespace TSviewCloud
             listView1.LargeImageList = largeimagelist;
         }
 
-        private TSviewCloudPlugin.Job ExpandItem(TreeNode baseNode)
+        private TSviewCloudPlugin.Job<TSviewCloudPlugin.IRemoteItem> ExpandItem(TreeNode baseNode)
         {
             var pitem = baseNode?.Tag as TSviewCloudPlugin.IRemoteItem;
             if (pitem != null)
@@ -766,19 +777,21 @@ namespace TSviewCloud
 
                 var DisplayJob = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(TSviewCloudPlugin. JobClass.LoadItem, depends: loadjob);
                 DisplayJob.DisplayName = "Display  " + pitem.FullPath;
-                TSviewCloudPlugin.JobControler.Run(DisplayJob, (j) =>
+                TSviewCloudPlugin.JobControler.Run<TSviewCloudPlugin.IRemoteItem>(DisplayJob, (j) =>
                 {
-                    DisplayJob.Progress = -1;
-                    DisplayJob.ProgressStr = "Loading...";
-                    DisplayJob.ForceHidden = true;
+                    j.Progress = -1;
+                    j.ProgressStr = "Loading...";
+                    j.ForceHidden = true;
 
-                    var children = DisplayJob.ResultOfDepend[0]?.Children;
-                    if (children == null)
+                    var result = j.ResultOfDepend[0];
+                    if (!result.TryGetTarget(out var item))
                     {
-                        DisplayJob.ProgressStr = "done.";
-                        DisplayJob.Progress = 1;
+                        j.ProgressStr = "done.";
+                        j.Progress = 1;
                         return;
                     }
+                    
+                    j.Result = item;
 
                     synchronizationContext.Send(async (o) =>
                     {
@@ -793,10 +806,10 @@ namespace TSviewCloud
                         }
                         finally
                         {
-                            DisplayJob.ProgressStr = "done.";
-                            DisplayJob.Progress = 1;
+                            j.ProgressStr = "done.";
+                            j.Progress = 1;
                         }
-                    }, children);
+                    }, item?.Children);
                 });
                 return DisplayJob;
             }
@@ -807,7 +820,7 @@ namespace TSviewCloud
         {
             if (e.Node == null) return;
 
-            var joblist = new List<TSviewCloudPlugin.Job>();
+            var joblist = new List<TSviewCloudPlugin.Job<TSviewCloudPlugin.IRemoteItem>> ();
             foreach (TreeNode item in e.Node.Nodes)
             {
                 if (item.Nodes.Count > 0) continue;
@@ -816,16 +829,15 @@ namespace TSviewCloud
             if (joblist.Count == 0) return;
 
             TSviewCloud.FormClosing.Instance.IncShowCount();
-            var finishjob = TSviewCloudPlugin.JobControler.CreateNewJob(TSviewCloudPlugin. JobClass.Clean, depends: joblist.ToArray());
-            TSviewCloudPlugin.JobControler.Run(finishjob, (j) =>
+            var finishjob = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(TSviewCloudPlugin.JobClass.Clean, depends: joblist.ToArray());
+            TSviewCloudPlugin.JobControler.Run<TSviewCloudPlugin.IRemoteItem>(finishjob, (j) =>
             {
                 synchronizationContext.Send((o) =>
                 {
                     TSviewCloud.FormClosing.Instance.DecShowCount();
-                }, null);
+                }, j);
             });
         }
-
 
         private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
         {
@@ -835,31 +847,41 @@ namespace TSviewCloud
             var path = (e.Node.Tag as TSviewCloudPlugin.IRemoteItem).FullPath;
             textBox_address.Text = path;
 
+            TSviewCloud.FormClosing.Instance.IncShowCount();
             var loadjob = TSviewCloudPlugin.RemoteServerFactory.PathToItemJob(path);
-            var DisplayJob = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(TSviewCloudPlugin. JobClass.LoadItem, depends: loadjob);
+            var DisplayJob = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(TSviewCloudPlugin.JobClass.LoadItem, depends: loadjob);
             DisplayJob.DisplayName = "Display  " + path;
-            TSviewCloudPlugin.JobControler.Run(DisplayJob, (j) =>
+            TSviewCloudPlugin.JobControler.Run<TSviewCloudPlugin.IRemoteItem>(DisplayJob, (j) =>
             {
-                DisplayJob.Progress = -1;
-                DisplayJob.ProgressStr = "Loading...";
-                DisplayJob.ForceHidden = true;
+                j.Progress = -1;
+                j.ProgressStr = "Loading...";
+                j.ForceHidden = true;
 
-                synchronizationContext.Send((o) =>
+                var result = j.ResultOfDepend[0];
+                if (result.TryGetTarget(out var dispitem))
                 {
-                    try
+                    synchronizationContext.Send((o) =>
                     {
-                        var dispitem = DisplayJob.ResultOfDepend[0];
-                        if(dispitem?.ItemType == TSviewCloudPlugin.RemoteItemType.Folder)
-                            ShowListViewItem(dispitem);
-                        else
-                            ShowListViewItem(dispitem?.Parents?.FirstOrDefault());
-                    }
-                    finally
-                    {
-                        DisplayJob.ProgressStr = "done.";
-                        DisplayJob.Progress = 1;
-                    }
-                }, null);
+                        try
+                        {
+                            var item = o as TSviewCloudPlugin.IRemoteItem;
+                            if (item?.ItemType == TSviewCloudPlugin.RemoteItemType.Folder)
+                                ShowListViewItem(item);
+                            else
+                                ShowListViewItem(item?.Parents?.FirstOrDefault());
+                        }
+                        finally
+                        {
+                            j.ProgressStr = "done.";
+                            j.Progress = 1;
+                            TSviewCloud.FormClosing.Instance.DecShowCount();
+                        }
+                    }, dispitem);
+                }
+                else
+                {
+                    TSviewCloud.FormClosing.Instance.DecShowCount();
+                }
             });
         }
 
@@ -941,21 +963,27 @@ namespace TSviewCloud
             }
 
             AddressSelecting = true;
+            TSviewCloud.FormClosing.Instance.IncShowCount();
             var DisplayJob = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(TSviewCloudPlugin. JobClass.LoadItem, depends: loadjob);
             DisplayJob.DisplayName = "Display  " + path;
-            TSviewCloudPlugin.JobControler.Run(DisplayJob, (j) =>
+            TSviewCloudPlugin.JobControler.Run<TSviewCloudPlugin.IRemoteItem>(DisplayJob, (j) =>
             {
-                DisplayJob.Progress = -1;
-                DisplayJob.ProgressStr = "Loading...";
+                j.Progress = -1;
+                j.ProgressStr = "Loading...";
                 //DisplayJob.ForceHidden = true;
 
-                var target = DisplayJob.ResultOfDepend[0];
-                DisplayJob.Result = target;
+                var result = j.ResultOfDepend[0];
+                if(!result.TryGetTarget(out var target))
+                {
+                    target = null;
+                }
+                j.Result = target;
                 if (target == null)
                 {
-                    DisplayJob.ProgressStr = "done.";
-                    DisplayJob.Progress = 1;
+                    j.ProgressStr = "done.";
+                    j.Progress = 1;
                     AddressSelecting = false;
+                    TSviewCloud.FormClosing.Instance.DecShowCount();
                     return;
                 }
 
@@ -989,6 +1017,7 @@ namespace TSviewCloud
 
                         TSviewCloudPlugin.IRemoteItem item;
                         treeView1.BeginUpdate();
+                        treeView1.CollapseAll();
                         try
                         {
                             var i = 0;
@@ -1077,8 +1106,9 @@ namespace TSviewCloud
                     }
                     finally
                     {
-                        DisplayJob.ProgressStr = "done.";
-                        DisplayJob.Progress = 1;
+                        TSviewCloud.FormClosing.Instance.DecShowCount();
+                        j.ProgressStr = "done.";
+                        j.Progress = 1;
                     }
                 }, null);
             });
@@ -1262,8 +1292,8 @@ namespace TSviewCloud
 
                 ffplayer = null;
 
-                (j as TSviewCloudPlugin.Job).Progress = 1;
-                (j as TSviewCloudPlugin.Job).ProgressStr = "done.";
+                j.Progress = 1;
+                j.ProgressStr = "done.";
             });
         }
 
@@ -1300,26 +1330,29 @@ namespace TSviewCloud
                 var waitjob = TSviewCloudPlugin.JobControler.CreateNewJob<Stream>(TSviewCloudPlugin.JobClass.Normal, depends: jobs.ToArray());
                 waitjob.DisplayName = "image loading";
                 waitjob.ProgressStr = "wait for download";
-                TSviewCloudPlugin.JobControler.Run(waitjob, (j) =>
+                TSviewCloudPlugin.JobControler.Run<Stream>(waitjob, (j) =>
                 {
-                    waitjob.Progress = -1;
+                    j.Progress = -1;
                     bool found = false;
-                    foreach (var d in waitjob.ResultOfDepend)
+                    foreach (var result in j.ResultOfDepend)
                     {
-                        using (d)
+                        if (result.TryGetTarget(out var d))
                         {
-                            if (found) continue;
-                            try
+                            using (d)
                             {
-                                var img = Image.FromStream(d);
-                                ret = new Bitmap(img);
-                                found = true;
+                                if (found) continue;
+                                try
+                                {
+                                    var img = Image.FromStream(d);
+                                    ret = new Bitmap(img);
+                                    found = true;
+                                }
+                                catch { }
                             }
-                            catch { }
                         }
                     }
-                    waitjob.Progress = 1;
-                    waitjob.ProgressStr = "done";
+                    j.Progress = 1;
+                    j.ProgressStr = "done";
                 });
 
                 waitjob.Wait(ct: player.ct);
@@ -1349,19 +1382,22 @@ namespace TSviewCloud
             job.DisplayName = "Play :" + downitem.Name;
             job.ProgressStr = "wait for play";
 
-            TSviewCloudPlugin.JobControler.Run(job, (j) =>
+            TSviewCloudPlugin.JobControler.Run<Stream>(job, (j) =>
             {
-                job.Progress = -1;
-                job.ProgressStr = "now playing...";
-                using (var remoteStream = job.ResultOfDepend[0])
-                {
-                    Player.Tag = downitem;
-                    var ct = job.Ct;
-                    if (Player.Play(remoteStream, filename, ct) != 0)
-                        throw new OperationCanceledException("player cancel");
+                j.Progress = -1;
+                j.ProgressStr = "now playing...";
+                var result = j.ResultOfDepend[0];
+                if (result.TryGetTarget(out var remoteStream)) {
+                    using (remoteStream)
+                    {
+                        Player.Tag = downitem;
+                        var ct = j.Ct;
+                        if (Player.Play(remoteStream, filename, ct) != 0)
+                            throw new OperationCanceledException("player cancel");
+                    }
                 }
-                job.Progress = 1;
-                job.ProgressStr = "done";
+                j.Progress = 1;
+                j.ProgressStr = "done";
             });
 
             job.Wait(ct: job.Ct);
@@ -1394,7 +1430,7 @@ namespace TSviewCloud
             TSviewCloudPlugin.Job prevjob = job;
             TSviewCloudPlugin.JobControler.Run(job, (j) =>
             {
-                job.ProgressStr = "play";
+                j.ProgressStr = "play";
                 PlayControler.PlayIndex = 0;
 
                 try
@@ -1409,14 +1445,14 @@ namespace TSviewCloud
 
                         try
                         {
-                            func(playitems[PlayControler.PlayIndex], job, data);
+                            func(playitems[PlayControler.PlayIndex], j, data);
                         }
                         catch (OperationCanceledException) { }
 
                         TSviewCloudConfig.Config.Log.LogOut(LogPrefix + " play done : " + playname);
 
                         PlayControler.PlayIndex++;
-                        job.Progress = (double)PlayControler.PlayIndex / f_all;
+                        j.Progress = (double)PlayControler.PlayIndex / f_all;
                     }
                 }
                 finally
@@ -1424,7 +1460,7 @@ namespace TSviewCloud
                     PlayControler.Done();
                 }
 
-                job.Progress = 1;
+                j.Progress = 1;
             });
             var afterjob = TSviewCloudPlugin.JobControler.CreateNewJob(TSviewCloudPlugin. JobClass.Clean, depends: prevjob);
             afterjob.DisplayName = "Clean up";
@@ -1909,7 +1945,6 @@ namespace TSviewCloud
             }
 
         }
-
 
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

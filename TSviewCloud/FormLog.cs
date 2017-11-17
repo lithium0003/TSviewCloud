@@ -37,7 +37,7 @@ namespace TSviewCloud
 
         public void LogOut(string str)
         {
-            if(lastLogDate.AddSeconds(5) < DateTime.Now && backlog == null)
+            if(lastLogDate.AddSeconds(10) < DateTime.Now && backlog == null)
             {
                 lastLogDate = DateTime.Now;
 
@@ -57,8 +57,10 @@ namespace TSviewCloud
                         backlogDate = DateTime.Now;
                     }
 
-                    MemoryStream tmplog;
-                    lock (tmplog = backlog)
+                    MemoryStream tmplog = backlog;
+                    if (tmplog == null) continue;
+
+                    lock (tmplog)
                     {
                         if (tmplog.CanWrite)
                         {
@@ -79,17 +81,20 @@ namespace TSviewCloud
 
         public void LogFinalize()
         {
-            if (backlogDate.AddSeconds(1) < DateTime.Now && backlog != null)
+            if (backlogDate.AddSeconds(5) < DateTime.Now && backlog != null)
             {
-                MemoryStream oldms;
-                lock (oldms = Interlocked.CompareExchange(ref backlog, null, backlog))
+                MemoryStream oldms = backlog;
+                if ((oldms = Interlocked.CompareExchange(ref backlog, null, oldms)) != null)
                 {
-                    oldms.Position = 0;
-                    synchronizationContext.Post((o) =>
+                    lock (oldms)
                     {
-                        textBox_log.AppendText(o as string);
-                    }, Encoding.UTF8.GetString(oldms.ToArray()));
-                    oldms.Dispose();
+                        oldms.Position = 0;
+                        synchronizationContext.Post((o) =>
+                        {
+                            textBox_log.AppendText(o as string);
+                        }, Encoding.UTF8.GetString(oldms.ToArray()));
+                        oldms.Dispose();
+                    }
                 }
             }
 
@@ -102,6 +107,7 @@ namespace TSviewCloud
 
         private void timer1_Tick(object sender, EventArgs e)
         {
+            timer1.Enabled = false;
             LogFinalize();
         }
     }

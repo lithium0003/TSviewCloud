@@ -57,17 +57,33 @@ namespace LibLocalSystem
         {
         }
 
-        private Job _masterJob;
+        private CancellationTokenSource cts;
 
-        public Job MasterJob { get => _masterJob; set => _masterJob = value; }
         public override int ReadTimeout
         {
             get => 0;
             set
             {
                 if (value == 0)
-                    MasterJob?.Cancel();
+                {
+                    cts?.Cancel();
+                }
             }
+        }
+
+        public CancellationTokenSource Cts { get => cts; set => cts = value; }
+
+        bool disposed;
+
+        protected override void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                cts?.Cancel();
+                disposed = true;
+            }
+            cts = null;
+            base.Dispose(disposing);
         }
     }
 }
