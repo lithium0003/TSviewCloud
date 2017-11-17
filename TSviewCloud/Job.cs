@@ -174,7 +174,7 @@ namespace TSviewCloudPlugin
             get
             {
                 return cts.Token.IsCancellationRequested
-                    || ((DoAlways) ? false : DependsOn?.Any(x => (x.TryGetTarget(out var y))? y.IsCanceled: true) ?? false)
+                    || ((DoAlways) ? false : DependsOn?.Any(x => (x.TryGetTarget(out var y))? y.IsCanceled: false) ?? false)
                     || (JobTask?.IsCanceled ?? false);
             }
         }

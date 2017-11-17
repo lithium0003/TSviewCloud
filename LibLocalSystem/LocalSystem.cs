@@ -172,6 +172,15 @@ namespace TSviewCloudPlugin
             return false;
         }
 
+        public override void ClearCache()
+        {
+            _IsReady = false;
+            pathlist.Clear();
+            var root = new LocalSystemItem(this, new DirectoryInfo(ItemControl.GetLongFilename(localPathBase)), null);
+            pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
+            EnsureItem("", 1);
+            _IsReady = true;
+        }
 
         private void LoadItems(string ID, int depth = 0)
         {

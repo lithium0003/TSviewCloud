@@ -161,8 +161,10 @@ namespace ProjectUtil
             JobControler.Run<Stream>(job, (j) =>
             {
                 var result =j.ResultOfDepend[0];
-                if (!result.TryGetTarget(out var stream))
+                if (result == null || !result.TryGetTarget(out var stream))
+                {
                     return;
+                }
                 using (stream)
                 {
                     if ((j as Job<Stream>).IsError)

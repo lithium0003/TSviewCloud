@@ -90,6 +90,7 @@ namespace TSviewCloudPlugin
 
         void Init();
         bool Add();
+        void ClearCache();
 
         IRemoteItem this[string ID] { get; }
         IRemoteItem PeakItem(string ID);
@@ -277,6 +278,8 @@ namespace TSviewCloudPlugin
 
         public abstract void Init();
         public abstract bool Add();
+        public abstract void ClearCache();
+
         public abstract string GetServiceName();
         public abstract Icon GetIcon();
 
@@ -300,8 +303,9 @@ namespace TSviewCloudPlugin
             if (moveToItem.Server == moveItem.Parents?.FirstOrDefault()?.Server)
                 return MoveItemOnServer(moveItem, moveToItem, WeekDepend, prevJob);
 
-            if (moveItem.ItemType == RemoteItemType.File)
-                return moveToItem.UploadStream(moveItem.DownloadItem(WeekDepend, prevJob), moveItem.Name, moveItem.Size ?? 0, WeekDepend, prevJob);
+            if (moveItem.ItemType == RemoteItemType.File) 
+                return moveToItem.UploadStream(RemoteServerFactory.PathToItem(moveItem.FullPath).DownloadItemRaw(WeekDepend, prevJob), moveItem.Name, moveItem.Size ?? 0, WeekDepend, prevJob);
+            
 
             var loadjob = RemoteServerFactory.PathToItemJob(moveItem.FullPath);
 
@@ -322,7 +326,7 @@ namespace TSviewCloudPlugin
                     j.Progress = -1;
                     j.ProgressStr = "upload...";
                     var joblist = new List<Job<IRemoteItem>>();
-                    joblist.AddRange(moveItem.Children?.Select(x => x?.MoveItem(newdir, WeekDepend: true, prevJob: j)));
+                    joblist.AddRange(RemoteServerFactory.PathToItem(moveItem.FullPath).Children?.Select(x => x?.MoveItem(newdir, WeekDepend: true, prevJob: j)));
                     //Parallel.ForEach(joblist, (x) => x.Wait(ct: job.Ct));
                     j.Result = newdir;
                 }
@@ -607,6 +611,16 @@ namespace TSviewCloudPlugin
                         
                     }
                 }
+            }
+        }
+
+        static public void ClearCache()
+        {
+            itemCache.Clear();
+            ReloadWait.Clear();
+            foreach (var s in ServerList.Values)
+            {
+                s.ClearCache();
             }
         }
 

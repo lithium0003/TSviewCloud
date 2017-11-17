@@ -379,8 +379,7 @@ namespace TSviewCloud
         };
 
         private byte[] fileGroupDescriptorBuffer;
-        private IRemoteItem[] selectedItems;
-        //private IRemoteItem[] baseItems;
+        private string[] selectedItemPaths;
         private string[] baseItemPaths;
 
         private Stream dstream;
@@ -440,12 +439,12 @@ namespace TSviewCloud
             total.Add(new KeyValuePair<string, IRemoteItem>(basepath + filename, items));
             if (items.ItemType == RemoteItemType.Folder)
             {
-                var children = items.Children;
+                var children = RemoteServerFactory.PathToItem(items.FullPath).Children;
                 if (children.Count() > 0)
                 {
                     Parallel.ForEach(children, () => new Dictionary<string, IRemoteItem>(), (x, state, local) =>
                     {
-                        return local.Concat(ExpandPath(basepath + filename + "\\", x)).ToDictionary(y => y.Key, y => y.Value);
+                        return local.Concat(ExpandPath(basepath + filename + "\\", RemoteServerFactory.PathToItem(x.FullPath))).ToDictionary(y => y.Key, y => y.Value);
                     },
                     (subtotal) => 
                     {
@@ -468,7 +467,7 @@ namespace TSviewCloud
                 () => new Dictionary<string, IRemoteItem>(), 
                 (x, state, local) =>
                 {
-                    return local.Concat(ExpandPath("", x)).ToDictionary(y => y.Key, y => y.Value);
+                    return local.Concat(ExpandPath("", RemoteServerFactory.PathToItem(x.FullPath))).ToDictionary(y => y.Key, y => y.Value);
                 },
                 (subtotal) =>
                 {
@@ -476,13 +475,13 @@ namespace TSviewCloud
                         total.Add(i);
                 });
             SortedDictionary<string, IRemoteItem> exItems = new SortedDictionary<string, IRemoteItem>(total.ToDictionary(y => y.Key, y => y.Value));
-            selectedItems = exItems.Values.ToArray();
+            selectedItemPaths = exItems.Values.Select(x => x.FullPath).ToArray();
             baseItemPaths = items.Select(x => x.FullPath).ToArray();
 
             var flist = new List<FORMATETC>();
             using (var stream = new MemoryStream())
             {
-                stream.Write(BitConverter.GetBytes(selectedItems.Count()), 0, sizeof(int));
+                stream.Write(BitConverter.GetBytes(selectedItemPaths.Count()), 0, sizeof(int));
 
                 int index = 0;
                 foreach (var i in exItems)
@@ -526,11 +525,11 @@ namespace TSviewCloud
             }
             else if (format.cfFormat == CF_FILECONTENTS)
             {
-                if (format.lindex >= 0 && format.lindex < selectedItems.Length)
+                if (format.lindex >= 0 && format.lindex < selectedItemPaths.Length)
                 {
                     medium.tymed = TYMED.TYMED_ISTREAM;
                     dstream?.Dispose();
-                    medium.unionmember = Marshal.GetComInterfaceForObject(new StreamWrapper(dstream = selectedItems[format.lindex].DownloadItemRaw()), typeof(IStream));
+                    medium.unionmember = Marshal.GetComInterfaceForObject(new StreamWrapper(dstream = RemoteServerFactory.PathToItem(selectedItemPaths[format.lindex]).DownloadItemRaw()), typeof(IStream));
                     medium.pUnkForRelease = null;
                 }
                 else
