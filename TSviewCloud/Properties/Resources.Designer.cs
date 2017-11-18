@@ -63,6 +63,16 @@ namespace TSviewCloud.Properties {
         /// <summary>
         ///   (アイコン) に類似した型 System.Drawing.Icon のローカライズされたリソースを検索します。
         /// </summary>
+        internal static System.Drawing.Icon diff {
+            get {
+                object obj = ResourceManager.GetObject("diff", resourceCulture);
+                return ((System.Drawing.Icon)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   (アイコン) に類似した型 System.Drawing.Icon のローカライズされたリソースを検索します。
+        /// </summary>
         internal static System.Drawing.Icon download {
             get {
                 object obj = ResourceManager.GetObject("download", resourceCulture);

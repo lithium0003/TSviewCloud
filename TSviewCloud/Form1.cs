@@ -49,21 +49,31 @@ namespace TSviewCloud
 
         private void Form1_Shown(object sender, EventArgs e)
         {
+            TSviewCloud.FormClosing.Instance.IncShowCount();
             var loadJob = TSviewCloudPlugin.JobControler.CreateNewJob(TSviewCloudPlugin.JobClass.Normal);
             loadJob.DisplayName = "Load server list";
             TSviewCloudPlugin.JobControler.Run(loadJob, (j) =>
             {
                 j.Progress = -1;
                 j.ProgressStr = "Loading...";
-
-                TSviewCloudPlugin.RemoteServerFactory.Restore();
-
-                while (!TSviewCloudPlugin.RemoteServerFactory.ServerList.Values.All(x => x.IsReady))
+                try
                 {
-                    Task.Delay(500).Wait(loadJob.Ct);
-                }
+                    TSviewCloudPlugin.RemoteServerFactory.Restore();
 
-                Initialized = true;
+                    while (!TSviewCloudPlugin.RemoteServerFactory.ServerList.Values.All(x => x.IsReady))
+                    {
+                        loadJob.Ct.ThrowIfCancellationRequested();
+                        Task.Delay(500).Wait(loadJob.Ct);
+                    }
+                }
+                finally
+                {
+                    synchronizationContext.Post((o) =>
+                    {
+                        TSviewCloud.FormClosing.Instance.DecShowCount();
+                    }, null);
+                    Initialized = true;
+                }
 
                 j.Progress = 1;
                 j.ProgressStr = "Done.";
@@ -127,8 +137,9 @@ namespace TSviewCloud
                         }
                     }
 
-                    synchronizationContext.Send((o) =>
+                    synchronizationContext.Post((o) =>
                     {
+                        Cursor.Current = Cursors.WaitCursor;
                         foreach (var item in o as IEnumerable<TSviewCloudPlugin.IRemoteItem>)
                         {
                             var treenode = treeView1.Nodes.Find(item.Server, false).First();
@@ -676,6 +687,12 @@ namespace TSviewCloud
             new AboutBox1().ShowDialog();
         }
 
+        private void outputLogTofileToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            outputLogTofileToolStripMenuItem.Checked = !outputLogTofileToolStripMenuItem.Checked;
+            TSviewCloudConfig.Config.LogToFile = outputLogTofileToolStripMenuItem.Checked;
+        }
+
         private void ConnectServer(object sender, EventArgs e)
         {
             var f = new FormNewServer
@@ -733,6 +750,8 @@ namespace TSviewCloud
                     return;
                 }
             }
+
+            outputLogTofileToolStripMenuItem.Checked = TSviewCloudConfig.Config.LogToFile;
 
             foreach (var dll in TSviewCloudPlugin.RemoteServerFactory.DllList)
             {
@@ -805,6 +824,7 @@ namespace TSviewCloud
 
                     synchronizationContext.Send(async (o) =>
                     {
+                        Cursor.Current = Cursors.WaitCursor;
                         try
                         {
                             baseNode.Nodes.AddRange(
@@ -873,6 +893,7 @@ namespace TSviewCloud
                 {
                     synchronizationContext.Send((o) =>
                     {
+                        Cursor.Current = Cursors.WaitCursor;
                         try
                         {
                             var item = o as TSviewCloudPlugin.IRemoteItem;
@@ -1003,6 +1024,7 @@ namespace TSviewCloud
 
                 synchronizationContext.Send(async (o) =>
                 {
+                    Cursor.Current = Cursors.WaitCursor;
                     try
                     {
                         ShowListViewItem(target);
@@ -1249,6 +1271,15 @@ namespace TSviewCloud
             TSviewCloudConfig.Config.Log.Show();
         }
 
+        private void Form1_Activated(object sender, EventArgs e)
+        {
+            TSviewCloud.FormClosing.Instance.Active = false;
+        }
+
+        private void Form1_Deactivate(object sender, EventArgs e)
+        {
+            TSviewCloud.FormClosing.Instance.Active = false;
+        }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
         /// 
@@ -2156,12 +2187,22 @@ namespace TSviewCloud
             };
             search.SearchSelectCallback += (s, evnt) =>
             {
-                if(listView1.SelectedIndices.Count > 0)
+                if (listView1.SelectedIndices.Count > 0)
                     search.SelectedItems = listData.GetItems(listView1.SelectedIndices).ToArray();
             };
             search.Show();
         }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private void DiffItems(object sender, EventArgs e)
+        {
+
+
+        }
     }
+
+
 
     static class Extensions
     {

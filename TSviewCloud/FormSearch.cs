@@ -77,6 +77,7 @@ namespace TSviewCloud
                 (x, state, local) =>
                 {
                     var item = RemoteServerFactory.PathToItem(x.FullPath);
+                    if (item == null) return local;
                     local.Add(item);
                     local.AddRange(GetItems(item));
                     return local;
@@ -141,122 +142,156 @@ namespace TSviewCloud
                 j.ProgressStr = "Create index...";
                 j.Progress = -1;
 
-                List<IRemoteItem> initselection = new List<IRemoteItem>();
-                List<IRemoteItem> selection = new List<IRemoteItem>();
-
-                if (selectall)
+                TSviewCloudConfig.Config.Log.LogOut("[Search] start");
+                var sw = new System.Diagnostics.Stopwatch();
+                try
                 {
-                    initselection.AddRange(RemoteServerFactory.ServerList.Values.Select(x => x[""]));
-                }
-                if (selectitem)
-                {
-                    initselection.AddRange(SelectedItems);
-                }
-                if (selecttree)
-                {
-                    initselection.Add(RemoteServerFactory.PathToItem(treepath));
-                }
+                    List<IRemoteItem> initselection = new List<IRemoteItem>();
+                    List<IRemoteItem> selection = new List<IRemoteItem>();
 
-                synchronizationContext.Post((o) =>
-                {
-                    label_result.Text = o as string;
-                }, "Prepare items...");
-
-
-                Parallel.ForEach(
-                    initselection,
-                    () => new List<IRemoteItem>(),
-                    (x, state, local) =>
+                    if (selectall)
                     {
-                        local.AddRange(GetItems(RemoteServerFactory.PathToItem(x.FullPath)));
-                        return local;
-                    },
-                    (result) =>
-                    {
-                        lock (selection)
-                            selection.AddRange(result);
+                        initselection.AddRange(RemoteServerFactory.ServerList.Values.Select(x => x[""]));
                     }
-                );
-
-                synchronizationContext.Post((o) =>
-                {
-                    label_result.Text = o as string;
-                }, "Prepare items done.");
-
-
-                var search = selection.AsParallel();
-
-                if (typeFile)
-                    search = search.Where(x => x.ItemType == RemoteItemType.File);
-                if (typeFolder)
-                    search = search.Where(x => x.ItemType == RemoteItemType.Folder);
-
-
-                if (strregex)
-                {
-                    if (!strcase)
-                        search = search.Where(x => Regex.IsMatch(x.Name ?? "", searchStr));
-                    else
-                        search = search.Where(x => Regex.IsMatch(x.Name ?? "", searchStr, RegexOptions.IgnoreCase));
-                }
-                else
-                {
-                    if (!strcase)
+                    if (selectitem)
                     {
-                        if (strstarts)
-                            search = search.Where(x => (x.Name?.StartsWith(searchStr) ?? searchStr == ""));
-                        if (strends)
-                            search = search.Where(x => (x.Name?.EndsWith(searchStr) ?? searchStr == ""));
-                        if (strcontain)
-                            search = search.Where(x => (x.Name?.IndexOf(searchStr) >= 0));
+                        initselection.AddRange(SelectedItems);
+                    }
+                    if (selecttree)
+                    {
+                        initselection.Add(RemoteServerFactory.PathToItem(treepath));
+                    }
+
+                    synchronizationContext.Post((o) =>
+                    {
+                        label_result.Text = o as string;
+                    }, "Prepare items...");
+
+                    TSviewCloudConfig.Config.Log.LogOut("[Search] Create index");
+                    sw.Start();
+
+                    Parallel.ForEach(
+                        initselection,
+                        () => new List<IRemoteItem>(),
+                        (x, state, local) =>
+                        {
+                            if (x == null) return local;
+                            var item = RemoteServerFactory.PathToItem(x.FullPath);
+                            if (item == null) return local;
+
+                            local.AddRange(GetItems(item));
+                            return local;
+                        },
+                        (result) =>
+                        {
+                            lock (selection)
+                                selection.AddRange(result);
+                        }
+                    );
+
+                    synchronizationContext.Post((o) =>
+                    {
+                        label_result.Text = o as string;
+                    }, "Prepare items done.");
+                    sw.Stop();
+                    var itemsearch_time = sw.Elapsed;
+                    
+
+
+                    var search = selection.AsParallel();
+
+                    if (typeFile)
+                        search = search.Where(x => x.ItemType == RemoteItemType.File);
+                    if (typeFolder)
+                        search = search.Where(x => x.ItemType == RemoteItemType.Folder);
+
+
+                    if (strregex)
+                    {
+                        if (!strcase)
+                            search = search.Where(x => Regex.IsMatch(x.Name ?? "", searchStr));
+                        else
+                            search = search.Where(x => Regex.IsMatch(x.Name ?? "", searchStr, RegexOptions.IgnoreCase));
                     }
                     else
-                        search = search.Where(x => (
-                        System.Globalization.CultureInfo.CurrentCulture.CompareInfo.IndexOf(
-                            x.Name ?? "",
-                            searchStr,
-                            System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreKanaType | System.Globalization.CompareOptions.IgnoreWidth
-                            | System.Globalization.CompareOptions.IgnoreNonSpace | System.Globalization.CompareOptions.IgnoreSymbols
-                            ) >= 0));
+                    {
+                        if (!strcase)
+                        {
+                            if (strstarts)
+                                search = search.Where(x => (x.Name?.StartsWith(searchStr) ?? searchStr == ""));
+                            if (strends)
+                                search = search.Where(x => (x.Name?.EndsWith(searchStr) ?? searchStr == ""));
+                            if (strcontain)
+                                search = search.Where(x => (x.Name?.IndexOf(searchStr) >= 0));
+                        }
+                        else
+                            search = search.Where(x => (
+                            System.Globalization.CultureInfo.CurrentCulture.CompareInfo.IndexOf(
+                                x.Name ?? "",
+                                searchStr,
+                                System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreKanaType | System.Globalization.CompareOptions.IgnoreWidth
+                                | System.Globalization.CompareOptions.IgnoreNonSpace | System.Globalization.CompareOptions.IgnoreSymbols
+                                ) >= 0));
+                    }
+
+                    if (SizeOver)
+                        search = search.Where(x => (x.Size ?? 0) > Over);
+                    if (SizeUnder)
+                        search = search.Where(x => (x.Size ?? 0) < Under);
+
+
+                    if (modifiedFromEnable)
+                        search = search.Where(x => x.ModifiedDate > modifiedFrom);
+                    if (modifiedToEnable)
+                        search = search.Where(x => x.ModifiedDate < modifiedTo);
+
+                    if (createdFromEnable)
+                        search = search.Where(x => x.CreatedDate > createdFrom);
+                    if (createdToEnable)
+                        search = search.Where(x => x.CreatedDate < createdTo);
+
+                    synchronizationContext.Post((o) =>
+                    {
+                        label_result.Text = o as string;
+                    }, "Search...");
+                    j.ProgressStr = "Search...";
+
+                    TSviewCloudConfig.Config.Log.LogOut("[Search] Search");
+                    sw.Restart();
+
+                    SearchResult = search.ToArray();
+
+                    sw.Stop();
+                    var filteritem_time = sw.Elapsed;
+
+                    j.Progress = 1;
+                    j.ProgressStr = "Found : " + SearchResult.Count().ToString();
+
+                    synchronizationContext.Post((o) =>
+                    {
+                        label_result.Text = o as string;
+                        button_seach.Enabled = true;
+                        button_cancel.Enabled = false;
+                        button_showresult.Enabled = true;
+                        progressBar1.Style = ProgressBarStyle.Continuous;
+                        SearchJob = null;
+                    }, string.Format("Found : {0}, Index {1} search {2}", SearchResult.Count(), itemsearch_time, filteritem_time));
+
+                    TSviewCloudConfig.Config.Log.LogOut("[Search] found "+ SearchResult.Count().ToString());
                 }
-
-                if (SizeOver)
-                    search = search.Where(x => (x.Size ?? 0) > Over);
-                if (SizeUnder)
-                    search = search.Where(x => (x.Size ?? 0) < Under);
-
-
-                if (modifiedFromEnable)
-                    search = search.Where(x => x.ModifiedDate > modifiedFrom);
-                if (modifiedToEnable)
-                    search = search.Where(x => x.ModifiedDate < modifiedTo);
-
-                if (createdFromEnable)
-                    search = search.Where(x => x.CreatedDate > createdFrom);
-                if (createdToEnable)
-                    search = search.Where(x => x.CreatedDate < createdTo);
-
-                synchronizationContext.Post((o) =>
+                catch
                 {
-                    label_result.Text = o as string;
-                }, "Search...");
-                j.ProgressStr = "Search...";
+                    TSviewCloudConfig.Config.Log.LogOut("[Search] Abort");
 
-
-                SearchResult = search.ToArray();
-
-                j.Progress = 1;
-                j.ProgressStr = "Found : " + SearchResult.Count().ToString();
-
-                synchronizationContext.Post((o) =>
-                {
-                    label_result.Text = o as string;
-                    button_seach.Enabled = true;
-                    button_cancel.Enabled = false;
-                    button_showresult.Enabled = true;
-                    progressBar1.Style = ProgressBarStyle.Continuous;
-                    SearchJob = null;
-                }, "Found : " + SearchResult.Count().ToString());
+                    synchronizationContext.Post((o) =>
+                    {
+                        label_result.Text = "abort";
+                        button_seach.Enabled = true;
+                        button_cancel.Enabled = false;
+                        progressBar1.Style = ProgressBarStyle.Continuous;
+                        SearchJob = null;
+                    }, null);
+                }
             });
         }
 
@@ -275,7 +310,6 @@ namespace TSviewCloud
         private void button_cancel_Click(object sender, EventArgs e)
         {
             SearchJob?.Cancel();
-            SearchJob = null;
             button_seach.Enabled = true;
             button_cancel.Enabled = false;
             button_showresult.Enabled = false;
@@ -283,6 +317,7 @@ namespace TSviewCloud
 
         private void button_showresult_Click(object sender, EventArgs e)
         {
+            Cursor.Current = Cursors.WaitCursor;
             SearchResultCallback?.Invoke(this, new EventArgs());
         }
 

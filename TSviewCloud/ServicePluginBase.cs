@@ -161,7 +161,7 @@ namespace TSviewCloudPlugin
         public virtual DateTime? ModifiedDate => modifiedDate;
         public virtual DateTime? CreatedDate => createdDate;
         public virtual string Hash => hash;
-        public virtual string FullPath => Server + "://" + Uri.UnescapeDataString(Path);
+        public virtual string FullPath => Server + "://" + Path;
 
         public virtual DateTime Age { get => age; set => age = value; }
 
@@ -448,7 +448,7 @@ namespace TSviewCloudPlugin
             return orgname;
         }
 
-        static string cachedir = Path.Combine(TSviewCloudConfig.Config.Config_BasePath, "Servers");
+        static string cachedir = TSviewCloudConfig.Config.CachePath;
         static byte[] _salt = Encoding.ASCII.GetBytes("TSviewCloud server configuration");
 
         static public void Save()
@@ -472,12 +472,12 @@ namespace TSviewCloudPlugin
             } while (retry-- > 0);
             Directory.CreateDirectory(cachedir);
 
-            foreach (var s in ServerList)
+            Parallel.ForEach(ServerList, (s) =>
             {
                 var dir = cachedir + "\\" + s.Value.ServiceName;
                 Directory.CreateDirectory(dir);
                 var serializer = new DataContractJsonSerializer(s.Value.GetType());
-            
+
                 if (TSviewCloudConfig.Config.SaveEncrypted)
                 {
                     RijndaelManaged aesAlg = null;              // RijndaelManaged object used to encrypt the data.
@@ -530,16 +530,17 @@ namespace TSviewCloudPlugin
                         }
                     }
                 }
-            }
+            });
         }
 
         static public void Restore()
         {
             if (!Directory.Exists(cachedir)) return;
-            foreach (var s in Directory.GetDirectories(cachedir))
+            Parallel.ForEach(Directory.GetDirectories(cachedir), (s) =>
             {
                 var service = s.Substring(cachedir.Length + 1);
-                foreach (var c in Directory.GetFiles(s, "*.xml"))
+
+                Parallel.ForEach(Directory.GetFiles(s, "*.xml"), (c) =>
                 {
                     var connection = Path.GetFileNameWithoutExtension(c);
 
@@ -549,8 +550,8 @@ namespace TSviewCloudPlugin
                         var obj = serializer.ReadObject(f) as IRemoteServer;
                         ServerList.AddOrUpdate(connection, (k) => obj, (k, v) => obj);
                     }
-                }
-                foreach (var c in Directory.GetFiles(s, "*.xml.gz"))
+                });
+                Parallel.ForEach(Directory.GetFiles(s, "*.xml.gz"), (c) =>
                 {
                     var connection = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(c));
 
@@ -561,8 +562,8 @@ namespace TSviewCloudPlugin
                         var obj = serializer.ReadObject(cf) as IRemoteServer;
                         ServerList.AddOrUpdate(connection, (k) => obj, (k, v) => obj);
                     }
-                }
-                foreach (var c in Directory.GetFiles(s, "*.xml.enc.gz"))
+                });
+                Parallel.ForEach(Directory.GetFiles(s, "*.xml.enc.gz"), (c) =>
                 {
                     var connection = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(c)));
 
@@ -607,13 +608,12 @@ namespace TSviewCloudPlugin
                         finally
                         {
                             // Clear the RijndaelManaged object.
-                            if (aesAlg != null)
-                                aesAlg.Clear();
+                            aesAlg?.Clear();
                         }
-                        
+
                     }
-                }
-            }
+                });
+            });
         }
 
         static public void ClearCache()
@@ -709,6 +709,7 @@ namespace TSviewCloudPlugin
             }
             catch
             {
+                System.Diagnostics.Debug.WriteLine(url);
                 itemCache.TryRemove(url, out var tmp);
                 return null;
             }

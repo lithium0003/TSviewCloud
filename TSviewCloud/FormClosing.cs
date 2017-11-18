@@ -32,6 +32,12 @@ namespace TSviewCloud
             }
         }
 
+        public bool Active
+        {
+            get { return TopMost; }
+            set { TopMost = value; }
+        }
+
         private void FormClosing_Load(object sender, EventArgs e)
         {
             if (Program.MainForm != null)
@@ -59,5 +65,6 @@ namespace TSviewCloud
             if (Interlocked.Decrement(ref showcount) > 0) return;
             Close();
         }
-    }
+
+     }
 }

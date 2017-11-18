@@ -31,6 +31,8 @@
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.panel1 = new System.Windows.Forms.Panel();
+            this.button_diff = new System.Windows.Forms.Button();
+            this.button_search = new System.Windows.Forms.Button();
             this.button_play = new System.Windows.Forms.Button();
             this.button_download = new System.Windows.Forms.Button();
             this.button_upload = new System.Windows.Forms.Button();
@@ -76,6 +78,8 @@
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.remoteToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.reloadToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.searchItemsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.checkDifferenceLocalAndRemoteToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem6 = new System.Windows.Forms.ToolStripSeparator();
             this.downloadItemsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.uploadFilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -88,6 +92,7 @@
             this.fFplayerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.logWindowToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.outputLogTofileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem3 = new System.Windows.Forms.ToolStripSeparator();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.contextMenuStrip_address = new System.Windows.Forms.ContextMenuStrip(this.components);
@@ -97,8 +102,6 @@
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
-            this.button_search = new System.Windows.Forms.Button();
-            this.searchItemsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -112,6 +115,7 @@
             // panel1
             // 
             this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.panel1.Controls.Add(this.button_diff);
             this.panel1.Controls.Add(this.button_search);
             this.panel1.Controls.Add(this.button_play);
             this.panel1.Controls.Add(this.button_download);
@@ -127,6 +131,32 @@
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(1266, 44);
             this.panel1.TabIndex = 1;
+            // 
+            // button_diff
+            // 
+            this.button_diff.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.button_diff.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("button_diff.BackgroundImage")));
+            this.button_diff.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            this.button_diff.ImageIndex = 5;
+            this.button_diff.Location = new System.Drawing.Point(1094, 5);
+            this.button_diff.Name = "button_diff";
+            this.button_diff.Size = new System.Drawing.Size(32, 32);
+            this.button_diff.TabIndex = 10;
+            this.button_diff.UseVisualStyleBackColor = true;
+            this.button_diff.Click += new System.EventHandler(this.DiffItems);
+            // 
+            // button_search
+            // 
+            this.button_search.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.button_search.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("button_search.BackgroundImage")));
+            this.button_search.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            this.button_search.ImageIndex = 5;
+            this.button_search.Location = new System.Drawing.Point(1056, 5);
+            this.button_search.Name = "button_search";
+            this.button_search.Size = new System.Drawing.Size(32, 32);
+            this.button_search.TabIndex = 9;
+            this.button_search.UseVisualStyleBackColor = true;
+            this.button_search.Click += new System.EventHandler(this.SearchItems);
             // 
             // button_play
             // 
@@ -218,7 +248,7 @@
             // button_addressGO
             // 
             this.button_addressGO.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.button_addressGO.Location = new System.Drawing.Point(1031, 5);
+            this.button_addressGO.Location = new System.Drawing.Point(983, 5);
             this.button_addressGO.Name = "button_addressGO";
             this.button_addressGO.Size = new System.Drawing.Size(43, 32);
             this.button_addressGO.TabIndex = 1;
@@ -232,7 +262,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.textBox_address.Location = new System.Drawing.Point(155, 11);
             this.textBox_address.Name = "textBox_address";
-            this.textBox_address.Size = new System.Drawing.Size(870, 22);
+            this.textBox_address.Size = new System.Drawing.Size(822, 22);
             this.textBox_address.TabIndex = 0;
             // 
             // splitContainer1
@@ -541,6 +571,7 @@
             this.remoteToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.reloadToolStripMenuItem1,
             this.searchItemsToolStripMenuItem,
+            this.checkDifferenceLocalAndRemoteToolStripMenuItem,
             this.toolStripMenuItem6,
             this.downloadItemsToolStripMenuItem,
             this.uploadFilesToolStripMenuItem,
@@ -556,53 +587,68 @@
             // 
             this.reloadToolStripMenuItem1.Name = "reloadToolStripMenuItem1";
             this.reloadToolStripMenuItem1.ShortcutKeys = System.Windows.Forms.Keys.F5;
-            this.reloadToolStripMenuItem1.Size = new System.Drawing.Size(271, 26);
+            this.reloadToolStripMenuItem1.Size = new System.Drawing.Size(318, 26);
             this.reloadToolStripMenuItem1.Text = "&Reload";
             this.reloadToolStripMenuItem1.Click += new System.EventHandler(this.reloadToolStripMenuItem_Click);
+            // 
+            // searchItemsToolStripMenuItem
+            // 
+            this.searchItemsToolStripMenuItem.Name = "searchItemsToolStripMenuItem";
+            this.searchItemsToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.F)));
+            this.searchItemsToolStripMenuItem.Size = new System.Drawing.Size(318, 26);
+            this.searchItemsToolStripMenuItem.Text = "&Search Items";
+            this.searchItemsToolStripMenuItem.Click += new System.EventHandler(this.SearchItems);
+            // 
+            // checkDifferenceLocalAndRemoteToolStripMenuItem
+            // 
+            this.checkDifferenceLocalAndRemoteToolStripMenuItem.Name = "checkDifferenceLocalAndRemoteToolStripMenuItem";
+            this.checkDifferenceLocalAndRemoteToolStripMenuItem.Size = new System.Drawing.Size(318, 26);
+            this.checkDifferenceLocalAndRemoteToolStripMenuItem.Text = "Check difference Local and Remote";
+            this.checkDifferenceLocalAndRemoteToolStripMenuItem.Click += new System.EventHandler(this.DiffItems);
             // 
             // toolStripMenuItem6
             // 
             this.toolStripMenuItem6.Name = "toolStripMenuItem6";
-            this.toolStripMenuItem6.Size = new System.Drawing.Size(268, 6);
+            this.toolStripMenuItem6.Size = new System.Drawing.Size(315, 6);
             // 
             // downloadItemsToolStripMenuItem
             // 
             this.downloadItemsToolStripMenuItem.Name = "downloadItemsToolStripMenuItem";
-            this.downloadItemsToolStripMenuItem.Size = new System.Drawing.Size(271, 26);
+            this.downloadItemsToolStripMenuItem.Size = new System.Drawing.Size(318, 26);
             this.downloadItemsToolStripMenuItem.Text = "Download Items";
             this.downloadItemsToolStripMenuItem.Click += new System.EventHandler(this.DownloadItems);
             // 
             // uploadFilesToolStripMenuItem
             // 
             this.uploadFilesToolStripMenuItem.Name = "uploadFilesToolStripMenuItem";
-            this.uploadFilesToolStripMenuItem.Size = new System.Drawing.Size(271, 26);
+            this.uploadFilesToolStripMenuItem.Size = new System.Drawing.Size(318, 26);
             this.uploadFilesToolStripMenuItem.Text = "Upload File(s)";
             this.uploadFilesToolStripMenuItem.Click += new System.EventHandler(this.uploadFilesToolStripMenuItem_Click);
             // 
             // uploadFolderToolStripMenuItem
             // 
             this.uploadFolderToolStripMenuItem.Name = "uploadFolderToolStripMenuItem";
-            this.uploadFolderToolStripMenuItem.Size = new System.Drawing.Size(271, 26);
+            this.uploadFolderToolStripMenuItem.Size = new System.Drawing.Size(318, 26);
             this.uploadFolderToolStripMenuItem.Text = "Upload Folder";
             this.uploadFolderToolStripMenuItem.Click += new System.EventHandler(this.uploadFolderToolStripMenuItem_Click);
             // 
             // createFolderToolStripMenuItem
             // 
             this.createFolderToolStripMenuItem.Name = "createFolderToolStripMenuItem";
-            this.createFolderToolStripMenuItem.Size = new System.Drawing.Size(271, 26);
+            this.createFolderToolStripMenuItem.Size = new System.Drawing.Size(318, 26);
             this.createFolderToolStripMenuItem.Text = "&Create Folder ...";
             this.createFolderToolStripMenuItem.Click += new System.EventHandler(this.MakeFolder);
             // 
             // toolStripMenuItem5
             // 
             this.toolStripMenuItem5.Name = "toolStripMenuItem5";
-            this.toolStripMenuItem5.Size = new System.Drawing.Size(268, 6);
+            this.toolStripMenuItem5.Size = new System.Drawing.Size(315, 6);
             // 
             // deleteSelectecItemToolStripMenuItem
             // 
             this.deleteSelectecItemToolStripMenuItem.Name = "deleteSelectecItemToolStripMenuItem";
             this.deleteSelectecItemToolStripMenuItem.ShortcutKeys = System.Windows.Forms.Keys.Delete;
-            this.deleteSelectecItemToolStripMenuItem.Size = new System.Drawing.Size(271, 26);
+            this.deleteSelectecItemToolStripMenuItem.Size = new System.Drawing.Size(318, 26);
             this.deleteSelectecItemToolStripMenuItem.Text = "&Delete Selected Item(s)";
             this.deleteSelectecItemToolStripMenuItem.Click += new System.EventHandler(this.DeleteItems);
             // 
@@ -633,6 +679,7 @@
             // 
             this.helpToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.logWindowToolStripMenuItem,
+            this.outputLogTofileToolStripMenuItem,
             this.toolStripMenuItem3,
             this.aboutToolStripMenuItem});
             this.helpToolStripMenuItem.Name = "helpToolStripMenuItem";
@@ -642,19 +689,26 @@
             // logWindowToolStripMenuItem
             // 
             this.logWindowToolStripMenuItem.Name = "logWindowToolStripMenuItem";
-            this.logWindowToolStripMenuItem.Size = new System.Drawing.Size(168, 26);
+            this.logWindowToolStripMenuItem.Size = new System.Drawing.Size(199, 26);
             this.logWindowToolStripMenuItem.Text = "&Log Window";
             this.logWindowToolStripMenuItem.Click += new System.EventHandler(this.logWindowToolStripMenuItem_Click);
+            // 
+            // outputLogTofileToolStripMenuItem
+            // 
+            this.outputLogTofileToolStripMenuItem.Name = "outputLogTofileToolStripMenuItem";
+            this.outputLogTofileToolStripMenuItem.Size = new System.Drawing.Size(199, 26);
+            this.outputLogTofileToolStripMenuItem.Text = "Output log to &file";
+            this.outputLogTofileToolStripMenuItem.Click += new System.EventHandler(this.outputLogTofileToolStripMenuItem_Click);
             // 
             // toolStripMenuItem3
             // 
             this.toolStripMenuItem3.Name = "toolStripMenuItem3";
-            this.toolStripMenuItem3.Size = new System.Drawing.Size(165, 6);
+            this.toolStripMenuItem3.Size = new System.Drawing.Size(196, 6);
             // 
             // aboutToolStripMenuItem
             // 
             this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(168, 26);
+            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(199, 26);
             this.aboutToolStripMenuItem.Text = "&About";
             this.aboutToolStripMenuItem.Click += new System.EventHandler(this.aboutToolStripMenuItem_Click);
             // 
@@ -689,27 +743,6 @@
             this.timer1.Interval = 500;
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
-            // button_search
-            // 
-            this.button_search.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.button_search.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("button_search.BackgroundImage")));
-            this.button_search.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-            this.button_search.ImageIndex = 5;
-            this.button_search.Location = new System.Drawing.Point(1089, 5);
-            this.button_search.Name = "button_search";
-            this.button_search.Size = new System.Drawing.Size(32, 32);
-            this.button_search.TabIndex = 9;
-            this.button_search.UseVisualStyleBackColor = true;
-            this.button_search.Click += new System.EventHandler(this.SearchItems);
-            // 
-            // searchItemsToolStripMenuItem
-            // 
-            this.searchItemsToolStripMenuItem.Name = "searchItemsToolStripMenuItem";
-            this.searchItemsToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.F)));
-            this.searchItemsToolStripMenuItem.Size = new System.Drawing.Size(271, 26);
-            this.searchItemsToolStripMenuItem.Text = "&Search Items";
-            this.searchItemsToolStripMenuItem.Click += new System.EventHandler(this.SearchItems);
-            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(120F, 120F);
@@ -721,6 +754,8 @@
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Form1";
             this.Text = "Form1";
+            this.Activated += new System.EventHandler(this.Form1_Activated);
+            this.Deactivate += new System.EventHandler(this.Form1_Deactivate);
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosingAsync);
             this.Load += new System.EventHandler(this.Form1_Load);
             this.Shown += new System.EventHandler(this.Form1_Shown);
@@ -809,6 +844,9 @@
         private System.Windows.Forms.ToolStripMenuItem driveCacheclearToolStripMenuItem;
         private System.Windows.Forms.Button button_search;
         private System.Windows.Forms.ToolStripMenuItem searchItemsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem outputLogTofileToolStripMenuItem;
+        private System.Windows.Forms.Button button_diff;
+        private System.Windows.Forms.ToolStripMenuItem checkDifferenceLocalAndRemoteToolStripMenuItem;
     }
 }
 

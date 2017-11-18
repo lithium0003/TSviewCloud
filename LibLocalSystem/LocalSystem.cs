@@ -65,7 +65,13 @@ namespace TSviewCloudPlugin
 
         private string FullpathToPath(string fullpath)
         {
-            return (string.IsNullOrEmpty(fullpath) || (_server as LocalSystem).BasePath == fullpath) ? "" : new Uri((_server as LocalSystem).BasePath.TrimEnd('\\') + "\\").MakeRelativeUri(new Uri(fullpath)).ToString();
+            var basepath = (_server as LocalSystem).BasePath;
+            if (string.IsNullOrEmpty(fullpath) || basepath == fullpath)
+                return "";
+            if (!fullpath.StartsWith(basepath))
+                throw new ArgumentOutOfRangeException("fullpath", "out of location BaseBath");
+            var ret = (basepath.EndsWith("\\"))? fullpath.Substring(basepath.Length): fullpath.Substring(basepath.Length+1);
+            return ret.Replace('\\', '/');
         }
 
         public override string ID => fullpath;

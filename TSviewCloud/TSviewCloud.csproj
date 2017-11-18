@@ -294,6 +294,7 @@
     <None Include="Resources\prev.ico" />
     <None Include="Resources\next.ico" />
     <None Include="Resources\download.ico" />
+    <None Include="Resources\diff.ico" />
     <Content Include="Resources\File.ico" />
     <Content Include="Resources\Folder.ico" />
     <None Include="Resources\home.ico" />

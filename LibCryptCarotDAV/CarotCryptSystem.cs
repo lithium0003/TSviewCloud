@@ -236,7 +236,11 @@ namespace TSviewCloudPlugin
                     int waitcount = 500;
                     while (!(RemoteServerFactory.ServerList.Keys.Contains(_dependService) && RemoteServerFactory.ServerList[_dependService].IsReady))
                     {
-                        Task.Delay(50).Wait(job.Ct);
+                        if(RemoteServerFactory.ServerList.Keys.Contains(_dependService))
+                            Task.Delay(1).Wait(job.Ct);
+                        else
+                            Task.Delay(1000).Wait(job.Ct);
+
                         if (waitcount-- == 0) throw new FileNotFoundException("Depend Service is not ready.", _dependService);
                     }
                 }

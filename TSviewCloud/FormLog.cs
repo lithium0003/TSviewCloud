@@ -21,6 +21,34 @@ namespace TSviewCloud
         private DateTime lastLogDate;
         private DateTime backlogDate;
 
+        private TextWriter LogStream;
+        public bool LogToFile
+        {
+            get { return LogStream != null; }
+            set
+            {
+                if (value)
+                {
+                    if (LogStream == null)
+                    {
+                        try
+                        {
+                            LogStream = TextWriter.Synchronized(new StreamWriter(Stream.Synchronized(new FileStream(Path.Combine(TSviewCloudConfig.Config.LogPath, Path.GetFileNameWithoutExtension(Application.ExecutablePath) + ".log"), FileMode.Append, FileAccess.Write, FileShare.Read))));
+                        }
+                        catch { }
+                    }
+                }
+                else
+                {
+                    if (LogStream != null)
+                    {
+                        LogStream.Flush();
+                        LogStream = null;
+                    }
+                }
+            }
+        }
+
         public FormLog()
         {
             InitializeComponent();
@@ -29,6 +57,7 @@ namespace TSviewCloud
  
         private void FormLog_FormClosing(object sender, FormClosingEventArgs e)
         {
+            LogStream?.Flush();
             if (TSviewCloudConfig.Config.ApplicationExit) return;
 
             e.Cancel = true;
@@ -37,19 +66,25 @@ namespace TSviewCloud
 
         public void LogOut(string str)
         {
-            if(lastLogDate.AddSeconds(10) < DateTime.Now && backlog == null)
+            str = DateTime.Now.ToString("yyyy/MM/dd hh:mm:ss.ffff ") + str;
+
+            LogStream?.Write(str+"\r\n");
+            if (lastLogDate.AddSeconds(10) < DateTime.Now && backlog == null)
             {
+                LogStream?.Flush();
                 lastLogDate = DateTime.Now;
 
                 synchronizationContext.Post((o) =>
                 {
                     textBox_log.AppendText(o as string + "\r\n");
                 }, str);
-                timer1.Enabled = false;
             }
             else
             {
-                timer1.Enabled = true;
+                synchronizationContext.Post((o) =>
+                {
+                    timer1.Enabled = true;
+                }, null);
                 while (true)
                 {
                     if (Interlocked.CompareExchange(ref backlog, new MemoryStream(), null) == null)
@@ -83,6 +118,8 @@ namespace TSviewCloud
         {
             if (backlogDate.AddSeconds(5) < DateTime.Now && backlog != null)
             {
+                LogStream?.Flush();
+
                 MemoryStream oldms = backlog;
                 if ((oldms = Interlocked.CompareExchange(ref backlog, null, oldms)) != null)
                 {
@@ -96,8 +133,11 @@ namespace TSviewCloud
                         oldms.Dispose();
                     }
                 }
+                synchronizationContext.Post((o) =>
+                {
+                    timer1.Enabled = backlog != null;
+                }, null);
             }
-
         }
 
         public void LogOut(string format, params object[] args)
@@ -107,7 +147,6 @@ namespace TSviewCloud
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            timer1.Enabled = false;
             LogFinalize();
         }
     }

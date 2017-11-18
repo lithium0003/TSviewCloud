@@ -19,7 +19,7 @@ namespace TSviewCloud
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            Trace.Listeners.Add(new TextWriterTraceListener(System.IO.Path.Combine(TSviewCloudConfig.Config.Config_BasePath, System.IO.Path.GetFileNameWithoutExtension(Application.ExecutablePath) + ".err.log")));
+            Trace.Listeners.Add(new TextWriterTraceListener(System.IO.Path.Combine(TSviewCloudConfig.Config.LogPath, System.IO.Path.GetFileNameWithoutExtension(Application.ExecutablePath) + ".err.log")));
             Trace.AutoFlush = true;
 
             TaskScheduler.UnobservedTaskException += (sender, e) =>

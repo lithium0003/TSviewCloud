@@ -29,6 +29,11 @@ namespace TSviewCloudConfig
         public static int UploadBufferSize = 16 * 1024 * 1024;
         public static int DownloadBufferSize = 16 * 1024 * 1024;
 
+        public static bool LogToFile
+        {
+            get { return Log.LogToFile; }
+            set { Log.LogToFile = value; }
+        }
 
         private static string GetFileSystemPath(Environment.SpecialFolder folder)
         {
@@ -49,6 +54,19 @@ namespace TSviewCloudConfig
         private static string GetConfigPath(string basepath)
         {
             string path = Path.Combine(basepath, "Config");
+
+            lock (typeof(Application))
+            {
+                if (!Directory.Exists(path))
+                {
+                    Directory.CreateDirectory(path);
+                }
+            }
+            return path;
+        }
+        private static string GetLogPath(string basepath)
+        {
+            string path = Path.Combine(basepath, "Log");
 
             lock (typeof(Application))
             {
@@ -123,7 +141,7 @@ namespace TSviewCloudConfig
 
         private static readonly bool IsInstalled = File.Exists(Path.Combine(Application.StartupPath, "_installed.txt"));
         private static readonly string _config_basepath = (IsInstalled) ? GetFileSystemPath(Environment.SpecialFolder.ApplicationData) : "";
-        public static string Config_BasePath
+        private static string Config_BasePath
         {
             get { return _config_basepath; }
         }
@@ -131,6 +149,15 @@ namespace TSviewCloudConfig
         private static string filepath
         {
             get { return _filepath; }
+        }
+
+        public static string CachePath
+        {
+            get { return Path.Combine(Config_BasePath, "Servers"); }
+        }
+        public static string LogPath
+        {
+            get { return GetLogPath(Config_BasePath); }
         }
 
 
@@ -173,8 +200,7 @@ namespace TSviewCloudConfig
             finally
             {
                 // Clear the RijndaelManaged object.
-                if (aesAlg != null)
-                    aesAlg.Clear();
+                aesAlg?.Clear();
             }
         }
 
@@ -224,8 +250,7 @@ namespace TSviewCloudConfig
             finally
             {
                 // Clear the RijndaelManaged object.
-                if (aesAlg != null)
-                    aesAlg.Clear();
+                aesAlg?.Clear();
             }
         }
 
@@ -245,6 +270,8 @@ namespace TSviewCloudConfig
 
                     Enc_Check_drive_password = data.DrivePasswordCheck;
 
+                    if (data.LogToFile != false)
+                        LogToFile = data.LogToFile;
                     if (data.SaveCacheCompressed != true)
                         SaveGZConfig = data.SaveCacheCompressed;
                     if (data.SaveEncrypted != false)
@@ -333,6 +360,7 @@ namespace TSviewCloudConfig
                     var data = new Savedata
                     {
                         Version = Version,
+                        LogToFile = LogToFile,
                         SaveCacheCompressed = SaveGZConfig,
                         SaveEncrypted = SaveEncrypted,
                         UploadBandwidthLimit = UploadLimit,
@@ -356,6 +384,8 @@ namespace TSviewCloudConfig
     {
         [DataMember]
         public string Version;
+        [DataMember]
+        public bool LogToFile;
         [DataMember]
         public bool SaveCacheCompressed;
         [DataMember]
