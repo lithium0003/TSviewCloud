@@ -70,6 +70,8 @@
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.connectToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.disconnectToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripMenuItem8 = new System.Windows.Forms.ToolStripSeparator();
+            this.driveCacheclearToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.remoteToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -95,8 +97,8 @@
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
-            this.driveCacheclearToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.toolStripMenuItem8 = new System.Windows.Forms.ToolStripSeparator();
+            this.button_search = new System.Windows.Forms.Button();
+            this.searchItemsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -110,6 +112,7 @@
             // panel1
             // 
             this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.panel1.Controls.Add(this.button_search);
             this.panel1.Controls.Add(this.button_play);
             this.panel1.Controls.Add(this.button_download);
             this.panel1.Controls.Add(this.button_upload);
@@ -215,7 +218,7 @@
             // button_addressGO
             // 
             this.button_addressGO.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.button_addressGO.Location = new System.Drawing.Point(1085, 5);
+            this.button_addressGO.Location = new System.Drawing.Point(1031, 5);
             this.button_addressGO.Name = "button_addressGO";
             this.button_addressGO.Size = new System.Drawing.Size(43, 32);
             this.button_addressGO.TabIndex = 1;
@@ -229,7 +232,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.textBox_address.Location = new System.Drawing.Point(155, 11);
             this.textBox_address.Name = "textBox_address";
-            this.textBox_address.Size = new System.Drawing.Size(924, 22);
+            this.textBox_address.Size = new System.Drawing.Size(870, 22);
             this.textBox_address.TabIndex = 0;
             // 
             // splitContainer1
@@ -508,6 +511,18 @@
             this.disconnectToolStripMenuItem.Size = new System.Drawing.Size(197, 26);
             this.disconnectToolStripMenuItem.Text = "&Disconnect";
             // 
+            // toolStripMenuItem8
+            // 
+            this.toolStripMenuItem8.Name = "toolStripMenuItem8";
+            this.toolStripMenuItem8.Size = new System.Drawing.Size(194, 6);
+            // 
+            // driveCacheclearToolStripMenuItem
+            // 
+            this.driveCacheclearToolStripMenuItem.Name = "driveCacheclearToolStripMenuItem";
+            this.driveCacheclearToolStripMenuItem.Size = new System.Drawing.Size(197, 26);
+            this.driveCacheclearToolStripMenuItem.Text = "Drive cache clear";
+            this.driveCacheclearToolStripMenuItem.Click += new System.EventHandler(this.driveCacheclearToolStripMenuItem_Click);
+            // 
             // toolStripMenuItem1
             // 
             this.toolStripMenuItem1.Name = "toolStripMenuItem1";
@@ -525,6 +540,7 @@
             // 
             this.remoteToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.reloadToolStripMenuItem1,
+            this.searchItemsToolStripMenuItem,
             this.toolStripMenuItem6,
             this.downloadItemsToolStripMenuItem,
             this.uploadFilesToolStripMenuItem,
@@ -673,17 +689,26 @@
             this.timer1.Interval = 500;
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
-            // driveCacheclearToolStripMenuItem
+            // button_search
             // 
-            this.driveCacheclearToolStripMenuItem.Name = "driveCacheclearToolStripMenuItem";
-            this.driveCacheclearToolStripMenuItem.Size = new System.Drawing.Size(197, 26);
-            this.driveCacheclearToolStripMenuItem.Text = "Drive cache clear";
-            this.driveCacheclearToolStripMenuItem.Click += new System.EventHandler(this.driveCacheclearToolStripMenuItem_Click);
+            this.button_search.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.button_search.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("button_search.BackgroundImage")));
+            this.button_search.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            this.button_search.ImageIndex = 5;
+            this.button_search.Location = new System.Drawing.Point(1089, 5);
+            this.button_search.Name = "button_search";
+            this.button_search.Size = new System.Drawing.Size(32, 32);
+            this.button_search.TabIndex = 9;
+            this.button_search.UseVisualStyleBackColor = true;
+            this.button_search.Click += new System.EventHandler(this.SearchItems);
             // 
-            // toolStripMenuItem8
+            // searchItemsToolStripMenuItem
             // 
-            this.toolStripMenuItem8.Name = "toolStripMenuItem8";
-            this.toolStripMenuItem8.Size = new System.Drawing.Size(194, 6);
+            this.searchItemsToolStripMenuItem.Name = "searchItemsToolStripMenuItem";
+            this.searchItemsToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.F)));
+            this.searchItemsToolStripMenuItem.Size = new System.Drawing.Size(271, 26);
+            this.searchItemsToolStripMenuItem.Text = "&Search Items";
+            this.searchItemsToolStripMenuItem.Click += new System.EventHandler(this.SearchItems);
             // 
             // Form1
             // 
@@ -782,6 +807,8 @@
         private System.Windows.Forms.Timer timer1;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem8;
         private System.Windows.Forms.ToolStripMenuItem driveCacheclearToolStripMenuItem;
+        private System.Windows.Forms.Button button_search;
+        private System.Windows.Forms.ToolStripMenuItem searchItemsToolStripMenuItem;
     }
 }
 

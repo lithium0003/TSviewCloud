@@ -355,6 +355,15 @@ namespace TSviewCloud
             }
 
             List<TSviewCloudPlugin.IRemoteItem> remoteItemList = new List<TSviewCloudPlugin.IRemoteItem>();
+
+            public void SetSearchResults(IEnumerable<TSviewCloudPlugin.IRemoteItem> results)
+            {
+                Clear();
+                remoteItemList.Clear();
+                remoteItemList.AddRange(results.OrderByDescending(x => x.ItemType).ThenBy(x => x.Name));
+                CurrentViewItem = null;
+            }
+
             TSviewCloudPlugin.IRemoteItem _currentViewItem;
             public TSviewCloudPlugin.IRemoteItem CurrentViewItem
             {
@@ -362,12 +371,13 @@ namespace TSviewCloud
                 set
                 {
                     _currentViewItem = value;
+                    IsSearchResult = false;
                     if (_currentViewItem != null)
                     {
+                        IsSearchResult = false;
                         remoteItemList.Clear();
                         if (_currentViewItem.Children != null)
                             remoteItemList.AddRange(_currentViewItem.Children.OrderByDescending(x => x.ItemType).ThenBy(x => x.Name));
-                        IsSearchResult = false;
                     }
                     else
                     {
@@ -434,9 +444,9 @@ namespace TSviewCloud
             }
             public bool IsSpetialItem(int index)
             {
-                if (CurrentViewItem == null)
+                if (IsSearchResult)
                 {
-                    return true;
+                    return false;
                 }
                 else
                 {
@@ -553,7 +563,7 @@ namespace TSviewCloud
                 List<TSviewCloudPlugin.IRemoteItem> ret = new List<TSviewCloudPlugin.IRemoteItem>();
                 foreach (int i in indices)
                 {
-                    if (CurrentViewItem == null)
+                    if (IsSearchResult)
                     {
                         if (i >= 0 && i < remoteItemList.Count) ret.Add(remoteItemList[i]);
                     }
@@ -605,7 +615,7 @@ namespace TSviewCloud
             {
                 var listitem = new ListViewItem(new string[6]);
                 TSviewCloudPlugin.IRemoteItem item;
-                if (CurrentViewItem == null)
+                if (IsSearchResult)
                 {
                     if (index < remoteItemList.Count)
                         return ConvertNormalItem(remoteItemList[index]);
@@ -1003,7 +1013,8 @@ namespace TSviewCloud
                         foreach (var p in pathlist.Skip(1))
                         {
                             node = node.Nodes.Find(p.Name, false).FirstOrDefault();
-                            if (node != null) nodechain.Add(node);
+                            if (node == null) break;
+                            nodechain.Add(node);
                         }
 
                         int same_i = -1;
@@ -1952,7 +1963,7 @@ namespace TSviewCloud
         }
 
 
- 
+
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         TreeNode HoldonNode;
         private bool supressListviewRefresh;
@@ -2065,7 +2076,7 @@ namespace TSviewCloud
                 }
 
                 var toParent = item?.Tag as TSviewCloudPlugin.IRemoteItem;
-                if (toParent== null)
+                if (toParent == null)
                     return;
 
                 if (e.Data.GetDataPresent(ClipboardRemoteDrive.CFSTR_CLOUD_DRIVE_ITEMS))
@@ -2133,6 +2144,23 @@ namespace TSviewCloud
             });
         }
 
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private void SearchItems(object sender, EventArgs e)
+        {
+            var search = new FormSearch();
+            search.SearchResultCallback += (s, evnt) =>
+            {
+                listData.SetSearchResults(search.SearchResult);
+            };
+            search.SearchSelectCallback += (s, evnt) =>
+            {
+                if(listView1.SelectedIndices.Count > 0)
+                    search.SelectedItems = listData.GetItems(listView1.SelectedIndices).ToArray();
+            };
+            search.Show();
+        }
     }
 
     static class Extensions

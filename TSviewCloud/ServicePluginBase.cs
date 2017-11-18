@@ -94,6 +94,7 @@ namespace TSviewCloudPlugin
 
         IRemoteItem this[string ID] { get; }
         IRemoteItem PeakItem(string ID);
+        IRemoteItem ReloadItem(string ID);
 
         Job<IRemoteItem> MakeFolder(string foldername, IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] parentJob);
         Job<IRemoteItem> UploadFile(string filename, IRemoteItem remoteTarget, string uploadname = null, bool WeekDepend = false, params Job[] parentJob);
@@ -275,6 +276,7 @@ namespace TSviewCloudPlugin
         }
         public abstract IRemoteItem PeakItem(string ID);
         protected abstract void EnsureItem(string ID, int depth = 0);
+        public abstract IRemoteItem ReloadItem(string ID);
 
         public abstract void Init();
         public abstract bool Add();
@@ -675,7 +677,7 @@ namespace TSviewCloudPlugin
                     if (!string.IsNullOrEmpty(m.Groups["current"].Value))
                     {
                         var child = current.Children.Where(x => x.Name == m.Groups["current"].Value).FirstOrDefault();
-                        if (!(child?.Children?.Count() > 0) && reload == ReloadType.Cache)
+                        if (child == null || !((child.Children?.Count() > 0) && reload == ReloadType.Cache))
                         {
                             if (child == null)
                             {
@@ -691,7 +693,11 @@ namespace TSviewCloudPlugin
                         {
                             current = child;
                         }
-                        if (reload == ReloadType.Reload || ItemControl.ReloadRequest.TryRemove(current.FullPath, out int tmp2))
+                        if(fullpath == "" && reload == ReloadType.Reload)
+                        {
+                            current = server.ReloadItem(current.ID);
+                        }
+                        else if (ItemControl.ReloadRequest.TryRemove(current.FullPath, out int tmp2))
                         {
                             current = server[current.ID];
                         }

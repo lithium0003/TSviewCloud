@@ -140,6 +140,24 @@ namespace TSviewCloudPlugin
             }
         }
 
+        public override IRemoteItem ReloadItem(string ID)
+        {
+            if (ID == RootID) ID = "";
+            try
+            {
+                TSviewCloudConfig.Config.Log.LogOut("[ReloadItem(LocalSystem)] " + ID);
+                var item = pathlist[ID];
+                if (item.ItemType == RemoteItemType.Folder)
+                    LoadItems(ID, 1);
+                item = pathlist[ID];
+            }
+            catch
+            {
+                LoadItems(ID, 1);
+            }
+            return PeakItem(ID);
+        }
+
         public override void Init()
         {
             RemoteServerFactory.Register(GetServiceName(), typeof(LocalSystem));

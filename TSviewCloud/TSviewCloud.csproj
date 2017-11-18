@@ -179,6 +179,12 @@
     <Compile Include="FormPlayer.Designer.cs">
       <DependentUpon>FormPlayer.cs</DependentUpon>
     </Compile>
+    <Compile Include="FormSearch.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormSearch.Designer.cs">
+      <DependentUpon>FormSearch.cs</DependentUpon>
+    </Compile>
     <Compile Include="FormTaskList.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -245,6 +251,9 @@
     <EmbeddedResource Include="FormPlayer.resx">
       <DependentUpon>FormPlayer.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="FormSearch.resx">
+      <DependentUpon>FormSearch.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="FormTaskList.resx">
       <DependentUpon>FormTaskList.cs</DependentUpon>
     </EmbeddedResource>
@@ -278,6 +287,7 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Resources\search.ico" />
     <None Include="Resources\stop.png" />
     <None Include="Resources\play.png" />
     <None Include="Resources\play.ico" />

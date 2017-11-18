@@ -21,7 +21,14 @@ namespace TSviewCloudPlugin
     {
         [DataMember(Name = "ID")]
         private string orgpath;
-        internal IRemoteItem orgItem;
+ 
+        internal virtual IRemoteItem orgItem
+        {
+            get
+            {
+                return RemoteServerFactory.PathToItem(orgpath);
+            }
+        }
 
         private string decryptedName;
         private string decryptedPath;
@@ -33,8 +40,20 @@ namespace TSviewCloudPlugin
                 return size = orgItem?.Size - (CryptCarotDAV.BlockSizeByte + CryptCarotDAV.CryptFooterByte + CryptCarotDAV.CryptFooterByte);
             }
         }
-        public override DateTime? ModifiedDate { get { return modifiedDate = orgItem?.ModifiedDate; } }
-        public override DateTime? CreatedDate { get { return createdDate = orgItem?.CreatedDate; } }
+        public override DateTime? ModifiedDate
+        {
+            get
+            {
+                return modifiedDate = orgItem?.ModifiedDate;
+            }
+        }
+        public override DateTime? CreatedDate
+        {
+            get
+            {
+                return createdDate = orgItem?.CreatedDate;
+            }
+        }
 
         public CarotCryptSystemItem() : base()
         {
@@ -45,7 +64,6 @@ namespace TSviewCloudPlugin
         {
             if (!(parent?.Length > 0)) isRoot = true;
 
-            this.orgItem = orgItem;
             orgpath = orgItem.FullPath;
             itemtype = orgItem.ItemType;
             size = orgItem?.Size - (CryptCarotDAV.BlockSizeByte + CryptCarotDAV.CryptFooterByte + CryptCarotDAV.CryptFooterByte);
@@ -97,7 +115,7 @@ namespace TSviewCloudPlugin
             try
             {
                 _server = server;
-                orgItem = RemoteServerFactory.PathToItem(orgpath);
+                var orgItem = RemoteServerFactory.PathToItem(orgpath);
                 if (orgItem == null)
                 {
                     (_server as CarotCryptSystem)?.RemoveItem(ID);
@@ -277,6 +295,23 @@ namespace TSviewCloudPlugin
                 LoadItems(ID, depth);
             }
         }
+        public override IRemoteItem ReloadItem(string ID)
+        {
+            if (ID == RootID) ID = "";
+            try
+            {
+                TSviewCloudConfig.Config.Log.LogOut("[ReloadItem(CarotCryptSystem)] " + ID);
+                var item = pathlist[ID];
+                if (item.ItemType == RemoteItemType.Folder)
+                    LoadItems(ID, 1, true);
+                item = pathlist[ID];
+            }
+            catch
+            {
+                LoadItems(ID, 1, true);
+            }
+            return PeakItem(ID);
+        }
 
         private string pathToCryptedpath(string path)
         {
@@ -301,7 +336,7 @@ namespace TSviewCloudPlugin
             return string.Join("/", ret);
         }
 
-        private void LoadItems(string ID, int depth = 0)
+        private void LoadItems(string ID, int depth = 0, bool deep = false)
         {
             if (depth < 0) return;
             ID = ID ?? "";
@@ -330,7 +365,7 @@ namespace TSviewCloudPlugin
                 var orgID = (string.IsNullOrEmpty(ID)) ? cryptRootPath : ID;
                 if (!orgID.StartsWith(cryptRootPath))
                     throw new ArgumentException("ID is not in root path", "ID");
-                var orgitem = RemoteServerFactory.PathToItem(orgID, ReloadType.Reload);
+                var orgitem = RemoteServerFactory.PathToItem(orgID, (deep)? ReloadType.Reload: ReloadType.Cache);
                 if (orgitem?.Children != null && orgitem.Children?.Count() != 0)
                 {
                     var ret = new List<CarotCryptSystemItem>();
@@ -341,8 +376,12 @@ namespace TSviewCloudPlugin
                         {
                             if (!x.Name.StartsWith(cryptNameHeader)) return local;
 
-                            var item = new CarotCryptSystemItem(this, x, pathlist[ID]);
-                            pathlist.AddOrUpdate(item.ID, (k) => item, (k, v) => item = v);
+                            var child = RemoteServerFactory.PathToItem(x.FullPath, (deep) ? ReloadType.Reload : ReloadType.Cache);
+                            if (child == null)
+                                return local;
+
+                            var item = new CarotCryptSystemItem(this, child, pathlist[ID]);
+                            pathlist.AddOrUpdate(item.ID, (k) => item, (k, v) => item);
                             local.Add(item);
                             return local;
                         },
