@@ -167,6 +167,18 @@
     <Compile Include="FormMasterPass.designer.cs">
       <DependentUpon>FormMasterPass.cs</DependentUpon>
     </Compile>
+    <Compile Include="FormMatch.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormMatch.Designer.cs">
+      <DependentUpon>FormMatch.cs</DependentUpon>
+    </Compile>
+    <Compile Include="FormMatchResult.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormMatchResult.Designer.cs">
+      <DependentUpon>FormMatchResult.cs</DependentUpon>
+    </Compile>
     <Compile Include="FormNewServer.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -244,6 +256,12 @@
     </EmbeddedResource>
     <EmbeddedResource Include="FormMasterPass.resx">
       <DependentUpon>FormMasterPass.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FormMatch.resx">
+      <DependentUpon>FormMatch.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FormMatchResult.resx">
+      <DependentUpon>FormMatchResult.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="FormNewServer.resx">
       <DependentUpon>FormNewServer.cs</DependentUpon>

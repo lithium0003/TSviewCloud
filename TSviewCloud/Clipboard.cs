@@ -442,16 +442,17 @@ namespace TSviewCloud
                 var children = RemoteServerFactory.PathToItem(items.FullPath).Children;
                 if (children.Count() > 0)
                 {
-                    Parallel.ForEach(children, () => new Dictionary<string, IRemoteItem>(), (x, state, local) =>
-                    {
-                        return local.Concat(ExpandPath(basepath + filename + "\\", RemoteServerFactory.PathToItem(x.FullPath))).ToDictionary(y => y.Key, y => y.Value);
-                    },
-                    (subtotal) => 
-                    {
-                        foreach (var i in subtotal)
-                            total.Add(i);
-                    });
-
+                    Parallel.ForEach(children,
+                        new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                        () => new Dictionary<string, IRemoteItem>(), (x, state, local) =>
+                        {
+                            return local.Concat(ExpandPath(basepath + filename + "\\", RemoteServerFactory.PathToItem(x.FullPath))).ToDictionary(y => y.Key, y => y.Value);
+                        },
+                        (subtotal) =>
+                        {
+                            foreach (var i in subtotal)
+                                total.Add(i);
+                        });
                 }
             }
             return total.ToDictionary(y => y.Key, y=> y.Value);
@@ -463,7 +464,8 @@ namespace TSviewCloud
 
             var total = new ConcurrentBag<KeyValuePair<string, IRemoteItem>>();
             Parallel.ForEach(
-                items, 
+                items,
+                new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
                 () => new Dictionary<string, IRemoteItem>(), 
                 (x, state, local) =>
                 {

@@ -259,7 +259,9 @@ namespace TSviewCloudPlugin
                 }
                 else
                 {
-                    Parallel.ForEach(pathlist.Values.ToArray(), (x) => x.FixChain(this));
+                    Parallel.ForEach(pathlist.Values.ToArray(), 
+                        new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                        (x) => x.FixChain(this));
                 }
 
                 j.ProgressStr = "Done";
@@ -375,6 +377,7 @@ namespace TSviewCloudPlugin
                     var ret = new List<CarotCryptSystemItem>();
                     Parallel.ForEach(
                         orgitem.Children,
+                        new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
                         () => new List<CarotCryptSystemItem>(),
                         (x, state, local) =>
                         {
@@ -397,7 +400,9 @@ namespace TSviewCloudPlugin
                     );
                     pathlist[ID].SetChildren(ret);
                     if (depth > 0)
-                        Parallel.ForEach(pathlist[ID].Children, (x) => { LoadItems(x.ID, depth - 1); });
+                        Parallel.ForEach(pathlist[ID].Children,
+                            new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                            (x) => { LoadItems(x.ID, depth - 1); });
 
                 }
                 else

@@ -472,148 +472,158 @@ namespace TSviewCloudPlugin
             } while (retry-- > 0);
             Directory.CreateDirectory(cachedir);
 
-            Parallel.ForEach(ServerList, (s) =>
-            {
-                var dir = cachedir + "\\" + s.Value.ServiceName;
-                Directory.CreateDirectory(dir);
-                var serializer = new DataContractJsonSerializer(s.Value.GetType());
-
-                if (TSviewCloudConfig.Config.SaveEncrypted)
+            Parallel.ForEach(ServerList,
+                new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                (s) =>
                 {
-                    RijndaelManaged aesAlg = null;              // RijndaelManaged object used to encrypt the data.
-                    try
+                    var dir = cachedir + "\\" + s.Value.ServiceName;
+                    Directory.CreateDirectory(dir);
+                    var serializer = new DataContractJsonSerializer(s.Value.GetType());
+
+                    if (TSviewCloudConfig.Config.SaveEncrypted)
                     {
-                        // generate the key from the shared secret and the salt
-                        Rfc2898DeriveBytes key = new Rfc2898DeriveBytes(TSviewCloudConfig.Config.MasterPassword, _salt);
-
-                        // Create a RijndaelManaged object
-                        aesAlg = new RijndaelManaged();
-                        aesAlg.Key = key.GetBytes(aesAlg.KeySize / 8);
-
-                        // Create a decryptor to perform the stream transform.
-                        ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
-
-                        using (var f = new FileStream(dir + "\\" + s.Key + ".xml.enc.gz", FileMode.Create))
-                        using (var cf = new GZipStream(f, CompressionMode.Compress))
-                        {
-                            // prepend the IV
-                            cf.Write(BitConverter.GetBytes(aesAlg.IV.Length), 0, sizeof(int));
-                            cf.Write(aesAlg.IV, 0, aesAlg.IV.Length);
-                            using (CryptoStream csEncrypt = new CryptoStream(cf, encryptor, CryptoStreamMode.Write))
-                            {
-                                serializer.WriteObject(csEncrypt, s.Value);
-                            }
-                        }
-                    }
-                    finally
-                    {
-                        // Clear the RijndaelManaged object.
-                        if (aesAlg != null)
-                            aesAlg.Clear();
-                    }
-                }
-                else
-                {
-                    if (TSviewCloudConfig.Config.SaveGZConfig)
-                    {
-                        using (var f = new FileStream(dir + "\\" + s.Key + ".xml.gz", FileMode.Create))
-                        using (var cf = new GZipStream(f, CompressionMode.Compress))
-                        {
-                            serializer.WriteObject(cf, s.Value);
-                        }
-                    }
-                    else
-                    {
-                        using (var f = new FileStream(dir + "\\" + s.Key + ".xml", FileMode.Create))
-                        {
-                            serializer.WriteObject(f, s.Value);
-                        }
-                    }
-                }
-            });
-        }
-
-        static public void Restore()
-        {
-            if (!Directory.Exists(cachedir)) return;
-            Parallel.ForEach(Directory.GetDirectories(cachedir), (s) =>
-            {
-                var service = s.Substring(cachedir.Length + 1);
-
-                Parallel.ForEach(Directory.GetFiles(s, "*.xml"), (c) =>
-                {
-                    var connection = Path.GetFileNameWithoutExtension(c);
-
-                    var serializer = new DataContractJsonSerializer(DllList[service]);
-                    using (var f = new FileStream(c, FileMode.Open))
-                    {
-                        var obj = serializer.ReadObject(f) as IRemoteServer;
-                        ServerList.AddOrUpdate(connection, (k) => obj, (k, v) => obj);
-                    }
-                });
-                Parallel.ForEach(Directory.GetFiles(s, "*.xml.gz"), (c) =>
-                {
-                    var connection = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(c));
-
-                    var serializer = new DataContractJsonSerializer(DllList[service]);
-                    using (var f = new FileStream(c, FileMode.Open))
-                    using (var cf = new GZipStream(f, CompressionMode.Decompress))
-                    {
-                        var obj = serializer.ReadObject(cf) as IRemoteServer;
-                        ServerList.AddOrUpdate(connection, (k) => obj, (k, v) => obj);
-                    }
-                });
-                Parallel.ForEach(Directory.GetFiles(s, "*.xml.enc.gz"), (c) =>
-                {
-                    var connection = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(c)));
-
-                    var serializer = new DataContractJsonSerializer(DllList[service]);
-                    using (var f = new FileStream(c, FileMode.Open))
-                    using (var cf = new GZipStream(f, CompressionMode.Decompress))
-                    {
-                        // Declare the RijndaelManaged object
-                        // used to decrypt the data.
-                        RijndaelManaged aesAlg = null;
-
+                        RijndaelManaged aesAlg = null;              // RijndaelManaged object used to encrypt the data.
                         try
                         {
                             // generate the key from the shared secret and the salt
                             Rfc2898DeriveBytes key = new Rfc2898DeriveBytes(TSviewCloudConfig.Config.MasterPassword, _salt);
 
                             // Create a RijndaelManaged object
-                            // with the specified key and IV.
                             aesAlg = new RijndaelManaged();
                             aesAlg.Key = key.GetBytes(aesAlg.KeySize / 8);
-                            // Get the initialization vector from the encrypted stream
-                            byte[] rawLength = new byte[sizeof(int)];
-                            if (cf.Read(rawLength, 0, rawLength.Length) != rawLength.Length)
-                            {
-                                throw new SystemException("Stream did not contain properly formatted byte array");
-                            }
-                            byte[] buffer = new byte[BitConverter.ToInt32(rawLength, 0)];
-                            if (cf.Read(buffer, 0, buffer.Length) != buffer.Length)
-                            {
-                                throw new SystemException("Did not read byte array properly");
-                            }
-                            aesAlg.IV = buffer;
-                            // Create a decrytor to perform the stream transform.
-                            ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
-                            using (CryptoStream csDecrypt = new CryptoStream(cf, decryptor, CryptoStreamMode.Read))
-                            {
-                                var obj = serializer.ReadObject(csDecrypt) as IRemoteServer;
-                                ServerList.AddOrUpdate(connection, (k) => obj, (k, v) => obj);
 
+                            // Create a decryptor to perform the stream transform.
+                            ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+                            using (var f = new FileStream(dir + "\\" + s.Key + ".xml.enc.gz", FileMode.Create))
+                            using (var cf = new GZipStream(f, CompressionMode.Compress))
+                            {
+                                // prepend the IV
+                                cf.Write(BitConverter.GetBytes(aesAlg.IV.Length), 0, sizeof(int));
+                                cf.Write(aesAlg.IV, 0, aesAlg.IV.Length);
+                                using (CryptoStream csEncrypt = new CryptoStream(cf, encryptor, CryptoStreamMode.Write))
+                                {
+                                    serializer.WriteObject(csEncrypt, s.Value);
+                                }
                             }
                         }
                         finally
                         {
                             // Clear the RijndaelManaged object.
-                            aesAlg?.Clear();
+                            if (aesAlg != null)
+                                aesAlg.Clear();
                         }
-
+                    }
+                    else
+                    {
+                        if (TSviewCloudConfig.Config.SaveGZConfig)
+                        {
+                            using (var f = new FileStream(dir + "\\" + s.Key + ".xml.gz", FileMode.Create))
+                            using (var cf = new GZipStream(f, CompressionMode.Compress))
+                            {
+                                serializer.WriteObject(cf, s.Value);
+                            }
+                        }
+                        else
+                        {
+                            using (var f = new FileStream(dir + "\\" + s.Key + ".xml", FileMode.Create))
+                            {
+                                serializer.WriteObject(f, s.Value);
+                            }
+                        }
                     }
                 });
-            });
+        }
+
+        static public void Restore()
+        {
+            if (!Directory.Exists(cachedir)) return;
+            Parallel.ForEach(Directory.GetDirectories(cachedir),
+                new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                (s) =>
+                {
+                    var service = s.Substring(cachedir.Length + 1);
+
+                    Parallel.ForEach(Directory.GetFiles(s, "*.xml"),
+                        new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                        (c) =>
+                        {
+                            var connection = Path.GetFileNameWithoutExtension(c);
+
+                            var serializer = new DataContractJsonSerializer(DllList[service]);
+                            using (var f = new FileStream(c, FileMode.Open))
+                            {
+                                var obj = serializer.ReadObject(f) as IRemoteServer;
+                                ServerList.AddOrUpdate(connection, (k) => obj, (k, v) => obj);
+                            }
+                        });
+                    Parallel.ForEach(Directory.GetFiles(s, "*.xml.gz"),
+                        new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                        (c) =>
+                        {
+                            var connection = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(c));
+
+                            var serializer = new DataContractJsonSerializer(DllList[service]);
+                            using (var f = new FileStream(c, FileMode.Open))
+                            using (var cf = new GZipStream(f, CompressionMode.Decompress))
+                            {
+                                var obj = serializer.ReadObject(cf) as IRemoteServer;
+                                ServerList.AddOrUpdate(connection, (k) => obj, (k, v) => obj);
+                            }
+                        });
+                    Parallel.ForEach(Directory.GetFiles(s, "*.xml.enc.gz"),
+                        new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                        (c) =>
+                        {
+                            var connection = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(c)));
+
+                            var serializer = new DataContractJsonSerializer(DllList[service]);
+                            using (var f = new FileStream(c, FileMode.Open))
+                            using (var cf = new GZipStream(f, CompressionMode.Decompress))
+                            {
+                                // Declare the RijndaelManaged object
+                                // used to decrypt the data.
+                                RijndaelManaged aesAlg = null;
+
+                                try
+                                {
+                                    // generate the key from the shared secret and the salt
+                                    Rfc2898DeriveBytes key = new Rfc2898DeriveBytes(TSviewCloudConfig.Config.MasterPassword, _salt);
+
+                                    // Create a RijndaelManaged object
+                                    // with the specified key and IV.
+                                    aesAlg = new RijndaelManaged();
+                                    aesAlg.Key = key.GetBytes(aesAlg.KeySize / 8);
+                                    // Get the initialization vector from the encrypted stream
+                                    byte[] rawLength = new byte[sizeof(int)];
+                                    if (cf.Read(rawLength, 0, rawLength.Length) != rawLength.Length)
+                                    {
+                                        throw new SystemException("Stream did not contain properly formatted byte array");
+                                    }
+                                    byte[] buffer = new byte[BitConverter.ToInt32(rawLength, 0)];
+                                    if (cf.Read(buffer, 0, buffer.Length) != buffer.Length)
+                                    {
+                                        throw new SystemException("Did not read byte array properly");
+                                    }
+                                    aesAlg.IV = buffer;
+                                    // Create a decrytor to perform the stream transform.
+                                    ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+                                    using (CryptoStream csDecrypt = new CryptoStream(cf, decryptor, CryptoStreamMode.Read))
+                                    {
+                                        var obj = serializer.ReadObject(csDecrypt) as IRemoteServer;
+                                        ServerList.AddOrUpdate(connection, (k) => obj, (k, v) => obj);
+
+                                    }
+                                }
+                                finally
+                                {
+                                    // Clear the RijndaelManaged object.
+                                    aesAlg?.Clear();
+                                }
+
+                            }
+                        });
+                });
         }
 
         static public void ClearCache()

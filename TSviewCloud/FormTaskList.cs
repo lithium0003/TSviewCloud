@@ -672,66 +672,68 @@ namespace TSviewCloudPlugin
 
         static void JobStartCheck()
         {
-            Parallel.ForEach(joblist_type.Keys, (jobtype) =>
-            {
-                var running_count = 0;
-                var max_running = int.MaxValue;
-                try
+            Parallel.ForEach(joblist_type.Keys,
+                new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                (jobtype) =>
                 {
-                    if (jobtype == JobClass.Download)
+                    var running_count = 0;
+                    var max_running = int.MaxValue;
+                    try
                     {
-                        running_count = joblist_type[jobtype].Where(x => (x.TryGetTarget(out var tmp)) ? tmp.IsRunning : false).Count();
-                        max_running = TSviewCloudConfig.Config.ParallelDownload;
-                    }
-                    else if (jobtype == JobClass.Upload)
-                    {
-                        running_count = joblist_type[jobtype].Where(x => (x.TryGetTarget(out var tmp)) ? tmp.IsRunning : false).Count();
-                        max_running = TSviewCloudConfig.Config.ParallelUpload;
-                    }
-                    else if (jobtype == JobClass.LoadItem)
-                    {
-                        running_count = joblist_type[jobtype].Where(x => (x.TryGetTarget(out var tmp)) ? tmp.IsRunning : false).Count();
-                        max_running = 20;
-                    }
-                    else if (singlejob.Contains(jobtype))
-                    {
-                        running_count = joblist_type[jobtype].Where(x => (x.TryGetTarget(out var tmp)) ? tmp.IsRunning : false).Count();
-                        max_running = 1;
-                    }
-
-                    foreach (var wj in joblist_type[jobtype]
-                        .Where(x => (x.TryGetTarget(out var tmp)) ? !tmp._delete : false)
-                        .OrderBy(x => (x.TryGetTarget(out var tmp)) ? tmp.Priority : 0)
-                        .ThenBy(x => (x.TryGetTarget(out var tmp)) ? tmp.QueueTime : default(DateTime)).ToArray())
-                    {
-                        if (!wj.TryGetTarget(out var j)) continue;
-                        if (j.JobTask != null)
+                        if (jobtype == JobClass.Download)
                         {
-                            var canceled = CancelCheck(j);
-                            if (!j.IsDone && !j.IsRunning)
-                            {
-                                if (!canceled && (j.DependsOn.IsEmpty || j.WeekDepend || j.DependsOn.All(x => (x.TryGetTarget(out var y))? y._delete || y.IsDone : true)))
-                                {
-                                    j.resultOfDepend = j.DependsOn.Select(x => (x.TryGetTarget(out var y))? new WeakReference<object>(y.result): null).ToArray();
+                            running_count = joblist_type[jobtype].Where(x => (x.TryGetTarget(out var tmp)) ? tmp.IsRunning : false).Count();
+                            max_running = TSviewCloudConfig.Config.ParallelDownload;
+                        }
+                        else if (jobtype == JobClass.Upload)
+                        {
+                            running_count = joblist_type[jobtype].Where(x => (x.TryGetTarget(out var tmp)) ? tmp.IsRunning : false).Count();
+                            max_running = TSviewCloudConfig.Config.ParallelUpload;
+                        }
+                        else if (jobtype == JobClass.LoadItem)
+                        {
+                            running_count = joblist_type[jobtype].Where(x => (x.TryGetTarget(out var tmp)) ? tmp.IsRunning : false).Count();
+                            max_running = 20;
+                        }
+                        else if (singlejob.Contains(jobtype))
+                        {
+                            running_count = joblist_type[jobtype].Where(x => (x.TryGetTarget(out var tmp)) ? tmp.IsRunning : false).Count();
+                            max_running = 1;
+                        }
 
-                                    if (running_count < max_running)
+                        foreach (var wj in joblist_type[jobtype]
+                            .Where(x => (x.TryGetTarget(out var tmp)) ? !tmp._delete : false)
+                            .OrderBy(x => (x.TryGetTarget(out var tmp)) ? tmp.Priority : 0)
+                            .ThenBy(x => (x.TryGetTarget(out var tmp)) ? tmp.QueueTime : default(DateTime)).ToArray())
+                        {
+                            if (!wj.TryGetTarget(out var j)) continue;
+                            if (j.JobTask != null)
+                            {
+                                var canceled = CancelCheck(j);
+                                if (!j.IsDone && !j.IsRunning)
+                                {
+                                    if (!canceled && (j.DependsOn.IsEmpty || j.WeekDepend || j.DependsOn.All(x => (x.TryGetTarget(out var y)) ? y._delete || y.IsDone : true)))
                                     {
-                                        j.StartTime = DateTime.Now;
-                                        running_count++;
-                                        Interlocked.Increment(ref jobcount);
-                                        j.JobTask.Start();
-                                    }
-                                    if (running_count >= max_running)
-                                    {
-                                        break;
+                                        j.resultOfDepend = j.DependsOn.Select(x => (x.TryGetTarget(out var y)) ? new WeakReference<object>(y.result) : null).ToArray();
+
+                                        if (running_count < max_running)
+                                        {
+                                            j.StartTime = DateTime.Now;
+                                            running_count++;
+                                            Interlocked.Increment(ref jobcount);
+                                            j.JobTask.Start();
+                                        }
+                                        if (running_count >= max_running)
+                                        {
+                                            break;
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
-                catch { }
-            });
+                    catch { }
+                });
             DeleteJob();
         }
            

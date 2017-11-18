@@ -1220,30 +1220,33 @@ namespace TSviewCloud
             if (children == null) return ret;
             return await Task.Run(() =>
             {
-                Parallel.ForEach(children, () => new List<TreeNode>(), (x, state, local) =>
-                {
-                    int img = (x.ItemType == TSviewCloudPlugin.RemoteItemType.File) ? 0 : 1;
-                    var node = new TreeNode(x.Name, img, img)
+                Parallel.ForEach(children,
+                    new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                    () => new List<TreeNode>(),
+                    (x, state, local) =>
                     {
-                        Name = x.Name,
-                        Tag = x
-                    };
-                    if (x.ItemType == TSviewCloudPlugin.RemoteItemType.Folder && count > 0 && x.Children?.Count() != 0)
+                        int img = (x.ItemType == TSviewCloudPlugin.RemoteItemType.File) ? 0 : 1;
+                        var node = new TreeNode(x.Name, img, img)
+                        {
+                            Name = x.Name,
+                            Tag = x
+                        };
+                        if (x.ItemType == TSviewCloudPlugin.RemoteItemType.Folder && count > 0 && x.Children?.Count() != 0)
+                        {
+                            node.Nodes.AddRange(
+                                GenerateTreeNode(x.Children, count - 1).Result
+                                    .OrderByDescending(y => (y.Tag as TSviewCloudPlugin.IRemoteItem).ItemType)
+                                    .ThenBy(y => (y.Tag as TSviewCloudPlugin.IRemoteItem).Name)
+                                    .ToArray());
+                        }
+                        local.Add(node);
+                        return local;
+                    },
+                    (result) =>
                     {
-                        node.Nodes.AddRange(
-                            GenerateTreeNode(x.Children, count - 1).Result
-                                .OrderByDescending(y => (y.Tag as TSviewCloudPlugin.IRemoteItem).ItemType)
-                                .ThenBy(y => (y.Tag as TSviewCloudPlugin.IRemoteItem).Name)
-                                .ToArray());
+                        lock (ret)
+                            ret.AddRange(result);
                     }
-                    local.Add(node);
-                    return local;
-                },
-                (result) =>
-                {
-                    lock (ret)
-                        ret.AddRange(result);
-                }
                 );
                 return ret;
             });
@@ -2197,8 +2200,16 @@ namespace TSviewCloud
 
         private void DiffItems(object sender, EventArgs e)
         {
-
-
+            var diff = FormMatch.Instance;
+            if(diff.AddCallback == null || diff.AddCallback.GetInvocationList().Length == 0)
+            {
+                diff.AddCallback += (s, evnt) =>
+                {
+                    if (listView1.SelectedIndices.Count > 0)
+                        diff.SelectedRemoteFiles = listData.GetItems(listView1.SelectedIndices).ToArray();
+                };
+            }
+            diff.Show();
         }
     }
 

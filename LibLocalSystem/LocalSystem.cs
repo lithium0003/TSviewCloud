@@ -109,7 +109,10 @@ namespace TSviewCloudPlugin
             }
             else
             {
-                Parallel.ForEach(pathlist.Values.ToArray(), (x) => x.FixChain(this));
+                Parallel.ForEach(
+                    pathlist.Values.ToArray(), 
+                    new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                    (x) => x.FixChain(this));
             }
             _IsReady = true;
         }
@@ -243,6 +246,7 @@ namespace TSviewCloudPlugin
                         Parallel.ForEach(
                             info.EnumerateFileSystemInfos()
                                 .Where(i => !(i.Attributes.HasFlag(FileAttributes.Directory) && (i.Name == "." || i.Name == ".."))),
+                            new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
                             () => new List<LocalSystemItem>(),
                             (x, state, local) =>
                             {
@@ -259,7 +263,9 @@ namespace TSviewCloudPlugin
                         );
                         pathlist[ID].SetChildren(ret);
                         if (depth > 0)
-                            Parallel.ForEach(pathlist[ID].Children, (x) => { LoadItems(x.ID, depth - 1); });
+                            Parallel.ForEach(pathlist[ID].Children,
+                                new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                                (x) => { LoadItems(x.ID, depth - 1); });
                     }
                     catch { }
                 }

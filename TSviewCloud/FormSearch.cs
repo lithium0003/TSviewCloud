@@ -73,6 +73,7 @@ namespace TSviewCloud
 
             Parallel.ForEach(
                 target,
+                new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
                 () => new List<IRemoteItem>(),
                 (x, state, local) =>
                 {
@@ -172,6 +173,7 @@ namespace TSviewCloud
 
                     Parallel.ForEach(
                         initselection,
+                        new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
                         () => new List<IRemoteItem>(),
                         (x, state, local) =>
                         {
