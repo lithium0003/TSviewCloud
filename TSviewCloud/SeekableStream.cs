@@ -594,14 +594,15 @@ namespace ProjectUtil
         IRemoteItem targetItem;
         int _ReadTimeout = -1;
         SlotMaster slots;
-        CancellationTokenSource cts = new CancellationTokenSource();
+        CancellationTokenSource cts;
 
         long lastslot;
         long lockslot1;
         long lockslot2;
 
-        public SeekableStream(IRemoteItem downitem) : base()
+        public SeekableStream(IRemoteItem downitem, CancellationToken ct = default(CancellationToken)) : base()
         {
+            cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             targetItem = downitem;
             FileSize = targetItem.Size ?? 0;
 
@@ -619,6 +620,9 @@ namespace ProjectUtil
                 lockslot2 = lockslot1;
             }
             slots.CreateTask(0);
+            while (!downitem.IsReadyRead)
+                Task.Delay(50).Wait(cts.Token);
+
             slots.CreateTask(lockslot2);
             slots.CreateTask(lockslot1);
             slots.CreateTask(lockslot1 + SeekableStreamConfig.preforwardnum);

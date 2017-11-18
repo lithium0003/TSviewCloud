@@ -52,6 +52,8 @@ namespace TSviewCloudPlugin
         string Path { get; }
         string FullPath { get; }
 
+        bool IsReadyRead { get; }
+
         string Name { get; }
         long? Size { get; }
         DateTime? ModifiedDate { get; }
@@ -164,6 +166,8 @@ namespace TSviewCloudPlugin
         public virtual string FullPath => Server + "://" + Path;
 
         public virtual DateTime Age { get => age; set => age = value; }
+
+        public virtual bool IsReadyRead => true;
 
         public void SetParents(IEnumerable<IRemoteItem> newparents)
         {

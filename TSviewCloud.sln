@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27004.2008
+VisualStudioVersion = 15.0.27004.2009
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TSviewCloud", "TSviewCloud\TSviewCloud.csproj", "{0BCE8096-C7DB-40E3-982D-7950CD77B6EE}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -15,6 +15,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ffmodule_conf", "ffmodule_conf\ffmodule_conf.csproj", "{35E17767-09AC-4999-954F-4B0B23D85F99}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibCryptCarotDAV", "LibCryptCarotDAV\LibCryptCarotDAV.csproj", "{9862671B-05A7-4C41-95CA-E70FB0FBB508}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibCryptRclone", "LibCryptRclone\LibCryptRclone.csproj", "{AD021C32-10F3-474A-88E3-C02969E6B7FA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -77,6 +79,16 @@ Global
 		{9862671B-05A7-4C41-95CA-E70FB0FBB508}.Release|x64.Build.0 = Release|x64
 		{9862671B-05A7-4C41-95CA-E70FB0FBB508}.Release|x86.ActiveCfg = Release|x86
 		{9862671B-05A7-4C41-95CA-E70FB0FBB508}.Release|x86.Build.0 = Release|x86
+		{AD021C32-10F3-474A-88E3-C02969E6B7FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD021C32-10F3-474A-88E3-C02969E6B7FA}.Debug|x64.ActiveCfg = Debug|x64
+		{AD021C32-10F3-474A-88E3-C02969E6B7FA}.Debug|x64.Build.0 = Debug|x64
+		{AD021C32-10F3-474A-88E3-C02969E6B7FA}.Debug|x86.ActiveCfg = Debug|x86
+		{AD021C32-10F3-474A-88E3-C02969E6B7FA}.Debug|x86.Build.0 = Debug|x86
+		{AD021C32-10F3-474A-88E3-C02969E6B7FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AD021C32-10F3-474A-88E3-C02969E6B7FA}.Release|x64.ActiveCfg = Release|x64
+		{AD021C32-10F3-474A-88E3-C02969E6B7FA}.Release|x64.Build.0 = Release|x64
+		{AD021C32-10F3-474A-88E3-C02969E6B7FA}.Release|x86.ActiveCfg = Release|x86
+		{AD021C32-10F3-474A-88E3-C02969E6B7FA}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

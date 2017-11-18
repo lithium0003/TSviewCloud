@@ -89,9 +89,9 @@
             // 
             // groupBox1
             // 
-            resources.ApplyResources(this.groupBox1, "groupBox1");
             this.groupBox1.Controls.Add(this.listBox_LocalOnly);
             this.groupBox1.Controls.Add(this.panel1);
+            resources.ApplyResources(this.groupBox1, "groupBox1");
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.TabStop = false;
             // 
@@ -105,9 +105,9 @@
             // 
             // panel1
             // 
-            resources.ApplyResources(this.panel1, "panel1");
             this.panel1.Controls.Add(this.button_Upload);
             this.panel1.Controls.Add(this.button_SaveLocalList);
+            resources.ApplyResources(this.panel1, "panel1");
             this.panel1.Name = "panel1";
             // 
             // button_Upload
@@ -132,9 +132,9 @@
             // 
             // groupBox2
             // 
-            resources.ApplyResources(this.groupBox2, "groupBox2");
             this.groupBox2.Controls.Add(this.listBox_RemoteOnly);
             this.groupBox2.Controls.Add(this.panel2);
+            resources.ApplyResources(this.groupBox2, "groupBox2");
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.TabStop = false;
             // 
@@ -148,10 +148,10 @@
             // 
             // panel2
             // 
-            resources.ApplyResources(this.panel2, "panel2");
             this.panel2.Controls.Add(this.button_trash);
             this.panel2.Controls.Add(this.button_Download);
             this.panel2.Controls.Add(this.button_SaveRemoteList);
+            resources.ApplyResources(this.panel2, "panel2");
             this.panel2.Name = "panel2";
             // 
             // button_trash
@@ -183,15 +183,14 @@
             // 
             // groupBox3
             // 
-            resources.ApplyResources(this.groupBox3, "groupBox3");
             this.groupBox3.Controls.Add(this.listView_Unmatch);
             this.groupBox3.Controls.Add(this.panel5);
+            resources.ApplyResources(this.groupBox3, "groupBox3");
             this.groupBox3.Name = "groupBox3";
             this.groupBox3.TabStop = false;
             // 
             // listView_Unmatch
             // 
-            resources.ApplyResources(this.listView_Unmatch, "listView_Unmatch");
             this.listView_Unmatch.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.columnHeader1,
             this.columnHeader7,
@@ -199,6 +198,7 @@
             this.columnHeader9,
             this.columnHeader10,
             this.columnHeader11});
+            resources.ApplyResources(this.listView_Unmatch, "listView_Unmatch");
             this.listView_Unmatch.Name = "listView_Unmatch";
             this.listView_Unmatch.UseCompatibleStateImageBehavior = false;
             this.listView_Unmatch.View = System.Windows.Forms.View.Details;
@@ -229,8 +229,8 @@
             // 
             // panel5
             // 
-            resources.ApplyResources(this.panel5, "panel5");
             this.panel5.Controls.Add(this.button_SaveUnmatchList);
+            resources.ApplyResources(this.panel5, "panel5");
             this.panel5.Name = "panel5";
             // 
             // button_SaveUnmatchList
@@ -248,20 +248,20 @@
             // 
             // groupBox4
             // 
-            resources.ApplyResources(this.groupBox4, "groupBox4");
             this.groupBox4.Controls.Add(this.listView_Match);
             this.groupBox4.Controls.Add(this.panel4);
+            resources.ApplyResources(this.groupBox4, "groupBox4");
             this.groupBox4.Name = "groupBox4";
             this.groupBox4.TabStop = false;
             // 
             // listView_Match
             // 
-            resources.ApplyResources(this.listView_Match, "listView_Match");
             this.listView_Match.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.columnHeader3,
             this.columnHeader4,
             this.columnHeader5,
             this.columnHeader6});
+            resources.ApplyResources(this.listView_Match, "listView_Match");
             this.listView_Match.FullRowSelect = true;
             this.listView_Match.Name = "listView_Match";
             this.listView_Match.UseCompatibleStateImageBehavior = false;
@@ -285,8 +285,8 @@
             // 
             // panel4
             // 
-            resources.ApplyResources(this.panel4, "panel4");
             this.panel4.Controls.Add(this.button_SaveMatchedList);
+            resources.ApplyResources(this.panel4, "panel4");
             this.panel4.Name = "panel4";
             // 
             // button_SaveMatchedList
@@ -304,9 +304,9 @@
             // 
             // groupBox5
             // 
-            resources.ApplyResources(this.groupBox5, "groupBox5");
             this.groupBox5.Controls.Add(this.treeView_localDup);
             this.groupBox5.Controls.Add(this.panel7);
+            resources.ApplyResources(this.groupBox5, "groupBox5");
             this.groupBox5.Name = "groupBox5";
             this.groupBox5.TabStop = false;
             // 
@@ -317,8 +317,8 @@
             // 
             // panel7
             // 
-            resources.ApplyResources(this.panel7, "panel7");
             this.panel7.Controls.Add(this.button_SaveLocalDupList);
+            resources.ApplyResources(this.panel7, "panel7");
             this.panel7.Name = "panel7";
             // 
             // button_SaveLocalDupList
@@ -330,9 +330,9 @@
             // 
             // groupBox6
             // 
-            resources.ApplyResources(this.groupBox6, "groupBox6");
             this.groupBox6.Controls.Add(this.treeView_remoteDup);
             this.groupBox6.Controls.Add(this.panel6);
+            resources.ApplyResources(this.groupBox6, "groupBox6");
             this.groupBox6.Name = "groupBox6";
             this.groupBox6.TabStop = false;
             // 
@@ -343,8 +343,8 @@
             // 
             // panel6
             // 
-            resources.ApplyResources(this.panel6, "panel6");
             this.panel6.Controls.Add(this.button_SaveRemoteDupList);
+            resources.ApplyResources(this.panel6, "panel6");
             this.panel6.Name = "panel6";
             // 
             // button_SaveRemoteDupList
@@ -359,14 +359,6 @@
             resources.ApplyResources(this.splitter5, "splitter5");
             this.splitter5.Name = "splitter5";
             this.splitter5.TabStop = false;
-            // 
-            // saveFileDialog1
-            // 
-            resources.ApplyResources(this.saveFileDialog1, "saveFileDialog1");
-            // 
-            // folderBrowserDialog1
-            // 
-            resources.ApplyResources(this.folderBrowserDialog1, "folderBrowserDialog1");
             // 
             // FormMatchResult
             // 

@@ -11,17 +11,21 @@ using System.Runtime.Serialization.Formatters.Soap;
 using System.Runtime.Serialization.Json;
 using System.Collections.Concurrent;
 using System.Threading;
-using LibCryptCarotDAV;
 using System.Text.RegularExpressions;
+using LibCryptRclone;
 
 namespace TSviewCloudPlugin
 {
     [DataContract]
-    public class CarotCryptSystemItem : RemoteItemBase
+    public class RcloneCryptSystemItem : RemoteItemBase
     {
         [DataMember(Name = "ID")]
         private string orgpath;
- 
+
+        internal byte[] nonce;
+        public override bool IsReadyRead => nonce != null;
+
+
         internal virtual IRemoteItem orgItem
         {
             get
@@ -37,7 +41,7 @@ namespace TSviewCloudPlugin
         {
             get
             {
-                return size = orgItem?.Size - (CryptCarotDAV.BlockSizeByte + CryptCarotDAV.CryptFooterByte + CryptCarotDAV.CryptFooterByte);
+                return size = ((orgItem.Size == null)? orgItem.Size: CryptRclone.CalcDecryptedSize(orgItem.Size.Value));
             }
         }
         public override DateTime? ModifiedDate
@@ -55,22 +59,41 @@ namespace TSviewCloudPlugin
             }
         }
 
-        public CarotCryptSystemItem() : base()
+        public RcloneCryptSystemItem() : base()
         {
 
         }
 
-        public CarotCryptSystemItem(IRemoteServer server, IRemoteItem orgItem, params IRemoteItem[] parent) : base(server, parent)
+        public RcloneCryptSystemItem(IRemoteServer server, IRemoteItem orgItem, params IRemoteItem[] parent) : base(server, parent)
         {
             if (!(parent?.Length > 0)) isRoot = true;
 
             orgpath = orgItem.FullPath;
             itemtype = orgItem.ItemType;
-            size = orgItem?.Size - (CryptCarotDAV.BlockSizeByte + CryptCarotDAV.CryptFooterByte + CryptCarotDAV.CryptFooterByte);
+            size = ((orgItem.Size == null) ? orgItem.Size : CryptRclone.CalcDecryptedSize(orgItem.Size.Value));
             modifiedDate = orgItem.ModifiedDate;
             createdDate = orgItem.CreatedDate;
 
-            decryptedName = (_server as CarotCryptSystem).CryptCarot.DecryptFilename(orgItem.Name) ?? "";
+            var encryptor = (_server as RcloneCryptSystem).Encrypter;
+            if (encryptor.IsEncryptedName)
+            {
+                decryptedName = encryptor.DecryptName(orgItem.Name) ?? "";
+                if (decryptedName == "" && !isRoot) throw new FileNotFoundException("filename dedoce error");
+            }
+            else
+            {
+                if(itemtype == RemoteItemType.Folder)
+                {
+                    decryptedName = orgItem.Name;
+                }
+                else
+                {
+                    if (orgItem.Name.EndsWith(CryptRclone.encryptedSuffix))
+                        decryptedName = orgItem.Name.Substring(0, orgItem.Name.Length - CryptRclone.encryptedSuffix.Length);
+                    else
+                        throw new FileNotFoundException("filename dedoce error");
+                }
+            }
             decryptedPath = OrgPathToPath(orgpath);
 
             if (isRoot) SetParent(this);
@@ -80,13 +103,13 @@ namespace TSviewCloudPlugin
 
         private string OrgPathToPath(string path)
         {
-            if (string.IsNullOrEmpty(path) || (_server as CarotCryptSystem).cryptRootPath == path)
+            if (string.IsNullOrEmpty(path) || (_server as RcloneCryptSystem).cryptRootPath == path)
                 return "";
                 
-            if (!path.StartsWith((_server as CarotCryptSystem).cryptRootPath)) throw new Exception("internal error: CarotCryptSystemItem rootpath");
+            if (!path.StartsWith((_server as RcloneCryptSystem).cryptRootPath)) throw new Exception("internal error: RcloneCryptSystemItem rootpath");
 
             var ret = new List<string>();
-            path = path.Substring((_server as CarotCryptSystem).cryptRootPath.Length);
+            path = path.Substring((_server as RcloneCryptSystem).cryptRootPath.Length);
 
             while (!string.IsNullOrEmpty(path)) {
                 var m = Regex.Match(path, @"^(?<current>[^/\\]*)(/|\\)?(?<next>.*)$");
@@ -100,7 +123,7 @@ namespace TSviewCloudPlugin
                 }
                 else
                 {
-                    ret.Add((_server as CarotCryptSystem).CryptCarot.DecryptFilename(m.Groups["current"].Value));
+                    ret.Add((_server as RcloneCryptSystem).Encrypter.DecryptName(m.Groups["current"].Value));
                 }
             }
             return string.Join("/", ret);
@@ -118,11 +141,11 @@ namespace TSviewCloudPlugin
                 var orgItem = RemoteServerFactory.PathToItem(orgpath);
                 if (orgItem == null)
                 {
-                    (_server as CarotCryptSystem)?.RemoveItem(ID);
+                    (_server as RcloneCryptSystem)?.RemoveItem(ID);
                     return;
                 }
                 decryptedPath = OrgPathToPath(orgpath);
-                decryptedName = (_server as CarotCryptSystem).CryptCarot.DecryptFilename(orgItem.Name) ?? "";
+                decryptedName = (_server as RcloneCryptSystem).Encrypter.DecryptName(orgItem.Name) ?? "";
             }
             catch
             {
@@ -134,20 +157,22 @@ namespace TSviewCloudPlugin
     }
 
     [DataContract]
-    public class CarotCryptSystem : RemoteServerBase
+    public class RcloneCryptSystem : RemoteServerBase
     {
-        [DataMember(Name = "CryptNameHeader")]
-        private string cryptNameHeader;
         [DataMember(Name = "CryptRootPath")]
         internal string cryptRootPath;
         [DataMember(Name = "Password")]
         public string _DrivePassword;
+        [DataMember(Name = "Salt")]
+        public string _DriveSalt;
+        [DataMember(Name = "FilenameEncryption")]
+        public bool FilenameEncryption;
 
-        private ConcurrentDictionary<string, CarotCryptSystemItem> pathlist;
+        private ConcurrentDictionary<string, RcloneCryptSystemItem> pathlist;
 
         private ConcurrentDictionary<string, ManualResetEventSlim> loadinglist;
 
-        const string hidden_pass = "CarotDAV Drive Password";
+        const string hidden_pass = "Rclone Drive Password";
         public string DrivePassword
         {
             get
@@ -159,12 +184,23 @@ namespace TSviewCloudPlugin
                 _DrivePassword = TSviewCloudConfig.Config.Encrypt(_DrivePassword, hidden_pass);
             }
         }
-
-        internal CryptCarotDAV CryptCarot;
-
-        public CarotCryptSystem()
+        public string DriveSalt
         {
-            pathlist = new ConcurrentDictionary<string, CarotCryptSystemItem>();
+            get
+            {
+                return TSviewCloudConfig.Config.Decrypt(_DriveSalt, hidden_pass);
+            }
+            set
+            {
+                _DriveSalt = TSviewCloudConfig.Config.Encrypt(_DriveSalt, hidden_pass);
+            }
+        }
+
+        internal CryptRclone Encrypter;
+
+        public RcloneCryptSystem()
+        {
+            pathlist = new ConcurrentDictionary<string, RcloneCryptSystemItem>();
             loadinglist = new ConcurrentDictionary<string, ManualResetEventSlim>();
         }
 
@@ -182,21 +218,22 @@ namespace TSviewCloudPlugin
             var pass = new FormInputPass();
 
             if (pass.ShowDialog() != DialogResult.OK) return false;
-            CryptCarot = new CryptCarotDAV(pass.CryptNameHeader)
+            Encrypter = new CryptRclone(pass.Password, pass.Salt)
             {
-                Password = pass.Password
+                IsEncryptedName = pass.FilenameEncryption,
             };
             DrivePassword = pass.Password;
-            cryptNameHeader = pass.CryptNameHeader;
+            DriveSalt = pass.Salt;
+            FilenameEncryption = pass.FilenameEncryption;
 
             cryptRootPath = picker.SelectedItem.FullPath;
             _dependService = picker.SelectedItem.Server;
-            var root = new CarotCryptSystemItem(this, picker.SelectedItem, null);
+            var root = new RcloneCryptSystemItem(this, picker.SelectedItem, null);
             pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
             EnsureItem("", 1);
 
             _IsReady = true;
-            TSviewCloudConfig.Config.Log.LogOut("[Add] CarotCryptSystem {0} as {1}", cryptRootPath, Name);
+            TSviewCloudConfig.Config.Log.LogOut("[Add] RcloneCryptSystem {0} as {1}", cryptRootPath, Name);
             return true;
         }
 
@@ -205,7 +242,7 @@ namespace TSviewCloudPlugin
             _IsReady = false;
             RemoteServerFactory.ServerList[_dependService].ClearCache();
             pathlist.Clear();
-            var root = new CarotCryptSystemItem(this, RemoteServerFactory.PathToItem(cryptRootPath), null);
+            var root = new RcloneCryptSystemItem(this, RemoteServerFactory.PathToItem(cryptRootPath), null);
             pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
             EnsureItem("", 1);
             _IsReady = true;
@@ -215,15 +252,15 @@ namespace TSviewCloudPlugin
         [OnDeserialized]
         public void OnDeserialized(StreamingContext c)
         {
-            TSviewCloudConfig.Config.Log.LogOut("[Restore] CarotCryptSystem {0} as {1}", cryptRootPath, Name);
-            CryptCarot = new CryptCarotDAV(cryptNameHeader)
+            TSviewCloudConfig.Config.Log.LogOut("[Restore] RcloneCryptSystem {0} as {1}", cryptRootPath, Name);
+            Encrypter = new CryptRclone(DrivePassword, DriveSalt)
             {
-                Password = DrivePassword
+                IsEncryptedName = FilenameEncryption,
             };
             loadinglist = new ConcurrentDictionary<string, ManualResetEventSlim>();
 
             var job = JobControler.CreateNewJob();
-            job.DisplayName = "CryptCarotDAV";
+            job.DisplayName = "CryptRclone";
             job.ProgressStr = "waiting parent";
 
             JobControler.Run(job, (j) =>
@@ -252,8 +289,8 @@ namespace TSviewCloudPlugin
 
                 if (pathlist == null)
                 {
-                    pathlist = new ConcurrentDictionary<string, CarotCryptSystemItem>();
-                    var root = new CarotCryptSystemItem(this, RemoteServerFactory.PathToItem(cryptRootPath), null);
+                    pathlist = new ConcurrentDictionary<string, RcloneCryptSystemItem>();
+                    var root = new RcloneCryptSystemItem(this, RemoteServerFactory.PathToItem(cryptRootPath), null);
                     pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
                     EnsureItem("", 1);
                 }
@@ -290,7 +327,7 @@ namespace TSviewCloudPlugin
             if (ID == RootID) ID = "";
             try
             {
-                TSviewCloudConfig.Config.Log.LogOut("[EnsureItem(CarotCryptSystem)] " + ID);
+                TSviewCloudConfig.Config.Log.LogOut("[EnsureItem(RcloneCryptSystem)] " + ID);
                 var item = pathlist[ID];
                 if (item.ItemType == RemoteItemType.Folder)
                     LoadItems(ID, depth);
@@ -306,7 +343,7 @@ namespace TSviewCloudPlugin
             if (ID == RootID) ID = "";
             try
             {
-                TSviewCloudConfig.Config.Log.LogOut("[ReloadItem(CarotCryptSystem)] " + ID);
+                TSviewCloudConfig.Config.Log.LogOut("[ReloadItem(RcloneCryptSystem)] " + ID);
                 var item = pathlist[ID];
                 if (item.ItemType == RemoteItemType.Folder)
                     LoadItems(ID, 1, true);
@@ -336,7 +373,15 @@ namespace TSviewCloudPlugin
                 }
                 else
                 {
-                    ret.Add(CryptCarot.EncryptFilename(m.Groups["current"].Value));
+                    if (Encrypter.IsEncryptedName)
+                    {
+                        ret.Add(Encrypter.EncryptName(m.Groups["current"].Value));
+                    }
+                    else
+                    {
+                        var plain = m.Groups["current"].Value;
+                        ret.Add((path == "") ? plain + CryptRclone.encryptedSuffix : plain);
+                    }
                 }
             }
             return string.Join("/", ret);
@@ -366,7 +411,7 @@ namespace TSviewCloudPlugin
 
             try
             {
-                TSviewCloudConfig.Config.Log.LogOut("[LoadItems(CarotCryptSystem)] " + ID);
+                TSviewCloudConfig.Config.Log.LogOut("[LoadItems(RcloneCryptSystem)] " + ID);
 
                 var orgID = (string.IsNullOrEmpty(ID)) ? cryptRootPath : ID;
                 if (!orgID.StartsWith(cryptRootPath))
@@ -374,22 +419,25 @@ namespace TSviewCloudPlugin
                 var orgitem = RemoteServerFactory.PathToItem(orgID, (deep)? ReloadType.Reload: ReloadType.Cache);
                 if (orgitem?.Children != null && orgitem.Children?.Count() != 0)
                 {
-                    var ret = new List<CarotCryptSystemItem>();
+                    var ret = new List<RcloneCryptSystemItem>();
                     Parallel.ForEach(
                         orgitem.Children,
                         new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
-                        () => new List<CarotCryptSystemItem>(),
+                        () => new List<RcloneCryptSystemItem>(),
                         (x, state, local) =>
                         {
-                            if (!x.Name.StartsWith(cryptNameHeader)) return local;
-
                             var child = RemoteServerFactory.PathToItem(x.FullPath, (deep) ? ReloadType.Reload : ReloadType.Cache);
                             if (child == null)
                                 return local;
 
-                            var item = new CarotCryptSystemItem(this, child, pathlist[ID]);
-                            pathlist.AddOrUpdate(item.ID, (k) => item, (k, v) => item);
-                            local.Add(item);
+                            try
+                            {
+                                var item = new RcloneCryptSystemItem(this, child, pathlist[ID]);
+                                pathlist.AddOrUpdate(item.ID, (k) => item, (k, v) => item);
+                                local.Add(item);
+                            }
+                            catch { }
+
                             return local;
                         },
                          (result) =>
@@ -424,27 +472,28 @@ namespace TSviewCloudPlugin
 
         public override Icon GetIcon()
         {
-            return LibCryptCarotDAV.Properties.Resources.carot;
+            return LibCryptRclone.Properties.Resources.rclone;
         }
 
         public override string GetServiceName()
         {
-            return "CarotCrypt";
+            return "RcloneCrypt";
         }
 
         public override void Init()
         {
-            RemoteServerFactory.Register(GetServiceName(), typeof(CarotCryptSystem));
+            RemoteServerFactory.Register(GetServiceName(), typeof(RcloneCryptSystem));
         }
 
         public override Job<IRemoteItem> MakeFolder(string foldername, IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] parentJob)
         {
             if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
-            TSviewCloudConfig.Config.Log.LogOut("[MakeFolder(CarotCryptSystem)] " + foldername);
+            TSviewCloudConfig.Config.Log.LogOut("[MakeFolder(RcloneCryptSystem)] " + foldername);
  
             var parent = pathlist[remoteTarget.ID];
-            var orgmakejob = parent.orgItem.MakeFolder(CryptCarot.EncryptFilename(foldername), WeekDepend, parentJob);
+            var dirname = (Encrypter.IsEncryptedName) ? Encrypter.EncryptName(foldername) : foldername;
+            var orgmakejob = parent.orgItem.MakeFolder(dirname, WeekDepend, parentJob);
 
             var job = JobControler.CreateNewJob<IRemoteItem>(
                 type: JobClass.RemoteOperation,
@@ -461,7 +510,7 @@ namespace TSviewCloudPlugin
                     j.Progress = -1;
 
 
-                    var newitem = new CarotCryptSystemItem(this, item, remoteTarget);
+                    var newitem = new RcloneCryptSystemItem(this, item, remoteTarget);
                     pathlist.AddOrUpdate(newitem.ID, (k) => newitem, (k, v) => newitem);
 
                     remoteTarget.SetChildren(remoteTarget.Children.Concat(new[] { newitem }));
@@ -478,8 +527,8 @@ namespace TSviewCloudPlugin
 
         internal void RemoveItem(string ID)
         {
-            TSviewCloudConfig.Config.Log.LogOut("[RemoveItem(CarotCryptSystem)] " + ID);
-            if (pathlist.TryRemove(ID, out CarotCryptSystemItem target))
+            TSviewCloudConfig.Config.Log.LogOut("[RemoveItem(RcloneCryptSystem)] " + ID);
+            if (pathlist.TryRemove(ID, out RcloneCryptSystemItem target))
             {
                 if (target != null)
                 {
@@ -500,11 +549,11 @@ namespace TSviewCloudPlugin
         {
             if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
-            TSviewCloudConfig.Config.Log.LogOut("[DeleteItem(CarotCryptSystem)] " + deleteTarget.Path);
+            TSviewCloudConfig.Config.Log.LogOut("[DeleteItem(RcloneCryptSystem)] " + deleteTarget.Path);
 
             var job = JobControler.CreateNewJob<IRemoteItem>(
                 type: JobClass.Trash,
-                depends: (deleteTarget as CarotCryptSystemItem).orgItem.DeleteItem(WeekDepend, prevJob));
+                depends: (deleteTarget as RcloneCryptSystemItem).orgItem.DeleteItem(WeekDepend, prevJob));
             job.DisplayName = "Trash Item : " + deleteTarget.ID;
             job.ProgressStr = "wait for operation.";
             var ct = job.Ct;
@@ -529,23 +578,17 @@ namespace TSviewCloudPlugin
         {
             if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
+            TSviewCloudConfig.Config.Log.LogOut("[DownloadItemRaw(RcloneCryptSystem)] " + remoteTarget.Path);
 
-            var newoffset = offset - CryptCarotDAV.BlockSizeByte;
-            if (newoffset < CryptCarotDAV.BlockSizeByte)
-            {
-                // 先頭ブロックを取得するときはファイルの先頭から
+            var chunk_num = offset / CryptRclone.blockDataSize;
+            long newoffset;
+            if (offset < CryptRclone.blockDataSize)
                 newoffset = 0;
-            }
             else
-            {
-                // ブロックにアライメントを合わせる
-                newoffset-= ((newoffset - 1) % CryptCarotDAV.BlockSizeByte + 1);
-                // 途中のブロックを要求された場合は、ヘッダをスキップ
-                newoffset += CryptCarotDAV.CryptHeaderByte;
-            }
+                newoffset = CryptRclone.fileHeaderSize + CryptRclone.chunkSize * chunk_num;
 
-            TSviewCloudConfig.Config.Log.LogOut("[DownloadItemRaw(CarotCryptSystem)] " + remoteTarget.Path);
-            var djob = (remoteTarget as CarotCryptSystemItem).orgItem.DownloadItemRawJob(newoffset, WeekDepend, hidden, prevJob);
+            var rTarget = remoteTarget as RcloneCryptSystemItem;
+            var djob = rTarget.orgItem.DownloadItemRawJob(newoffset, WeekDepend, hidden, prevJob);
 
             var job = JobControler.CreateNewJob<Stream>(JobClass.RemoteDownload, depends: djob);
             job.DisplayName = "Download item:" + remoteTarget.Name;
@@ -557,7 +600,9 @@ namespace TSviewCloudPlugin
                 if (result.TryGetTarget(out var stream))
                 {
                     j.Progress = -1;
-                    j.Result = new CryptCarotDAV.CryptCarotDAV_DecryptStream(CryptCarot, stream, offset, newoffset, (remoteTarget as CarotCryptSystemItem).orgItem.Size ?? 0);
+                    var cstream = new CryptRclone.CryptRclone_DeryptStream(Encrypter, stream, offset, newoffset, rTarget.orgItem.Size ?? 0, rTarget.nonce);
+                    j.Result = cstream;
+                    rTarget.nonce = cstream.Nonce;
                     j.Progress = 1;
                     j.ProgressStr = "ready";
                 }
@@ -569,7 +614,7 @@ namespace TSviewCloudPlugin
         {
             if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
-            TSviewCloudConfig.Config.Log.LogOut("[DownloadItem(CarotCryptSystem)] " + remoteTarget.Path);
+            TSviewCloudConfig.Config.Log.LogOut("[DownloadItem(RcloneCryptSystem)] " + remoteTarget.Path);
             var job = JobControler.CreateNewJob<Stream>(JobClass.RemoteDownload, depends: prevJob);
             job.DisplayName = "Download item:" + remoteTarget.Name;
             job.ProgressStr = "wait for system...";
@@ -589,7 +634,7 @@ namespace TSviewCloudPlugin
 
             filename = ItemControl.GetOrgFilename(filename);
 
-            TSviewCloudConfig.Config.Log.LogOut("[UploadFile(CarotCryptSystem)] " + filename);
+            TSviewCloudConfig.Config.Log.LogOut("[UploadFile(RcloneCryptSystem)] " + filename);
             var filesize = new FileInfo(ItemControl.GetLongFilename(filename)).Length;
             var short_filename = Path.GetFileName(ItemControl.GetLongFilename(filename));
 
@@ -603,14 +648,14 @@ namespace TSviewCloudPlugin
         {
             if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
-            TSviewCloudConfig.Config.Log.LogOut("[UploadStream(CarotCryptSystem)] " + uploadname);
-            streamsize += (CryptCarotDAV.BlockSizeByte + CryptCarotDAV.CryptFooterByte + CryptCarotDAV.CryptFooterByte);
-            var cname = CryptCarot.EncryptFilename(uploadname);
-            var cstream = new CryptCarotDAV.CryptCarotDAV_CryptStream(CryptCarot, source);
+            TSviewCloudConfig.Config.Log.LogOut("[UploadStream(RcloneCryptSystem)] " + uploadname);
+            streamsize = CryptRclone.CalcEncryptedSize(streamsize);
+            var cname = (Encrypter.IsEncryptedName)? Encrypter.EncryptName(uploadname): uploadname + CryptRclone.encryptedSuffix;
+            var cstream = new CryptRclone.CryptRclone_CryptStream(Encrypter, source);
 
             TSviewCloudConfig.Config.Log.LogOut("[Upload] File: {0} -> {1}", uploadname, cname);
 
-            var job = (remoteTarget as CarotCryptSystemItem).orgItem.UploadStream(cstream, cname, streamsize, WeekDepend, parentJob);
+            var job = (remoteTarget as RcloneCryptSystemItem).orgItem.UploadStream(cstream, cname, streamsize, WeekDepend, parentJob);
             job.DisplayName = uploadname;
 
             var clean = JobControler.CreateNewJob<IRemoteItem>(JobClass.Clean, depends: job);
@@ -622,7 +667,7 @@ namespace TSviewCloudPlugin
                 var result = clean.ResultOfDepend[0];
                 if (result.TryGetTarget(out var item) && item != null)
                 {
-                    var newitem = new CarotCryptSystemItem(this, item, remoteTarget);
+                    var newitem = new RcloneCryptSystemItem(this, item, remoteTarget);
                     pathlist.AddOrUpdate(newitem.ID, (k) => newitem, (k, v) => newitem);
 
                     remoteTarget.SetChildren(remoteTarget.Children.Concat(new[] { newitem }));
@@ -639,8 +684,8 @@ namespace TSviewCloudPlugin
         {
             if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
-            TSviewCloudConfig.Config.Log.LogOut("[MoveItemOnServer(CarotCryptSystem)] " + moveItem.FullPath);
-            var job = (moveItem as CarotCryptSystemItem).orgItem.MoveItem((moveToItem as CarotCryptSystemItem).orgItem, WeekDepend, prevJob);
+            TSviewCloudConfig.Config.Log.LogOut("[MoveItemOnServer(RcloneCryptSystem)] " + moveItem.FullPath);
+            var job = (moveItem as RcloneCryptSystemItem).orgItem.MoveItem((moveToItem as RcloneCryptSystemItem).orgItem, WeekDepend, prevJob);
 
             var waitjob = JobControler.CreateNewJob<IRemoteItem>(
                 type: JobClass.RemoteOperation,
