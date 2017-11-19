@@ -710,8 +710,8 @@ namespace TSviewCloud
                     Name = server.Name,
                     Tag = server[""]
                 };
-                ExpandItem(root);
                 treeView1.Nodes.Add(root);
+                ExpandItem(root);
 
                 var item = new ToolStripMenuItem(server.Name, server.Icon.ToBitmap());
                 item.Click += DisconnectServer;
@@ -810,7 +810,6 @@ namespace TSviewCloud
                 {
                     j.Progress = -1;
                     j.ProgressStr = "Loading...";
-                    j.ForceHidden = true;
 
                     var result = j.ResultOfDepend[0];
                     if (!result.TryGetTarget(out var item))
@@ -1820,7 +1819,7 @@ namespace TSviewCloud
             if (listView1.SelectedIndices.Cast<int>().Any(i => listData.IsSpetialItem(i)))
                 return;
             ClipboardRemoteDrive data = null;
-            var items = listData.GetItems(listView1.SelectedIndices);
+            var items = listData.GetItems(listView1.SelectedIndices, false).ToArray();
             listView1.Cursor = Cursors.WaitCursor;
             await Task.Run(() =>
             {
