@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -168,7 +169,7 @@ namespace LibCryptRclone
             }
         }
 
-        private class Secretbox
+        private class SecretboxNet
         {
             static byte[] Sigma = { (byte)'e', (byte)'x', (byte)'p', (byte)'a', (byte)'n', (byte)'d', (byte)' ', (byte)'3', (byte)'2', (byte)'-', (byte)'b', (byte)'y', (byte)'t', (byte)'e', (byte)' ', (byte)'k' };
             uint[] buf = new uint[16];
@@ -494,7 +495,7 @@ namespace LibCryptRclone
             }
         }
 
-        internal class AES_EME : Aes
+        private class AES_EME : Aes
         {
             private AesCryptoServiceProvider aes = new AesCryptoServiceProvider();
 
@@ -565,7 +566,7 @@ namespace LibCryptRclone
             }
         }
 
-        internal class AES_EME_crypt : ICryptoTransform
+        private class AES_EME_crypt : ICryptoTransform
         {
             ICryptoTransform aes;
             ICryptoTransform aes_crypt;
@@ -810,7 +811,7 @@ namespace LibCryptRclone
         static readonly int fileMagicSize = fileMagic.Length;
         const int fileNonceSize = 24;
         public static readonly int fileHeaderSize = fileMagicSize + fileNonceSize;
-        const int blockHeaderSize = Secretbox.Overhead;
+        const int blockHeaderSize = 16;
         public const int blockDataSize = 64 * 1024;
         public const int chunkSize = blockHeaderSize + blockDataSize;
         public static readonly string encryptedSuffix = ".bin";
@@ -1177,7 +1178,7 @@ namespace LibCryptRclone
             byte[] cryptedBlock;
             long crypted_blockno = -1;
             long last_blockno = -1;
-            Secretbox crypter = new Secretbox();
+            Secretbox.Secretbox crypter = new Secretbox.Secretbox();
             CryptRclone cRclone;
 
             byte[] _nonce;
@@ -1343,7 +1344,7 @@ namespace LibCryptRclone
             byte[] cryptedBlock;
             long plain_blockno;
             bool LengthSeek = false;
-            Secretbox decrypter = new Secretbox();
+            Secretbox.Secretbox decrypter = new Secretbox.Secretbox();
             CryptRclone cRclone;
 
             byte[] _nonce;
@@ -1533,7 +1534,7 @@ namespace LibCryptRclone
             public override int Read(byte[] buffer, int offset, int count)
             {
                 int read_byte = 0;
-                while (count > 0 && _Possition < OriginalLength)
+                while (count > 0 && _Possition < OriginalLength && !disposed)
                 {
                     int block_pos = (int)(_Possition - plain_blockno * blockDataSize);
                     int len = count;
@@ -1602,7 +1603,7 @@ namespace LibCryptRclone
         */
         #endregion
 
-        public static class SCrypt
+        public class SCrypt
         {
             const int hLen = 32;
 
@@ -1826,13 +1827,13 @@ namespace LibCryptRclone
                 for (int i = 0; i < r; i++)
                 {
                     for (int j = 0; j < scratch.Length; j++) { scratch[j] = x[j] ^ B[j + k]; }
-                    Secretbox sala = new Secretbox();
-                    sala.SalaCore(8, scratch, x);
+                    Secretbox.Secretbox sala = new Secretbox.Secretbox();
+                    sala.SalaCore208(scratch, x);
                     Array.Copy(x, 0, y, m, 16);
                     k += 16;
 
                     for (int j = 0; j < scratch.Length; j++) { scratch[j] = x[j] ^ B[j + k]; }
-                    sala.SalaCore(8, scratch, x);
+                    sala.SalaCore208(scratch, x);
                     Array.Copy(x, 0, y, m + n, 16);
                     k += 16;
 

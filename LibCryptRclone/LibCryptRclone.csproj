@@ -114,6 +114,10 @@
     <None Include="Resources\rclone.ico" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Secretbox\Secretbox.vcxproj">
+      <Project>{ccfce44a-d6ab-4d60-919a-924b8bb166b5}</Project>
+      <Name>Secretbox</Name>
+    </ProjectReference>
     <ProjectReference Include="..\TSviewCloud\TSviewCloud.csproj">
       <Project>{0bce8096-c7db-40e3-982d-7950cd77b6ee}</Project>
       <Name>TSviewCloud</Name>
@@ -122,6 +126,7 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>mkdir $(SolutionDir)TSviewCloud\$(OutDir)plugin\
-copy $(TargetDir)$(TargetFileName) $(SolutionDir)TSviewCloud\$(OutDir)plugin\</PostBuildEvent>
+copy $(TargetDir)$(TargetFileName) $(SolutionDir)TSviewCloud\$(OutDir)plugin\
+copy $(TargetDir)Secretbox.dll $(SolutionDir)TSviewCloud\$(OutDir)</PostBuildEvent>
   </PropertyGroup>
 </Project>
