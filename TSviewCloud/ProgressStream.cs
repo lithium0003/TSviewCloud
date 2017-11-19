@@ -84,7 +84,7 @@ namespace TSviewCloudPlugin
                 data.Log = data.Position.ToString("#,0") + '/' + data.Length.ToString("#,0")
                             + string.Format("({0:0.00%}) ", (double)data.Position / data.Length)
                             + ConvertUnit(Rate_mean)
-                            + " [to go " + TimeSpan.FromSeconds(togo).ToString() + " ] ";
+                            + " [ETA " + TimeSpan.FromSeconds(togo).ToString() + " ] ";
                 try
                 {
                     PosChangeEvent?.Invoke(this, data);

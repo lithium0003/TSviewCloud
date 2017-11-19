@@ -204,7 +204,9 @@ namespace TSviewCloudPlugin
         {
             _IsReady = false;
             pathlist.Clear();
-            var root = new CarotCryptSystemItem(this, RemoteServerFactory.PathToItem(cryptRootPath), null);
+            var host = RemoteServerFactory.PathToItem(cryptRootPath, ReloadType.Reload);
+            if (host == null) return;
+            var root = new CarotCryptSystemItem(this, host, null);
             pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
             EnsureItem("", 1);
             _IsReady = true;

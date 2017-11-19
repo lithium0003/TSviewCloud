@@ -73,6 +73,8 @@
             this.connectToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.disconnectToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem8 = new System.Windows.Forms.ToolStripSeparator();
+            this.saveDirveCacheToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripMenuItem9 = new System.Windows.Forms.ToolStripSeparator();
             this.driveCacheclearToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -522,6 +524,8 @@
             this.connectToolStripMenuItem,
             this.disconnectToolStripMenuItem,
             this.toolStripMenuItem8,
+            this.saveDirveCacheToolStripMenuItem,
+            this.toolStripMenuItem9,
             this.driveCacheclearToolStripMenuItem,
             this.toolStripMenuItem1,
             this.exitToolStripMenuItem});
@@ -532,37 +536,50 @@
             // connectToolStripMenuItem
             // 
             this.connectToolStripMenuItem.Name = "connectToolStripMenuItem";
-            this.connectToolStripMenuItem.Size = new System.Drawing.Size(197, 26);
+            this.connectToolStripMenuItem.Size = new System.Drawing.Size(244, 26);
             this.connectToolStripMenuItem.Text = "&Connect";
             // 
             // disconnectToolStripMenuItem
             // 
             this.disconnectToolStripMenuItem.Name = "disconnectToolStripMenuItem";
-            this.disconnectToolStripMenuItem.Size = new System.Drawing.Size(197, 26);
+            this.disconnectToolStripMenuItem.Size = new System.Drawing.Size(244, 26);
             this.disconnectToolStripMenuItem.Text = "&Disconnect";
             // 
             // toolStripMenuItem8
             // 
             this.toolStripMenuItem8.Name = "toolStripMenuItem8";
-            this.toolStripMenuItem8.Size = new System.Drawing.Size(194, 6);
+            this.toolStripMenuItem8.Size = new System.Drawing.Size(241, 6);
+            // 
+            // saveDirveCacheToolStripMenuItem
+            // 
+            this.saveDirveCacheToolStripMenuItem.Name = "saveDirveCacheToolStripMenuItem";
+            this.saveDirveCacheToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.S)));
+            this.saveDirveCacheToolStripMenuItem.Size = new System.Drawing.Size(244, 26);
+            this.saveDirveCacheToolStripMenuItem.Text = "&Save dirve cache";
+            this.saveDirveCacheToolStripMenuItem.Click += new System.EventHandler(this.saveDirveCacheToolStripMenuItem_Click);
+            // 
+            // toolStripMenuItem9
+            // 
+            this.toolStripMenuItem9.Name = "toolStripMenuItem9";
+            this.toolStripMenuItem9.Size = new System.Drawing.Size(241, 6);
             // 
             // driveCacheclearToolStripMenuItem
             // 
             this.driveCacheclearToolStripMenuItem.Name = "driveCacheclearToolStripMenuItem";
-            this.driveCacheclearToolStripMenuItem.Size = new System.Drawing.Size(197, 26);
+            this.driveCacheclearToolStripMenuItem.Size = new System.Drawing.Size(244, 26);
             this.driveCacheclearToolStripMenuItem.Text = "Drive cache clear";
             this.driveCacheclearToolStripMenuItem.Click += new System.EventHandler(this.driveCacheclearToolStripMenuItem_Click);
             // 
             // toolStripMenuItem1
             // 
             this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-            this.toolStripMenuItem1.Size = new System.Drawing.Size(194, 6);
+            this.toolStripMenuItem1.Size = new System.Drawing.Size(241, 6);
             // 
             // exitToolStripMenuItem
             // 
             this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
             this.exitToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Alt | System.Windows.Forms.Keys.F4)));
-            this.exitToolStripMenuItem.Size = new System.Drawing.Size(197, 26);
+            this.exitToolStripMenuItem.Size = new System.Drawing.Size(244, 26);
             this.exitToolStripMenuItem.Text = "&Exit";
             this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
             // 
@@ -847,6 +864,8 @@
         private System.Windows.Forms.ToolStripMenuItem outputLogTofileToolStripMenuItem;
         private System.Windows.Forms.Button button_diff;
         private System.Windows.Forms.ToolStripMenuItem checkDifferenceLocalAndRemoteToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem saveDirveCacheToolStripMenuItem;
+        private System.Windows.Forms.ToolStripSeparator toolStripMenuItem9;
     }
 }
 

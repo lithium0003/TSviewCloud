@@ -441,6 +441,8 @@ namespace TSviewCloudPlugin
 
         static private string FixServerName(string orgname)
         {
+            if (string.IsNullOrEmpty(orgname)) return orgname;
+
             while (ServerList.ContainsKey(orgname))
             {
                 var m = Regex.Match(orgname, @"^(?<base>.*)_(?<num>\d*)$");
@@ -648,6 +650,7 @@ namespace TSviewCloudPlugin
             }
 
             Queue<IRemoteServer> donelist = new Queue<IRemoteServer>();
+            List<string> deadlist = new List<string>();
             foreach(var first in dependlist[""])
             {
                 first.ClearCache();
@@ -661,7 +664,20 @@ namespace TSviewCloudPlugin
                 {
                     foreach(var slave in dependlist[d.Name])
                     {
-                        slave.ClearCache();
+                        if (deadlist.Contains(d.Name))
+                        {
+                            deadlist.Add(slave.Name);
+                            Delete(slave);
+                        }
+                        else
+                        {
+                            slave.ClearCache();
+                            if (!slave.IsReady)
+                            {
+                                deadlist.Add(slave.Name);
+                                Delete(slave);
+                            }
+                        }
                         donelist.Enqueue(slave);
                         servercount--;
                     }
@@ -724,7 +740,7 @@ namespace TSviewCloudPlugin
                         {
                             if (child == null)
                             {
-                                current = server[current.ID];
+                                current = server.ReloadItem(current.ID);
                                 current = current.Children.Where(x => x.Name == m.Groups["current"].Value).First();
                             }
                             else

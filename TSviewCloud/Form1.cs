@@ -192,6 +192,28 @@ namespace TSviewCloud
 
 
 
+        private void saveDirveCacheToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (Initialized && SaveConfigJob == null)
+            {
+                SaveConfigJob = TSviewCloudPlugin.JobControler.CreateNewJob(TSviewCloudPlugin.JobClass.Save);
+                SaveConfigJob.DisplayName = "Save server list";
+                TSviewCloudPlugin.JobControler.Run(SaveConfigJob, (j) =>
+                {
+                    j.Progress = -1;
+                    j.ProgressStr = "Save...";
+
+                    TSviewCloudConfig.Config.Save();
+                    TSviewCloudPlugin.RemoteServerFactory.Save();
+
+                    j.Progress = 1;
+                    j.ProgressStr = "Done.";
+                    SaveConfigJob = null;
+                });
+            }
+        }
+
+
         /// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         [DllImport("User32.dll")]
@@ -2134,16 +2156,49 @@ namespace TSviewCloud
         {
             TSviewCloudPlugin.RemoteServerFactory.ClearCache();
 
-            foreach (TreeNode node in treeView1.Nodes)
-            {
-                node.Collapse();
-                node.Nodes.Clear();
-            }
+            treeView1.Nodes.Clear();
             listData.Clear();
+
+            while (listView1.SmallImageList.Images.Count > 2)
+                listView1.SmallImageList.Images.RemoveAt(2);
+            while (listView1.LargeImageList.Images.Count > 2)
+                listView1.LargeImageList.Images.RemoveAt(2);
+
+            var displayJob = TSviewCloudPlugin.JobControler.CreateNewJob(TSviewCloudPlugin.JobClass.LoadItem);
+            displayJob.DisplayName = "Display  server";
+            TSviewCloudPlugin.JobControler.Run(displayJob, (j) =>
+            {
+                j.Progress = -1;
+                j.ProgressStr = "Loading...";
+
+                synchronizationContext.Send((o) =>
+                {
+                    foreach (var server in TSviewCloudPlugin.RemoteServerFactory.ServerList.Values)
+                    {
+                        listView1.SmallImageList.Images.Add(server.Icon);
+                        listView1.LargeImageList.Images.Add(server.Icon);
+
+                        var root = new TreeNode(server.Name, treeView1.ImageList.Images.Count - 1, treeView1.ImageList.Images.Count - 1)
+                        {
+                            Name = server.Name
+                        };
+                        treeView1.Nodes.Add(root);
+
+                        var item = new ToolStripMenuItem(server.Name, server.Icon.ToBitmap());
+                        item.Click += DisconnectServer;
+                        item.Tag = server;
+                        disconnectToolStripMenuItem.DropDownItems.Add(item);
+                    }
+
+                    j.Progress = 1;
+                    j.ProgressStr = "Done.";
+                }, null);
+            });
 
             var load2Job = TSviewCloudPlugin.JobControler.CreateNewJob(TSviewCloudPlugin.JobClass.ControlMaster);
             TSviewCloudPlugin.JobControler.Run(load2Job, (j) =>
             {
+                displayJob.Wait(ct: j.Ct);
                 var display2Job = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(
                     type: TSviewCloudPlugin.JobClass.LoadItem,
                     depends: TSviewCloudPlugin.RemoteServerFactory.ServerList.Values
@@ -2153,6 +2208,7 @@ namespace TSviewCloud
                 display2Job.ProgressStr = "wait for load";
                 TSviewCloudPlugin.JobControler.Run<TSviewCloudPlugin.IRemoteItem>(display2Job, (j2j) =>
                 {
+                    displayJob.Wait(ct: j.Ct);
                     j2j.Progress = -1;
                     j2j.ProgressStr = "Loading...";
                     var results = new List<TSviewCloudPlugin.IRemoteItem>();
@@ -2164,8 +2220,9 @@ namespace TSviewCloud
                         }
                     }
 
-                    synchronizationContext.Send((o) =>
+                    synchronizationContext.Post((o) =>
                     {
+                        Cursor.Current = Cursors.WaitCursor;
                         foreach (var item in o as IEnumerable<TSviewCloudPlugin.IRemoteItem>)
                         {
                             var treenode = treeView1.Nodes.Find(item.Server, false).First();
@@ -2175,6 +2232,7 @@ namespace TSviewCloud
                     }, results);
                 });
             });
+
         }
 
 

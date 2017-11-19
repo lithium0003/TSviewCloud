@@ -55,7 +55,7 @@ namespace TSviewCloudPlugin
                             var speed = (subtotal + JobControler.UploadProgressDone) / (DateTime.Now - StartTime).TotalSeconds;
                             var togo = Math.Round((JobControler.UploadTotal - subtotal - JobControler.UploadProgressDone) / speed);
                             togo = (double.IsInfinity(togo) || double.IsNaN(togo)) ? 0 : togo;
-                            sb.AppendFormat("{0} [to go {1}]", JobControler.ConvertUnit(speed), TimeSpan.FromSeconds(togo));
+                            sb.AppendFormat("{0} [ETA {1}]", JobControler.ConvertUnit(speed), TimeSpan.FromSeconds(togo));
                             return sb.ToString();
                         }
                     case JobClass.DownloadInfo:
@@ -70,7 +70,7 @@ namespace TSviewCloudPlugin
                             var speed = (subtotal + JobControler.DownloadProgressDone) / (DateTime.Now - StartTime).TotalSeconds;
                             var togo = Math.Round((JobControler.DownloadTotal - subtotal - JobControler.DownloadProgressDone) / speed);
                             togo = (double.IsInfinity(togo) || double.IsNaN(togo)) ? 0 : togo;
-                            sb.AppendFormat("{0} [to go {1}]", JobControler.ConvertUnit(speed), TimeSpan.FromSeconds(togo));
+                            sb.AppendFormat("{0} [ETA {1}]", JobControler.ConvertUnit(speed), TimeSpan.FromSeconds(togo));
                             return sb.ToString();
                         }
                     default:

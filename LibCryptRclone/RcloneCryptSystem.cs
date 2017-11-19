@@ -241,7 +241,9 @@ namespace TSviewCloudPlugin
         {
             _IsReady = false;
             pathlist.Clear();
-            var root = new RcloneCryptSystemItem(this, RemoteServerFactory.PathToItem(cryptRootPath), null);
+            var host = RemoteServerFactory.PathToItem(cryptRootPath);
+            if (host == null) return;
+            var root = new RcloneCryptSystemItem(this, host, null);
             pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
             EnsureItem("", 1);
             _IsReady = true;
