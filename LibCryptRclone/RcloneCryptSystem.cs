@@ -41,7 +41,7 @@ namespace TSviewCloudPlugin
         {
             get
             {
-                return size = ((orgItem.Size == null)? orgItem.Size: CryptRclone.CalcDecryptedSize(orgItem.Size.Value));
+                return size = ((orgItem?.Size == null)? orgItem?.Size: CryptRclone.CalcDecryptedSize(orgItem?.Size ?? 0));
             }
         }
         public override DateTime? ModifiedDate
@@ -181,7 +181,7 @@ namespace TSviewCloudPlugin
             }
             set
             {
-                _DrivePassword = TSviewCloudConfig.Config.Encrypt(_DrivePassword, hidden_pass);
+                _DrivePassword = TSviewCloudConfig.Config.Encrypt(value, hidden_pass);
             }
         }
         public string DriveSalt
@@ -192,7 +192,7 @@ namespace TSviewCloudPlugin
             }
             set
             {
-                _DriveSalt = TSviewCloudConfig.Config.Encrypt(_DriveSalt, hidden_pass);
+                _DriveSalt = TSviewCloudConfig.Config.Encrypt(value, hidden_pass);
             }
         }
 
@@ -491,7 +491,7 @@ namespace TSviewCloudPlugin
 
             TSviewCloudConfig.Config.Log.LogOut("[MakeFolder(RcloneCryptSystem)] " + foldername);
  
-            var parent = pathlist[remoteTarget.ID];
+            var parent = pathlist[(remoteTarget.ID== cryptRootPath)? "": remoteTarget.ID];
             var dirname = (Encrypter.IsEncryptedName) ? Encrypter.EncryptName(foldername) : foldername;
             var orgmakejob = parent.orgItem.MakeFolder(dirname, WeekDepend, parentJob);
 

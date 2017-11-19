@@ -588,24 +588,25 @@ namespace Secretbox {
 			poutput[15] = x15;
 		}
 
-		void XORKeyStream([Runtime::InteropServices::Out] array<Byte>^% output, array<Byte>^ input, array<Byte>^ counter, array<Byte>^ key, int offset)
+		void XORKeyStream([Runtime::InteropServices::Out] array<Byte>^% output, array<Byte>^ input, int input_offset, array<Byte>^ counter, array<Byte>^ key)
 		{
 			if (counter->Length != 16) throw gcnew ArgumentException("counter length must be 16");
 			if (key->Length != 32) throw gcnew ArgumentException("key length must be 32");
 
 			array<Byte>^ block;
 			array<Byte>^ inCounter = gcnew array<Byte>(16);
+			pin_ptr<Byte> pinCounter = &inCounter[0];
 			Array::Copy(counter, inCounter, 16);
 
-			output = gcnew array<Byte>(input->Length - offset);
+			output = gcnew array<Byte>(input->Length - input_offset);
 
-			pin_ptr<Byte> pinput = &input[0];
+			pin_ptr<Byte> pinput = &input[input_offset];
 			pin_ptr<Byte> poutput = &output[0];
-			Byte *in = &pinput[offset];
+			Byte *in = pinput;
 			Byte *out = poutput;
 
 
-			int len = input->Length - offset;
+			int len = input->Length - input_offset;
 			while (len >= 64)
 			{
 				SalaCore(block, inCounter, key, Sigma);
@@ -616,8 +617,53 @@ namespace Secretbox {
 				UInt32 u = 1;
 				for (int i = 8; i < 16; i++)
 				{
-					u += inCounter[i];
-					inCounter[i] = (Byte)(u);
+					u += pinCounter[i];
+					pinCounter[i] = (Byte)(u);
+					u >>= 8;
+				}
+
+				len -= 64;
+			}
+
+			if (len > 0)
+			{
+				SalaCore(block, inCounter, key, Sigma);
+				pin_ptr<Byte> pblock = &block[0];
+				for (int i = 0; i < len; i++)
+					*(out++) = (Byte)(*(in++) ^ pblock[i]);
+			}
+		}
+
+		void XORKeyStream(array<Byte>^ output, int output_offset, array<Byte>^ input, int input_offset, array<Byte>^ counter, array<Byte>^ key)
+		{
+			if (counter->Length != 16) throw gcnew ArgumentException("counter length must be 16");
+			if (key->Length != 32) throw gcnew ArgumentException("key length must be 32");
+			if (output->Length - output_offset != input->Length - input_offset) throw gcnew ArgumentException("output buffer is short");
+
+			array<Byte>^ block;
+			array<Byte>^ inCounter = gcnew array<Byte>(16);
+			pin_ptr<Byte> pinCounter = &inCounter[0];
+			Array::Copy(counter, inCounter, 16);
+
+			pin_ptr<Byte> pinput = &input[input_offset];
+			pin_ptr<Byte> poutput = &output[output_offset];
+			Byte *in = pinput;
+			Byte *out = poutput;
+
+
+			int len = input->Length - input_offset;
+			while (len >= 64)
+			{
+				SalaCore(block, inCounter, key, Sigma);
+				pin_ptr<Byte> pblock = &block[0];
+				for (int i = 0; i < 64; i++)
+					*(out++) = (Byte)(*(in++) ^ pblock[i]);
+
+				UInt32 u = 1;
+				for (int i = 8; i < 16; i++)
+				{
+					u += pinCounter[i];
+					pinCounter[i] = (Byte)(u);
 					u >>= 8;
 				}
 
@@ -657,7 +703,7 @@ namespace Secretbox {
 			Setup(subkey, counter, nonce, key);
 
 			array<Byte>^ firstBlock = gcnew array<Byte>(64);
-			XORKeyStream(firstBlock, firstBlock, counter, subkey, 0);
+			XORKeyStream(firstBlock, firstBlock, 0, counter, subkey);
 
 			array<Byte>^ poly1305Key = gcnew array<Byte>(32);
 			Array::Copy(firstBlock, poly1305Key, 32);
@@ -687,9 +733,7 @@ namespace Secretbox {
 			}
 
 			counter[8] = 1;
-			array<Byte>^ outputbuf;
-			XORKeyStream(outputbuf, message, counter, subkey, firstMessageBlock->Length);
-			Array::Copy(outputbuf, 0, output, Poly1305::TagSize + firstMessageBlock->Length, outputbuf->Length);
+			XORKeyStream(output, Poly1305::TagSize + firstMessageBlock->Length, message, firstMessageBlock->Length, counter, subkey);
 
 			array<Byte>^ tag;
 			Poly1305::Sum(tag, output, poly1305Key, Poly1305::TagSize);
@@ -706,7 +750,7 @@ namespace Secretbox {
 			Setup(subkey, counter, nonce, key);
 
 			array<Byte>^ firstBlock = gcnew array<Byte>(64);
-			XORKeyStream(firstBlock, firstBlock, counter, subkey, 0);
+			XORKeyStream(firstBlock, firstBlock, 0, counter, subkey);
 
 			array<Byte>^ poly1305Key = gcnew array<Byte>(32);
 			Array::Copy(firstBlock, poly1305Key, 32);
@@ -746,9 +790,7 @@ namespace Secretbox {
 			}
 
 			counter[8] = 1;
-			array<Byte>^ outputbuf;
-			XORKeyStream(outputbuf, box, counter, subkey, firstMessageBlock->Length + Poly1305::TagSize);
-			Array::Copy(outputbuf, 0, output, firstMessageBlock->Length, outputbuf->Length);
+			XORKeyStream(output, firstMessageBlock->Length, box, firstMessageBlock->Length + Poly1305::TagSize, counter, subkey);
 			return true;
 		}
 

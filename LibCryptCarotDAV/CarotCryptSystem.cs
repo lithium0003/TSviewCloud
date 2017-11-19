@@ -156,7 +156,7 @@ namespace TSviewCloudPlugin
             }
             set
             {
-                _DrivePassword = TSviewCloudConfig.Config.Encrypt(_DrivePassword, hidden_pass);
+                _DrivePassword = TSviewCloudConfig.Config.Encrypt(value, hidden_pass);
             }
         }
 
@@ -443,7 +443,7 @@ namespace TSviewCloudPlugin
 
             TSviewCloudConfig.Config.Log.LogOut("[MakeFolder(CarotCryptSystem)] " + foldername);
  
-            var parent = pathlist[remoteTarget.ID];
+            var parent = pathlist[(remoteTarget.ID == cryptRootPath)? "": remoteTarget.ID];
             var orgmakejob = parent.orgItem.MakeFolder(CryptCarot.EncryptFilename(foldername), WeekDepend, parentJob);
 
             var job = JobControler.CreateNewJob<IRemoteItem>(
