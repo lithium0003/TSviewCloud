@@ -634,9 +634,38 @@ namespace TSviewCloudPlugin
         {
             itemCache.Clear();
             ReloadWait.Clear();
+
+            Dictionary<string, List<IRemoteServer>> dependlist = new Dictionary<string, List<IRemoteServer>>();
+
+            int servercount = 0;
             foreach (var s in ServerList.Values)
             {
-                s.ClearCache();
+                var depends = s.DependsOnService ?? "";
+                if (!dependlist.ContainsKey(depends))
+                    dependlist[depends] = new List<IRemoteServer>();
+                dependlist[depends].Add(s);
+                servercount++;
+            }
+
+            Queue<IRemoteServer> donelist = new Queue<IRemoteServer>();
+            foreach(var first in dependlist[""])
+            {
+                first.ClearCache();
+                donelist.Enqueue(first);
+                servercount--;
+            }
+            while (servercount > 0 && donelist.Count > 0)
+            {
+                var d = donelist.Dequeue();
+                if (dependlist.ContainsKey(d.Name))
+                {
+                    foreach(var slave in dependlist[d.Name])
+                    {
+                        slave.ClearCache();
+                        donelist.Enqueue(slave);
+                        servercount--;
+                    }
+                }
             }
         }
 

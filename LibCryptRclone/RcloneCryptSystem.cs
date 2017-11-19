@@ -240,7 +240,6 @@ namespace TSviewCloudPlugin
         public override void ClearCache()
         {
             _IsReady = false;
-            RemoteServerFactory.ServerList[_dependService].ClearCache();
             pathlist.Clear();
             var root = new RcloneCryptSystemItem(this, RemoteServerFactory.PathToItem(cryptRootPath), null);
             pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
