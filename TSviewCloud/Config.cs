@@ -150,6 +150,11 @@ namespace TSviewCloudConfig
         {
             get { return _filepath; }
         }
+        private static string _ApplicationID;
+        public static string ApplicationID
+        {
+            get { return _ApplicationID; }
+        }
 
         public static string CachePath
         {
@@ -261,6 +266,11 @@ namespace TSviewCloudConfig
 
         static Config()
         {
+            using (var md5 = new MD5Cng())
+            {
+                _ApplicationID = BitConverter.ToString(md5.ComputeHash(Encoding.UTF8.GetBytes(filepath))).ToLower().Replace("-", "");
+            }
+
             var serializer = new DataContractSerializer(typeof(Savedata));
             try
             {

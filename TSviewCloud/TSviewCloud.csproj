@@ -217,6 +217,7 @@
     <Compile Include="ListViewNF.Designer.cs">
       <DependentUpon>ListViewNF.cs</DependentUpon>
     </Compile>
+    <Compile Include="MultiInstance.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="ProgressStream.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

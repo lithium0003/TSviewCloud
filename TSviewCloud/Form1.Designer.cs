@@ -104,6 +104,7 @@
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
+            this.openNewWindowToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -524,6 +525,7 @@
             this.connectToolStripMenuItem,
             this.disconnectToolStripMenuItem,
             this.toolStripMenuItem8,
+            this.openNewWindowToolStripMenuItem,
             this.saveDirveCacheToolStripMenuItem,
             this.toolStripMenuItem9,
             this.driveCacheclearToolStripMenuItem,
@@ -760,6 +762,14 @@
             this.timer1.Interval = 500;
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
+            // openNewWindowToolStripMenuItem
+            // 
+            this.openNewWindowToolStripMenuItem.Name = "openNewWindowToolStripMenuItem";
+            this.openNewWindowToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.N)));
+            this.openNewWindowToolStripMenuItem.Size = new System.Drawing.Size(260, 26);
+            this.openNewWindowToolStripMenuItem.Text = "&Open new window";
+            this.openNewWindowToolStripMenuItem.Click += new System.EventHandler(this.openNewWindowToolStripMenuItem_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(120F, 120F);
@@ -774,6 +784,7 @@
             this.Activated += new System.EventHandler(this.Form1_Activated);
             this.Deactivate += new System.EventHandler(this.Form1_Deactivate);
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosingAsync);
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.Form1_FormClosed);
             this.Load += new System.EventHandler(this.Form1_Load);
             this.Shown += new System.EventHandler(this.Form1_Shown);
             this.panel1.ResumeLayout(false);
@@ -866,6 +877,7 @@
         private System.Windows.Forms.ToolStripMenuItem checkDifferenceLocalAndRemoteToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem saveDirveCacheToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem9;
+        private System.Windows.Forms.ToolStripMenuItem openNewWindowToolStripMenuItem;
     }
 }
 

@@ -292,6 +292,10 @@ namespace TSviewCloudPlugin
         protected virtual void SetUpdate(IRemoteItem target)
         {
             ItemControl.ReloadRequest.AddOrUpdate(target.FullPath, 1, (k, v) => v + 1);
+            if(TSviewCloud.MultiInstance.InstanceCount > 1)
+            {
+                TSviewCloud.MultiInstance.RegisterReload(target.FullPath);
+            }
         }
 
         public abstract Job<IRemoteItem> UploadFile(string filename, IRemoteItem remoteTarget, string uploadname = null, bool WeekDepend = false, params Job[] parentJob);
@@ -352,28 +356,11 @@ namespace TSviewCloudPlugin
             Load();
         }
 
-        class ReloadResult
-        {
-            public IRemoteItem Result;
-            public DateTime Lastupdate;
-
-            public ReloadResult()
-            {
-            }
-
-            public ReloadResult(IRemoteItem result, DateTime lastupdate)
-            {
-                Result = result;
-                Lastupdate = lastupdate;
-            }
-        }
-
         static public ConcurrentDictionary<string, Type> DllList = new ConcurrentDictionary<string, Type>();
         static public ConcurrentDictionary<string, IRemoteServer> ServerList = new ConcurrentDictionary<string, IRemoteServer>();
 
 
         static private ConcurrentDictionary<string, (string server, string ID)> itemCache = new ConcurrentDictionary<string, (string server, string ID)>();
-        static private ConcurrentDictionary<string, (int c, ReloadResult r)> ReloadWait = new ConcurrentDictionary<string, (int, ReloadResult)>();
 
         static public string ServerFixedName(string class_name)
         {
@@ -635,7 +622,7 @@ namespace TSviewCloudPlugin
         static public void ClearCache()
         {
             itemCache.Clear();
-            ReloadWait.Clear();
+            ItemControl.ReloadRequest.Clear();
 
             Dictionary<string, List<IRemoteServer>> dependlist = new Dictionary<string, List<IRemoteServer>>();
 

@@ -41,10 +41,27 @@ namespace TSviewCloud
         bool AddressSelecting = false;
         bool AddressLogSelecting = false;
 
+        int WM_LOCAL_TSVIEWCLOUD_INIT;
+        int WM_LOCAL_TSVIEWCLOUD_RELOAD;
+        TSviewCloudInitEventHandler InitEventHandler;
+        TSviewCloudReloadEventHandler ReloadEventHandler;
+
         public Form1()
         {
+            WM_LOCAL_TSVIEWCLOUD_INIT = RegisterWindowMessage("TSviewCloud_WindowMessage_Init");
+            WM_LOCAL_TSVIEWCLOUD_RELOAD = RegisterWindowMessage("TSviewCloud_WindowMessage_Reload");
+
+            InitEventHandler += new TSviewCloudInitEventHandler(TSviewCloudInit);
+            ReloadEventHandler += new TSviewCloudReloadEventHandler(TSviewCloudReload);
+
             InitializeComponent();
             listData = new RemoteListViewItemList(this);
+
+        }
+
+        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            PostMessage((IntPtr)HWND_BROADCAST, WM_LOCAL_TSVIEWCLOUD_INIT, 0, 0);
         }
 
         private void Form1_Shown(object sender, EventArgs e)
@@ -213,11 +230,116 @@ namespace TSviewCloud
             }
         }
 
+        /// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        public delegate void TSviewCloudInitEventHandler(object sender, TSviewCloudInitEventArgs e);
+        public class TSviewCloudInitEventArgs : EventArgs
+        {
+            bool _IsCreated;
+
+            public TSviewCloudInitEventArgs()
+            {
+            }
+
+            public TSviewCloudInitEventArgs(bool IsCreated)
+            {
+                _IsCreated = IsCreated;
+            }
+
+            public bool IsCreated { get => _IsCreated; set => _IsCreated = value; }
+        }
+        public delegate void TSviewCloudReloadEventHandler(object sender, TSviewCloudReloadEventArgs e);
+        public class TSviewCloudReloadEventArgs : EventArgs
+        {
+            int _offset;
+            int _length;
+
+            public TSviewCloudReloadEventArgs()
+            {
+            }
+
+            public TSviewCloudReloadEventArgs(int offset, int length)
+            {
+                _offset = offset;
+                _length = length;
+            }
+
+            public int Offset { get => _offset; set => _offset = value; }
+            public int Length { get => _length; set => _length = value; }
+        }
+
+
+        private void  TSviewCloudInit(object sender, TSviewCloudInitEventArgs e)
+        {
+            if (e.IsCreated)
+                MultiInstance.AddNewInstance();
+            else
+                MultiInstance.RemoveInstance();
+        }
+
+
+        private void TSviewCloudReload(object sender, TSviewCloudReloadEventArgs e)
+        {
+            var fullpath = MultiInstance.GetReload(e.Offset, e.Length);
+            TSviewCloudPlugin.ItemControl.ReloadRequest.AddOrUpdate(fullpath, 1, (k, v) => v + 1);
+
+            if (listData.CurrentViewItem?.FullPath == fullpath)
+                GotoAddress(fullpath, TSviewCloudPlugin.ReloadType.Reload);
+        }
 
         /// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        [DllImport("User32.dll")]
+        private const int HWND_BROADCAST = 0xffff;
+
+        [DllImport("User32.dll", SetLastError = true)]
         public static extern int PostMessage(IntPtr hWnd, int uMsg, int wParam, int lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern int RegisterWindowMessage(string lpString);
+
+
+        int GetIntUnchecked(IntPtr value)
+        {
+            return IntPtr.Size == 8 ? unchecked((int)value.ToInt64()) : value.ToInt32();
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            switch (m.Msg)
+            {
+                case WM_DPICHANGED:
+                    oldDpi = currentDpi;
+                    currentDpi = m.WParam.ToInt32() & 0xFFFF;
+
+                    if (oldDpi != currentDpi)
+                    {
+                        if (isMoving)
+                        {
+                            needAdjust = true;
+                        }
+                        else
+                        {
+                            HandleDpiChanged();
+                        }
+                    }
+                    else
+                    {
+                        needAdjust = false;
+                    }
+                    break;
+            }
+
+            if (m.Msg == WM_LOCAL_TSVIEWCLOUD_INIT)
+            {
+                InitEventHandler?.Invoke(this, new TSviewCloudInitEventArgs(GetIntUnchecked(m.LParam) == 1));
+            }
+            if (m.Msg == WM_LOCAL_TSVIEWCLOUD_RELOAD)
+            {
+                ReloadEventHandler?.Invoke(this, new TSviewCloudReloadEventArgs(GetIntUnchecked(m.WParam),GetIntUnchecked(m.LParam)));
+            }
+
+            base.WndProc(ref m);
+        }
 
         /// ////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// hi-DPI 
@@ -288,35 +410,6 @@ namespace TSviewCloud
             }
 
             return false;
-        }
-
-        protected override void WndProc(ref Message m)
-        {
-            switch (m.Msg)
-            {
-                case WM_DPICHANGED:
-                    oldDpi = currentDpi;
-                    currentDpi = m.WParam.ToInt32() & 0xFFFF;
-
-                    if (oldDpi != currentDpi)
-                    {
-                        if (isMoving)
-                        {
-                            needAdjust = true;
-                        }
-                        else
-                        {
-                            HandleDpiChanged();
-                        }
-                    }
-                    else
-                    {
-                        needAdjust = false;
-                    }
-                    break;
-            }
-
-            base.WndProc(ref m);
         }
 
 
@@ -2268,6 +2361,16 @@ namespace TSviewCloud
             }
             diff.Show();
         }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private void openNewWindowToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            saveDirveCacheToolStripMenuItem.PerformClick();
+
+            System.Diagnostics.Process.Start(Application.ExecutablePath);
+        }
+
     }
 
 

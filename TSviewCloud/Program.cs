@@ -27,18 +27,25 @@ namespace TSviewCloud
                 Trace.WriteLine(e.Exception);
             };
 
-
-            if (args.Length == 0)
+            MultiInstance.Init();
+            try
             {
-                MainForm = new Form1();
-                Application.Run(MainForm);
-                return 0;
+                if (args.Length == 0)
+                {
+                    MainForm = new Form1();
+                    Application.Run(MainForm);
+                    return 0;
+                }
+                else
+                {
+                    var ret = ConsoleFunc.MainFunc(args);
+                    Console.Error.WriteLine(ret.ToString());
+                    return ret;
+                }
             }
-            else
+            finally
             {
-                var ret = ConsoleFunc.MainFunc(args);
-                Console.Error.WriteLine(ret.ToString());
-                return ret;
+                MultiInstance.Finish();
             }
         }
     }
