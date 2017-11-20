@@ -698,12 +698,17 @@ namespace TSviewCloudPlugin
                     current = server.PeakItem(v.ID);
                     if (reload == ReloadType.Cache && current != null && !ItemControl.ReloadRequest.TryRemove(current.FullPath, out int tmp2))
                     {
+                        itemCache.AddOrUpdate(url, (server.Name, current.ID), (key, val) => (server.Name, current.ID));
                         return current;
                     }
                     else
                     {
-                        current = server[current.ID];
-                        if (current != null) return current;
+                        current = server.ReloadItem(current.ID);
+                        if (current != null)
+                        {
+                            itemCache.AddOrUpdate(url, (server.Name, current.ID), (key, val) => (server.Name, current.ID));
+                            return current;
+                        }
                     }
                 }
 
@@ -728,7 +733,12 @@ namespace TSviewCloudPlugin
                             if (child == null)
                             {
                                 current = server.ReloadItem(current.ID);
-                                current = current.Children.Where(x => x.Name == m.Groups["current"].Value).First();
+                                current = current.Children.Where(x => x.Name == m.Groups["current"].Value).FirstOrDefault();
+                                if(current == null)
+                                {
+                                    itemCache.TryRemove(url, out var tmp1);
+                                    return null;
+                                }
                             }
                             else
                             {

@@ -218,71 +218,78 @@ namespace TSviewCloudPlugin
             bool master = true;
             loadinglist.AddOrUpdate(ID, new ManualResetEventSlim(false), (k, v) =>
             {
-                if (v == null) return new ManualResetEventSlim(false);
                 master = false;
                 return v;
             });
 
             if (!master)
             {
-                while(loadinglist.TryGetValue(ID, out var tmp) && tmp != null)
+                while (loadinglist.TryGetValue(ID, out var tmp) && tmp != null)
                 {
                     tmp.Wait();
                 }
                 return;
             }
-            try
+
+            TSviewCloudConfig.Config.Log.LogOut("[LoadItems(LocalSystem)] " + ID);
+            var dirname = (string.IsNullOrEmpty(ID)) ? localPathBase : ID;
+            if (!dirname.StartsWith(localPathBase))
             {
-                TSviewCloudConfig.Config.Log.LogOut("[LoadItems(LocalSystem)] " + ID);
-                var dirname = (string.IsNullOrEmpty(ID)) ? localPathBase : ID;
-                if (!dirname.StartsWith(localPathBase))
-                    throw new ArgumentException("ID is not in localPathBase", "ID");
-                if (Directory.Exists(ItemControl.GetLongFilename(dirname)))
-                {
-                    try
-                    {
-                        var ret = new List<LocalSystemItem>();
-                        var info = new DirectoryInfo(ItemControl.GetLongFilename(dirname));
-                        Parallel.ForEach(
-                            info.EnumerateFileSystemInfos()
-                                .Where(i => !(i.Attributes.HasFlag(FileAttributes.Directory) && (i.Name == "." || i.Name == ".."))),
-                            new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
-                            () => new List<LocalSystemItem>(),
-                            (x, state, local) =>
-                            {
-                                var item = new LocalSystemItem(this, x, pathlist[ID]);
-                                pathlist.AddOrUpdate(item.ID, (k) => item, (k, v) => item);
-                                local.Add(item);
-                                return local;
-                            },
-                             (result) =>
-                             {
-                                 lock (ret)
-                                     ret.AddRange(result);
-                             }
-                        );
-                        pathlist[ID].SetChildren(ret);
-                        if (depth > 0)
-                            Parallel.ForEach(pathlist[ID].Children,
-                                new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
-                                (x) => { LoadItems(x.ID, depth - 1); });
-                    }
-                    catch { }
-                }
-                else
-                {
-                    pathlist[ID].SetChildren(null);
-                }
+                ManualResetEventSlim tmp2;
+                while (!loadinglist.TryRemove(ID, out tmp2))
+                    Thread.Sleep(10);
+                tmp2.Set();
+
+                throw new ArgumentException("ID is not in localPathBase", "ID");
             }
-            finally
+            if (Directory.Exists(ItemControl.GetLongFilename(dirname)))
             {
-                Task.Delay(10).ContinueWith((t) =>
+                try
                 {
+                    var ret = new List<LocalSystemItem>();
+                    var info = new DirectoryInfo(ItemControl.GetLongFilename(dirname));
+                    Parallel.ForEach(
+                        info.EnumerateFileSystemInfos()
+                            .Where(i => !(i.Attributes.HasFlag(FileAttributes.Directory) && (i.Name == "." || i.Name == ".."))),
+                        new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                        () => new List<LocalSystemItem>(),
+                        (x, state, local) =>
+                        {
+                            var item = new LocalSystemItem(this, x, pathlist[ID]);
+                            pathlist.AddOrUpdate(item.ID, (k) => item, (k, v) => item);
+                            local.Add(item);
+                            return local;
+                        },
+                         (result) =>
+                         {
+                             lock (ret)
+                                 ret.AddRange(result);
+                         }
+                    );
+                    pathlist[ID].SetChildren(ret);
+
                     ManualResetEventSlim tmp2;
                     while (!loadinglist.TryRemove(ID, out tmp2))
                         Thread.Sleep(10);
                     tmp2.Set();
-                });
+
+                    if (depth > 0)
+                    {
+                        Parallel.ForEach(pathlist[ID].Children,
+                            new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                            (x) => { LoadItems(x.ID, depth - 1); });
+                    }
+                }
+                catch { }
+            }
+            else
+            {
+                pathlist[ID].SetChildren(null);
+
+                ManualResetEventSlim tmp2;
+                while (!loadinglist.TryRemove(ID, out tmp2))
+                    Thread.Sleep(10);
+                tmp2.Set();
             }
         }
 
@@ -569,7 +576,7 @@ namespace TSviewCloudPlugin
                 var oldparent = moveItem.Parents.First();
                 try
                 {
-                    if(moveToItem.ItemType == RemoteItemType.File)
+                    if(moveItem.ItemType == RemoteItemType.File)
                     {
                         File.Move(ItemControl.GetLongFilename(moveItem.ID), Path.Combine(ItemControl.GetLongFilename(moveToItem.ID), moveItem.Name));
                     }
@@ -579,7 +586,7 @@ namespace TSviewCloudPlugin
                     }
 
                     var info = new DirectoryInfo(ItemControl.GetLongFilename(moveToItem.ID));
-                    var item = info.EnumerateFileSystemInfos().Where(x => x.FullName == moveItem.Name).FirstOrDefault();
+                    var item = info.EnumerateFileSystemInfos().Where(x => ItemControl.GetOrgFilename(x.Name) == moveItem.Name).FirstOrDefault();
 
                     var newitem = new LocalSystemItem(this, item, moveToItem);
                     pathlist.AddOrUpdate(newitem.ID, (k) => newitem, (k, v) => newitem);
@@ -598,7 +605,7 @@ namespace TSviewCloudPlugin
                 }
                 catch (Exception e)
                 {
-                    throw new RemoteServerErrorException("Make folder Failed.", e);
+                    throw new RemoteServerErrorException("MoveItemOnServer Failed.", e);
                 }
                 SetUpdate(oldparent);
                 SetUpdate(moveToItem);

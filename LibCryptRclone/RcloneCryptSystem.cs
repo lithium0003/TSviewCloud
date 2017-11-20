@@ -396,7 +396,6 @@ namespace TSviewCloudPlugin
             bool master = true;
             loadinglist.AddOrUpdate(ID, new ManualResetEventSlim(false), (k, v) =>
             {
-                if (v == null) return new ManualResetEventSlim(false);
                 master = false;
                 return v;
             });
@@ -409,65 +408,69 @@ namespace TSviewCloudPlugin
                 }
                 return;
             }
+            TSviewCloudConfig.Config.Log.LogOut("[LoadItems(RcloneCryptSystem)] " + ID);
 
-            try
+            var orgID = (string.IsNullOrEmpty(ID)) ? cryptRootPath : ID;
+            if (!orgID.StartsWith(cryptRootPath))
             {
-                TSviewCloudConfig.Config.Log.LogOut("[LoadItems(RcloneCryptSystem)] " + ID);
+                ManualResetEventSlim tmp2;
+                while (!loadinglist.TryRemove(ID, out tmp2))
+                    Thread.Sleep(10);
+                tmp2.Set();
 
-                var orgID = (string.IsNullOrEmpty(ID)) ? cryptRootPath : ID;
-                if (!orgID.StartsWith(cryptRootPath))
-                    throw new ArgumentException("ID is not in root path", "ID");
-                var orgitem = RemoteServerFactory.PathToItem(orgID, (deep)? ReloadType.Reload: ReloadType.Cache);
-                if (orgitem?.Children != null && orgitem.Children?.Count() != 0)
-                {
-                    var ret = new List<RcloneCryptSystemItem>();
-                    Parallel.ForEach(
-                        orgitem.Children,
-                        new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
-                        () => new List<RcloneCryptSystemItem>(),
-                        (x, state, local) =>
-                        {
-                            var child = RemoteServerFactory.PathToItem(x.FullPath, (deep) ? ReloadType.Reload : ReloadType.Cache);
-                            if (child == null)
-                                return local;
-
-                            try
-                            {
-                                var item = new RcloneCryptSystemItem(this, child, pathlist[ID]);
-                                pathlist.AddOrUpdate(item.ID, (k) => item, (k, v) => item);
-                                local.Add(item);
-                            }
-                            catch { }
-
-                            return local;
-                        },
-                         (result) =>
-                         {
-                             lock (ret)
-                                 ret.AddRange(result);
-                         }
-                    );
-                    pathlist[ID].SetChildren(ret);
-                    if (depth > 0)
-                        Parallel.ForEach(pathlist[ID].Children,
-                            new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
-                            (x) => { LoadItems(x.ID, depth - 1); });
-
-                }
-                else
-                {
-                    pathlist[ID].SetChildren(null);
-                }
+                throw new ArgumentException("ID is not in root path", "ID");
             }
-            finally
+            var orgitem = RemoteServerFactory.PathToItem(orgID, (deep) ? ReloadType.Reload : ReloadType.Cache);
+            if (orgitem?.Children != null && orgitem.Children?.Count() != 0)
             {
-                Task.Delay(10).ContinueWith((t) =>
-                {
-                    ManualResetEventSlim tmp2;
-                    while (!loadinglist.TryRemove(ID, out tmp2))
-                        Thread.Sleep(10);
-                    tmp2.Set();
-                });
+                var ret = new List<RcloneCryptSystemItem>();
+                Parallel.ForEach(
+                    orgitem.Children,
+                    new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                    () => new List<RcloneCryptSystemItem>(),
+                    (x, state, local) =>
+                    {
+                        var child = RemoteServerFactory.PathToItem(x.FullPath, (deep) ? ReloadType.Reload : ReloadType.Cache);
+                        if (child == null)
+                            return local;
+
+                        try
+                        {
+                            var item = new RcloneCryptSystemItem(this, child, pathlist[ID]);
+                            pathlist.AddOrUpdate(item.ID, (k) => item, (k, v) => item);
+                            local.Add(item);
+                        }
+                        catch { }
+
+                        return local;
+                    },
+                     (result) =>
+                     {
+                         lock (ret)
+                             ret.AddRange(result);
+                     }
+                );
+                pathlist[ID].SetChildren(ret);
+
+                ManualResetEventSlim tmp2;
+                while (!loadinglist.TryRemove(ID, out tmp2))
+                    Thread.Sleep(10);
+                tmp2.Set();
+
+                if (depth > 0)
+                    Parallel.ForEach(pathlist[ID].Children,
+                        new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                        (x) => { LoadItems(x.ID, depth - 1); });
+
+            }
+            else
+            {
+                pathlist[ID].SetChildren(null);
+
+                ManualResetEventSlim tmp2;
+                while (!loadinglist.TryRemove(ID, out tmp2))
+                    Thread.Sleep(10);
+                tmp2.Set();
             }
         }
 
@@ -697,10 +700,10 @@ namespace TSviewCloudPlugin
                 if (result.TryGetTarget(out var prevresult))
                 {
                     j.Result = prevresult;
-
-                    SetUpdate(moveItem);
-                    SetUpdate(moveToItem);
                 }
+                var oldparent = moveItem.Parents.First();
+                SetUpdate(oldparent);
+                SetUpdate(moveToItem);
             });
             return waitjob;
         }

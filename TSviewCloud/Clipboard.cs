@@ -299,7 +299,7 @@ namespace TSviewCloud
         static short CF_FILECONTENTS = RegisterClipboardFormat("FileContents");
         static short CF_FILEDESCRIPTORW = RegisterClipboardFormat("FileGroupDescriptorW");
         static short CF_PREFERREDDROPEFFECT = RegisterClipboardFormat("Preferred DropEffect");
-        public static short CF_CLOUD_DRIVE_ITEMS = RegisterClipboardFormat("TSviewCloudDriveItems");
+        public static short CF_CLOUD_DRIVE_ITEMS = RegisterClipboardFormat(CFSTR_CLOUD_DRIVE_ITEMS);
 
         internal sealed class HResults
         {
@@ -610,5 +610,6 @@ namespace TSviewCloud
             dstream?.Dispose();
             dstream = null;
         }
+    
     }
 }
