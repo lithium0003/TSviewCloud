@@ -28,6 +28,8 @@ namespace TSviewCloudConfig
         public static int ParallelUpload = 3;
         public static int UploadBufferSize = 16 * 1024 * 1024;
         public static int DownloadBufferSize = 16 * 1024 * 1024;
+        public static System.Drawing.Point? Main_Location;
+        public static System.Drawing.Size? Main_Size;
 
         public static bool LogToFile
         {
@@ -298,6 +300,10 @@ namespace TSviewCloudConfig
                         DownloadBufferSize = data.DownloadBufferSize;
                     if (data.UploadBufferSize != default(int))
                         UploadBufferSize = data.UploadBufferSize;
+                    if (data.Main_Size != null)
+                        Main_Size = data.Main_Size;
+                    if (data.Main_Location != null)
+                        Main_Location = data.Main_Location;
 
                     if (data.FFplayer != default(SavedataFFplayer))
                     {
@@ -382,6 +388,8 @@ namespace TSviewCloudConfig
                         FFplayer = ffdata,
                         CryptCarotDAV = ccarot,
                         DrivePasswordCheck = Enc_Check_drive_password,
+                        Main_Size = TSviewCloud.Program.MainForm?.Size ?? Main_Size,
+                        Main_Location = TSviewCloud.Program.MainForm?.Location ?? Main_Location,
                     };
                     serializer.WriteObject(xmlw, data);
                 }
@@ -412,6 +420,10 @@ namespace TSviewCloudConfig
         public int UploadBufferSize;
         [DataMember]
         public int DownloadBufferSize;
+        [DataMember]
+        public System.Drawing.Size? Main_Size;
+        [DataMember]
+        public System.Drawing.Point? Main_Location;
 
         [DataMember]
         public string DrivePasswordCheck;

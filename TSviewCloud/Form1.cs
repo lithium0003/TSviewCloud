@@ -868,6 +868,18 @@ namespace TSviewCloud
 
             outputLogTofileToolStripMenuItem.Checked = TSviewCloudConfig.Config.LogToFile;
 
+            var tempLocation = Location;
+            var tempSize = Size;
+            if (TSviewCloudConfig.Config.Main_Location != null)
+                Location = TSviewCloudConfig.Config.Main_Location.Value;
+            if (TSviewCloudConfig.Config.Main_Size != null)
+                Size = TSviewCloudConfig.Config.Main_Size.Value;
+            if (!Screen.GetWorkingArea(this).IntersectsWith(Bounds))
+            {
+                Location = tempLocation;
+                Size = tempSize;
+            }
+
             foreach (var dll in TSviewCloudPlugin.RemoteServerFactory.DllList)
             {
                 var plugin = TSviewCloudPlugin.RemoteServerFactory.Get(dll.Key, null);
@@ -2371,6 +2383,137 @@ namespace TSviewCloud
             System.Diagnostics.Process.Start(Application.ExecutablePath);
         }
 
+        private void Form1_SizeChanged(object sender, EventArgs e)
+        {
+            TSviewCloudPlugin.FormTaskList.Instance.FixPosition();
+        }
+
+        private void Form1_LocationChanged(object sender, EventArgs e)
+        {
+            TSviewCloudPlugin.FormTaskList.Instance.FixPosition();
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        class NativeMethods
+        {
+            private const int LVM_FIRST = 0x1000;
+            private const int LVM_SETITEMSTATE = LVM_FIRST + 43;
+
+            [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+            public struct LVITEM
+            {
+                public int mask;
+                public int iItem;
+                public int iSubItem;
+                public int state;
+                public int stateMask;
+                [MarshalAs(UnmanagedType.LPTStr)]
+                public string pszText;
+                public int cchTextMax;
+                public int iImage;
+                public IntPtr lParam;
+                public int iIndent;
+                public int iGroupId;
+                public int cColumns;
+                public IntPtr puColumns;
+            };
+
+            [DllImport("user32.dll", EntryPoint = "SendMessage", CharSet = CharSet.Auto)]
+            public static extern IntPtr SendMessageLVItem(IntPtr hWnd, int msg, int wParam, ref LVITEM lvi);
+
+            /// <summary>
+            /// Select all rows on the given listview
+            /// </summary>
+            /// <param name="list">The listview whose items are to be selected</param>
+            public static void SelectAllItems(ListView list)
+            {
+                NativeMethods.SetItemState(list, -1, 2, 2);
+            }
+
+            /// <summary>
+            /// Deselect all rows on the given listview
+            /// </summary>
+            /// <param name="list">The listview whose items are to be deselected</param>
+            public static void DeselectAllItems(ListView list)
+            {
+                NativeMethods.SetItemState(list, -1, 2, 0);
+            }
+
+            /// <summary>
+            /// Set the item state on the given item
+            /// </summary>
+            /// <param name="list">The listview whose item's state is to be changed</param>
+            /// <param name="itemIndex">The index of the item to be changed</param>
+            /// <param name="mask">Which bits of the value are to be set?</param>
+            /// <param name="value">The value to be set</param>
+            public static void SetItemState(ListView list, int itemIndex, int mask, int value)
+            {
+                LVITEM lvItem = new LVITEM();
+                lvItem.stateMask = mask;
+                lvItem.state = value;
+                SendMessageLVItem(list.Handle, LVM_SETITEMSTATE, itemIndex, ref lvItem);
+            }
+        }
+
+        private void selectAllToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            NativeMethods.SelectAllItems(listView1);
+        }
+
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+        private async void copyOrCutToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (listView1.SelectedIndices.Cast<int>().Any(i => listData.IsSpetialItem(i)))
+                return;
+            ClipboardRemoteDrive data = null;
+            var items = listData.GetItems(listView1.SelectedIndices, false).ToArray();
+            listView1.Cursor = Cursors.WaitCursor;
+            await Task.Run(() =>
+            {
+                data = new ClipboardRemoteDrive(items);
+            });
+            listView1.Cursor = Cursors.Default;
+            Clipboard.SetDataObject(data);
+        }
+
+        private void pasteToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var data = Clipboard.GetDataObject();
+            if (data.GetDataPresent(ClipboardRemoteDrive.CFSTR_CLOUD_DRIVE_ITEMS) | data.GetDataPresent(DataFormats.FileDrop))
+            {
+                TSviewCloudPlugin.IRemoteItem current = null;
+                if (listView1.SelectedIndices.Count == 1)
+                {
+                    var item = listData.GetItems(listView1.SelectedIndices, false).FirstOrDefault();
+                    if (item?.ItemType == TSviewCloudPlugin.RemoteItemType.Folder)
+                        current = item;
+                }
+                else
+                {
+                    current = listData.CurrentViewItem;
+                }
+
+                if (current == null) return;
+
+                if (data.GetDataPresent(ClipboardRemoteDrive.CFSTR_CLOUD_DRIVE_ITEMS))
+                {
+                    DragDrop_RemoteItem(data, current, "listview");
+                }
+                if (data.GetDataPresent(DataFormats.FileDrop))
+                {
+                    string[] drags = (string[])data.GetData(DataFormats.FileDrop);
+
+                    //if (drags.Where(x => Directory.Exists(x)).Count() > 0)
+                    //    if (MessageBox.Show(Resource_text.UploadFolder_str, "Folder upload", MessageBoxButtons.OKCancel) != DialogResult.OK) return;
+
+                    DragDrop_FileDrop(drags, current, "listview");
+                }
+            }
+        }
     }
 
 
