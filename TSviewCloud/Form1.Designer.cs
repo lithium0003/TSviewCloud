@@ -34,6 +34,9 @@
             this.button_diff = new System.Windows.Forms.Button();
             this.button_search = new System.Windows.Forms.Button();
             this.button_play = new System.Windows.Forms.Button();
+            this.contextMenuStrip_play = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.fFmpegToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.tSSendToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.button_download = new System.Windows.Forms.Button();
             this.button_upload = new System.Windows.Forms.Button();
             this.button_next = new System.Windows.Forms.Button();
@@ -44,6 +47,7 @@
             this.textBox_address = new System.Windows.Forms.TextBox();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.treeView1 = new System.Windows.Forms.TreeView();
+            this.listView1 = new TSviewCloud.ListViewNF();
             this.contextMenuStrip_listview = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.downloadItemsToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.uploadFilesHereToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -108,8 +112,8 @@
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
-            this.listView1 = new TSviewCloud.ListViewNF();
             this.panel1.SuspendLayout();
+            this.contextMenuStrip_play.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -170,6 +174,7 @@
             this.button_play.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.button_play.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("button_play.BackgroundImage")));
             this.button_play.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            this.button_play.ContextMenuStrip = this.contextMenuStrip_play;
             this.button_play.ImageIndex = 6;
             this.button_play.Location = new System.Drawing.Point(1229, 5);
             this.button_play.Name = "button_play";
@@ -177,6 +182,31 @@
             this.button_play.TabIndex = 8;
             this.button_play.UseVisualStyleBackColor = true;
             this.button_play.Click += new System.EventHandler(this.button_play_Click);
+            // 
+            // contextMenuStrip_play
+            // 
+            this.contextMenuStrip_play.ImageScalingSize = new System.Drawing.Size(20, 20);
+            this.contextMenuStrip_play.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.fFmpegToolStripMenuItem,
+            this.tSSendToolStripMenuItem});
+            this.contextMenuStrip_play.Name = "contextMenuStrip_play";
+            this.contextMenuStrip_play.Size = new System.Drawing.Size(176, 84);
+            // 
+            // fFmpegToolStripMenuItem
+            // 
+            this.fFmpegToolStripMenuItem.Checked = true;
+            this.fFmpegToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.fFmpegToolStripMenuItem.Name = "fFmpegToolStripMenuItem";
+            this.fFmpegToolStripMenuItem.Size = new System.Drawing.Size(175, 26);
+            this.fFmpegToolStripMenuItem.Text = "FFmpeg";
+            this.fFmpegToolStripMenuItem.Click += new System.EventHandler(this.playerTypeToolStripMenuItem_Click);
+            // 
+            // tSSendToolStripMenuItem
+            // 
+            this.tSSendToolStripMenuItem.Name = "tSSendToolStripMenuItem";
+            this.tSSendToolStripMenuItem.Size = new System.Drawing.Size(175, 26);
+            this.tSSendToolStripMenuItem.Text = "TS send";
+            this.tSSendToolStripMenuItem.Click += new System.EventHandler(this.playerTypeToolStripMenuItem_Click);
             // 
             // button_download
             // 
@@ -309,6 +339,28 @@
             this.treeView1.BeforeSelect += new System.Windows.Forms.TreeViewCancelEventHandler(this.treeView1_BeforeSelect);
             this.treeView1.DragDrop += new System.Windows.Forms.DragEventHandler(this.treeView1_DragDrop);
             this.treeView1.DragOver += new System.Windows.Forms.DragEventHandler(this.treeView1_DragOver);
+            // 
+            // listView1
+            // 
+            this.listView1.AllowDrop = true;
+            this.listView1.ContextMenuStrip = this.contextMenuStrip_listview;
+            this.listView1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.listView1.FullRowSelect = true;
+            this.listView1.HideSelection = false;
+            this.listView1.Location = new System.Drawing.Point(0, 0);
+            this.listView1.Name = "listView1";
+            this.listView1.ShowItemToolTips = true;
+            this.listView1.Size = new System.Drawing.Size(840, 886);
+            this.listView1.TabIndex = 0;
+            this.listView1.UseCompatibleStateImageBehavior = false;
+            this.listView1.View = System.Windows.Forms.View.Details;
+            this.listView1.VirtualMode = true;
+            this.listView1.ColumnClick += new System.Windows.Forms.ColumnClickEventHandler(this.listView1_ColumnClick);
+            this.listView1.ItemDrag += new System.Windows.Forms.ItemDragEventHandler(this.listView1_ItemDragAsync);
+            this.listView1.RetrieveVirtualItem += new System.Windows.Forms.RetrieveVirtualItemEventHandler(this.listView1_RetrieveVirtualItem);
+            this.listView1.DragDrop += new System.Windows.Forms.DragEventHandler(this.listView1_DragDrop);
+            this.listView1.DragOver += new System.Windows.Forms.DragEventHandler(this.listView1_DragOver);
+            this.listView1.DoubleClick += new System.EventHandler(this.listView1_DoubleClick);
             // 
             // contextMenuStrip_listview
             // 
@@ -790,28 +842,6 @@
             this.timer1.Interval = 500;
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
-            // listView1
-            // 
-            this.listView1.AllowDrop = true;
-            this.listView1.ContextMenuStrip = this.contextMenuStrip_listview;
-            this.listView1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.listView1.FullRowSelect = true;
-            this.listView1.HideSelection = false;
-            this.listView1.Location = new System.Drawing.Point(0, 0);
-            this.listView1.Name = "listView1";
-            this.listView1.ShowItemToolTips = true;
-            this.listView1.Size = new System.Drawing.Size(840, 886);
-            this.listView1.TabIndex = 0;
-            this.listView1.UseCompatibleStateImageBehavior = false;
-            this.listView1.View = System.Windows.Forms.View.Details;
-            this.listView1.VirtualMode = true;
-            this.listView1.ColumnClick += new System.Windows.Forms.ColumnClickEventHandler(this.listView1_ColumnClick);
-            this.listView1.ItemDrag += new System.Windows.Forms.ItemDragEventHandler(this.listView1_ItemDragAsync);
-            this.listView1.RetrieveVirtualItem += new System.Windows.Forms.RetrieveVirtualItemEventHandler(this.listView1_RetrieveVirtualItem);
-            this.listView1.DragDrop += new System.Windows.Forms.DragEventHandler(this.listView1_DragDrop);
-            this.listView1.DragOver += new System.Windows.Forms.DragEventHandler(this.listView1_DragOver);
-            this.listView1.DoubleClick += new System.EventHandler(this.listView1_DoubleClick);
-            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(120F, 120F);
@@ -833,6 +863,7 @@
             this.SizeChanged += new System.EventHandler(this.Form1_SizeChanged);
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
+            this.contextMenuStrip_play.ResumeLayout(false);
             this.splitContainer1.Panel1.ResumeLayout(false);
             this.splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
@@ -926,6 +957,9 @@
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem10;
         private System.Windows.Forms.ToolStripMenuItem copyOrCutToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem pasteToolStripMenuItem;
+        private System.Windows.Forms.ContextMenuStrip contextMenuStrip_play;
+        private System.Windows.Forms.ToolStripMenuItem fFmpegToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem tSSendToolStripMenuItem;
     }
 }
 

@@ -123,6 +123,7 @@
     <Compile Include="Config.cs" />
     <Compile Include="ConfigCarotDAV.cs" />
     <Compile Include="ConfigFFplayer.cs" />
+    <Compile Include="ConfigTSsend.cs" />
     <Compile Include="Console.cs" />
     <Compile Include="DPIfunction.cs" />
     <Compile Include="Form1.cs">
@@ -234,6 +235,9 @@
     <Compile Include="SeekableStream.cs" />
     <Compile Include="ServicePluginBase.cs" />
     <Compile Include="ThrottleStream.cs" />
+    <Compile Include="TSsendPlayer.cs" />
+    <Compile Include="TS_packet.cs" />
+    <Compile Include="UDPsend.cs" />
     <EmbeddedResource Include="AboutBox1.resx">
       <DependentUpon>AboutBox1.cs</DependentUpon>
     </EmbeddedResource>

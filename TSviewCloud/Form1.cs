@@ -1552,6 +1552,76 @@ namespace TSviewCloud
             job.Wait(ct: job.Ct);
         }
 
+
+
+        ////////////////////////////////////////////////////////////////////////
+        /// 
+        /// send a file with UDP
+        /// 
+        ////////////////////////////////////////////////////////////////////////
+
+        dynamic tsplayer = null;
+
+        private void PlayWithTSsend(IEnumerable<TSviewCloudPlugin.IRemoteItem> serectedItem)
+        {
+
+            dynamic Player = new TSsendPlayer();
+            tsplayer = Player;
+
+            var job = PlayFiles(serectedItem, new PlayOneFileDelegate(PlayOneTSFile), "TSsend", data: Player);
+
+            if (job == null) return;
+            (job as TSviewCloudPlugin.Job).DoAlways = true;
+            TSviewCloudPlugin.JobControler.Run(job as TSviewCloudPlugin.Job, (j) =>
+            {
+                tsplayer = null;
+
+                j.Progress = 1;
+                j.ProgressStr = "done.";
+            });
+        }
+
+
+        private void PlayOneTSFile(TSviewCloudPlugin.IRemoteItem downitem, TSviewCloudPlugin.Job master, dynamic data)
+        {
+            var Player = data;
+            var filename = downitem.Name;
+
+            synchronizationContext.Post((o) =>
+            {
+                Player.StartSkip = PlayControler.StartDelay;
+                Player.StopDuration = PlayControler.Duration;
+            }, null);
+
+            var download = downitem.DownloadItemJob(WeekDepend: true, prevJob: master);
+
+            var job = TSviewCloudPlugin.JobControler.CreateNewJob<Stream>(TSviewCloudPlugin.JobClass.PlayDownload, depends: download);
+            job.DisplayName = "Play :" + downitem.Name;
+            job.ProgressStr = "wait for play";
+
+            TSviewCloudPlugin.JobControler.Run<Stream>(job, (j) =>
+            {
+                j.Progress = -1;
+                j.ProgressStr = "now playing...";
+                var result = j.ResultOfDepend[0];
+                if (result.TryGetTarget(out var remoteStream))
+                {
+                    using (remoteStream)
+                    {
+                        var ct = j.Ct;
+                        if (Player.Play(remoteStream, filename, ct) != 0)
+                            throw new OperationCanceledException("player cancel");
+                    }
+                }
+                j.Progress = 1;
+                j.ProgressStr = "done";
+            });
+
+            job.Wait(ct: job.Ct);
+
+         }
+
+
         ////////////////////////////////////////////////////////////////////////////////////////////////
         /// 
         /// play files with given method(SendUDP, FFplay)
@@ -1586,6 +1656,10 @@ namespace TSviewCloud
                 {
                     while (PlayControler.PlayIndex < f_all)
                     {
+                        if (PlayControler.PlayIndex < 0)
+                            PlayControler.PlayIndex = 0;
+                        j.Ct.ThrowIfCancellationRequested();
+
                         var playname = playitems[PlayControler.PlayIndex].Name;
                         TSviewCloudConfig.Config.Log.LogOut(LogPrefix + " play : " + playname);
 
@@ -1620,6 +1694,8 @@ namespace TSviewCloud
 
         private void button_play_Click(object sender, EventArgs e)
         {
+            var t = PlayControler.PlayerType;
+
             if (PlayControler.Visible)
             {
                 PlayControler.BringToFront();
@@ -1630,7 +1706,7 @@ namespace TSviewCloud
             }
 
             PlayControler.ClearCallback();
-            if (PlayControler.PlayerType == 0)
+            if (t == FormPlayer.PlayerTypes.FFmpeg)
             {
                 PlayControler.StartCallback += (s, evnt) =>
                 {
@@ -1686,11 +1762,82 @@ namespace TSviewCloud
                         ffplayer.PlayTime = evnt.NewPossition;
                     }
                 };
+            }
+            else if(t == FormPlayer.PlayerTypes.TSsend)
+            {
+                PlayControler.StartCallback += (s, evnt) =>
+                {
+                    if (PlayControler.IsPlaying) return;
 
+                    if (listView1.SelectedIndices.Count > 0)
+                    {
+                        var selectItems = listView1.SelectedIndices.Cast<int>()
+                            .Select(i => listData[i])
+                            .Where(item => item.ItemType == TSviewCloudPlugin.RemoteItemType.File)
+                            .Where(item => item.Size > 0);
+
+                        if (selectItems.Count() > 0)
+                        {
+                            PlayWithTSsend(selectItems);
+                            return;
+                        }
+                    }
+                    PlayControler.Done();
+                };
+                PlayControler.StopCallback += (s, evnt) =>
+                {
+                    if (!PlayControler.IsPlaying) return;
+
+                    TSviewCloudPlugin.JobControler.CancelPlay();
+                };
+                PlayControler.NextCallback += (s, evnt) =>
+                {
+                    if (!PlayControler.IsPlaying) return;
+                    lock (this)
+                    {
+                        tsplayer?.Stop();
+                    }
+                };
+                PlayControler.PrevCallback += (s, evnt) =>
+                {
+                    if (!PlayControler.IsPlaying) return;
+                    lock (this)
+                    {
+                        PlayControler.PlayIndex--;
+                        tsplayer?.Stop();
+                    }
+                };
+                PlayControler.PositionRequest += (s, evnt) =>
+                {
+                    PlayControler.StreamDuration = tsplayer?.Duration;
+                    PlayControler.StreamPossition = tsplayer?.PlayTime;
+                };
+                PlayControler.SeekCallback += (s, evnt) =>
+                {
+                    if (tsplayer != null)
+                    {
+                        tsplayer.PlayTime = evnt.NewPossition;
+                    }
+                };
             }
             PlayControler.Start();
         }
 
+        private void playerTypeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if ((sender as ToolStripMenuItem).Text == "FFmpeg")
+            {
+                fFmpegToolStripMenuItem.Checked = true;
+                tSSendToolStripMenuItem.Checked = false;
+                PlayControler.PlayerType = FormPlayer.PlayerTypes.FFmpeg;
+            }
+            else if ((sender as ToolStripMenuItem).Text == "TS send")
+            {
+                fFmpegToolStripMenuItem.Checked = false;
+                tSSendToolStripMenuItem.Checked = true;
+                PlayControler.PlayerType = FormPlayer.PlayerTypes.TSsend;
+            }
+        }
 
         // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2553,6 +2700,7 @@ namespace TSviewCloud
         {
             button_next_down = false;
         }
+
     }
 
 

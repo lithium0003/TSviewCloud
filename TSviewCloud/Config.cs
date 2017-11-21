@@ -340,6 +340,25 @@ namespace TSviewCloudConfig
                             ConfigFFplayer.y = data.FFplayer.y;
 
                     }
+                    if(data.TSplayer != default(SavedataTSsend))
+                    {
+                        if (data.TSplayer.SendToPort != default(int))
+                            ConfigTSsend.SendToPort = data.TSplayer.SendToPort;
+                        if (data.TSplayer.SendPacketNum != default(int))
+                            ConfigTSsend.SendPacketNum = data.TSplayer.SendPacketNum;
+                        if (data.TSplayer.SendDelay != default(int))
+                            ConfigTSsend.SendDelay = data.TSplayer.SendDelay;
+                        if (data.TSplayer.SendLongOffset != default(int))
+                            ConfigTSsend.SendLongOffset = data.TSplayer.SendLongOffset;
+                        if (data.TSplayer.SendRatebySendCount != default(int))
+                            ConfigTSsend.SendRatebySendCount = data.TSplayer.SendRatebySendCount;
+                        if (data.TSplayer.SendRatebyTOTCount != default(int))
+                            ConfigTSsend.SendRatebyTOTCount = data.TSplayer.SendRatebyTOTCount;
+                        if (data.TSplayer.SendVK != default(System.Windows.Forms.Keys))
+                            ConfigTSsend.SendVK = data.TSplayer.SendVK;
+                        if (!string.IsNullOrWhiteSpace(data.TSplayer.SendVK_Application))
+                            ConfigTSsend.SendVK_Application = data.TSplayer.SendVK_Application;
+                    }
                 }
             }
             catch (Exception)
@@ -373,6 +392,18 @@ namespace TSviewCloudConfig
                         x = ConfigFFplayer.x,
                         y = ConfigFFplayer.y,
                     };
+                    var tsdata = new SavedataTSsend
+                    {
+                        SendDelay = ConfigTSsend.SendDelay,
+                        SendLongOffset = ConfigTSsend.SendLongOffset,
+                        SendPacketNum = ConfigTSsend.SendPacketNum,
+                        SendRatebySendCount = ConfigTSsend.SendRatebySendCount,
+                        SendRatebyTOTCount = ConfigTSsend.SendRatebyTOTCount,
+                        SendToHost = ConfigTSsend.SendToHost,
+                        SendToPort = ConfigTSsend.SendToPort,
+                        SendVK = ConfigTSsend.SendVK,
+                        SendVK_Application = ConfigTSsend.SendVK_Application,
+                    };
                     var data = new Savedata
                     {
                         Version = Version,
@@ -386,6 +417,7 @@ namespace TSviewCloudConfig
                         DownloadBufferSize = DownloadBufferSize,
                         UploadBufferSize = UploadBufferSize,
                         FFplayer = ffdata,
+                        TSplayer = tsdata,
                         CryptCarotDAV = ccarot,
                         DrivePasswordCheck = Enc_Check_drive_password,
                         Main_Size = TSviewCloud.Program.MainForm?.Size ?? Main_Size,
@@ -430,6 +462,9 @@ namespace TSviewCloudConfig
 
         [DataMember]
         public SavedataFFplayer FFplayer;
+
+        [DataMember]
+        public SavedataTSsend TSplayer;
 
         [DataMember]
         public SavedataCryptCarotDAV CryptCarotDAV;

@@ -233,11 +233,13 @@ namespace ProjectUtil
                         {
                             while (leadThread)
                             {
+                                cts_1.Token.ThrowIfCancellationRequested();
                                 if (SlotBuffer.TryAdd(new KeyValuePair<long, MemoryStreamSlot>(slotno, newslot), 500, cts_1.Token))
                                     break;
                             }
                             if (!leadThread)
                             {
+                                cts_1.Token.ThrowIfCancellationRequested();
                                 if (slot.GetOrAdd(slotno, newslot) != newslot)
                                 {
                                     cts.Cancel();

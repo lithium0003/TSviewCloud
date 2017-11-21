@@ -29,7 +29,39 @@ namespace TSviewCloud
         public delegate void SeekEventHandler(object sender, SeekEventArgs e);
 
         private static readonly SynchronizationContext synchronizationContext = SynchronizationContext.Current;
- 
+
+        public enum PlayerTypes {
+            FFmpeg,
+            TSsend,
+        };
+        public PlayerTypes PlayerType
+        {
+            get
+            {
+                switch (comboBox_PlayerType.Text)
+                {
+                    case "FFmpeg":
+                        return PlayerTypes.FFmpeg;
+                    case "TS send":
+                        return PlayerTypes.TSsend;
+                    default:
+                        return PlayerTypes.FFmpeg;
+                }
+            }
+            set
+            {
+                switch (value)
+                {
+                    case PlayerTypes.FFmpeg:
+                        comboBox_PlayerType.SelectedItem = comboBox_PlayerType.Items[0];
+                        break;
+                    case PlayerTypes.TSsend:
+                        comboBox_PlayerType.SelectedItem = comboBox_PlayerType.Items[1];
+                        break;
+                }
+            }
+        }
+
         bool _IsPlaying;
         bool _IsDone;
         double _StartDelay = double.NaN;
@@ -242,10 +274,6 @@ namespace TSviewCloud
                 }, null);
             }
         }
-        public int PlayerType
-        {
-            get => comboBox_PlayerType.SelectedIndex;
-        }
 
 
         public EventHandler StartDelayChanged { get => _StartDelayChanged; set => _StartDelayChanged = value; }
@@ -259,9 +287,10 @@ namespace TSviewCloud
         public bool IsPlaying { get => _IsPlaying; }
         public int PlayIndex
         {
-            get => _PlayIndex; set
+            get => _PlayIndex;
+            set
             {
-                if (value < 0) _PlayIndex = 0;
+                if (value < -1) _PlayIndex = -1;
                 else _PlayIndex = value;
             }
         }
@@ -287,7 +316,7 @@ namespace TSviewCloud
 
         private void FormPlayer_Load(object sender, EventArgs e)
         {
-            comboBox_PlayerType.SelectedIndex = 0;
+            comboBox_PlayerType.SelectedIndex = (comboBox_PlayerType.SelectedIndex < 0)? 0: comboBox_PlayerType.SelectedIndex;
             trackBar_Possition.Maximum = 1000000;
             trackBar_Possition.TickFrequency = 1000000;
 
