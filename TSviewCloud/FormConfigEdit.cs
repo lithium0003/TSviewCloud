@@ -312,6 +312,16 @@ namespace TSviewCloud
             listView1.Sorting = SortOrder.Ascending;
             listView1.Sort();
 
+            textBox_SendHost.Text = TSviewCloudConfig.ConfigTSsend.SendToHost;
+            textBox_SendPort.Text = TSviewCloudConfig.ConfigTSsend.SendToPort.ToString();
+            textBox_SendPacketNum.Text = TSviewCloudConfig.ConfigTSsend.SendPacketNum.ToString();
+            textBox_SendDelay.Text = TSviewCloudConfig.ConfigTSsend.SendDelay.ToString();
+            textBox_SendLongOffset.Text = TSviewCloudConfig.ConfigTSsend.SendLongOffset.ToString();
+            textBox_SendRatebySendCount.Text = TSviewCloudConfig.ConfigTSsend.SendRatebySendCount.ToString();
+            textBox_SendRatebyTOTCount.Text = TSviewCloudConfig.ConfigTSsend.SendRatebyTOTCount.ToString();
+            textBox_VK.Text = TSviewCloudConfig.ConfigTSsend.SendVK.ToString();
+            SendVK = TSviewCloudConfig.ConfigTSsend.SendVK;
+            textBox_keySendApp.Text = TSviewCloudConfig.ConfigTSsend.SendVK_Application;
         }
 
         private void SaveData()
@@ -381,6 +391,40 @@ namespace TSviewCloud
                 key_array.Add((Keys)(keyconverter.ConvertFromString(item.SubItems[1].Text)));
                 TSviewCloudConfig.ConfigFFplayer.FFmoduleKeybinds[command] = key_array;
             }
+
+            TSviewCloudConfig.ConfigTSsend.SendToHost = textBox_SendHost.Text;
+            try
+            {
+                TSviewCloudConfig.ConfigTSsend.SendToPort = int.Parse(textBox_SendPort.Text);
+            }
+            catch { }
+            try
+            {
+                TSviewCloudConfig.ConfigTSsend.SendPacketNum = int.Parse(textBox_SendPacketNum.Text);
+            }
+            catch { }
+            try
+            {
+                TSviewCloudConfig.ConfigTSsend.SendDelay = int.Parse(textBox_SendDelay.Text);
+            }
+            catch { }
+            try
+            {
+                TSviewCloudConfig.ConfigTSsend.SendLongOffset = int.Parse(textBox_SendLongOffset.Text);
+            }
+            catch { }
+            try
+            {
+                TSviewCloudConfig.ConfigTSsend.SendRatebySendCount = int.Parse(textBox_SendRatebySendCount.Text);
+            }
+            catch { }
+            try
+            {
+                TSviewCloudConfig.ConfigTSsend.SendRatebyTOTCount = int.Parse(textBox_SendRatebyTOTCount.Text);
+            }
+            catch { }
+            TSviewCloudConfig.ConfigTSsend.SendVK = SendVK;
+            TSviewCloudConfig.ConfigTSsend.SendVK_Application = textBox_keySendApp.Text;
 
             TSviewCloudConfig.Config.Save();
         }
@@ -663,6 +707,16 @@ namespace TSviewCloud
             {
                 textBox_DownloadBandwidthLimit.Text = "";
             }
+        }
+
+        Keys SendVK;
+
+        private void textBox_VK_KeyDown(object sender, KeyEventArgs e)
+        {
+            e.SuppressKeyPress = true;
+            e.Handled = true;
+            textBox_VK.Text = e.KeyCode.ToString();
+            SendVK = e.KeyCode;
         }
     }
 }
