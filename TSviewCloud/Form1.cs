@@ -39,7 +39,7 @@ namespace TSviewCloud
         List<string> AddressLog = new List<string>();
         int AddressLogPtr = -1;
         bool AddressSelecting = false;
-        bool AddressLogSelecting = false;
+        int AddressLogSelecting = 0;
 
         int WM_LOCAL_TSVIEWCLOUD_INIT;
         int WM_LOCAL_TSVIEWCLOUD_RELOAD;
@@ -953,41 +953,6 @@ namespace TSviewCloud
                         Cursor.Current = Cursors.WaitCursor;
                         try
                         {
-                            //if (baseNode.Nodes.Count > 0)
-                            //{
-                            //    var newnode = new TreeNode();
-                            //    newnode.Nodes.AddRange(
-                            //        (await GenerateTreeNode((o as IEnumerable<TSviewCloudPlugin.IRemoteItem>), 1))
-                            //            .OrderByDescending(y => (y.Tag as TSviewCloudPlugin.IRemoteItem).ItemType)
-                            //            .ThenBy(y => (y.Tag as TSviewCloudPlugin.IRemoteItem).Name)
-                            //            .ToArray());
-                            //    foreach (TreeNode oldnode in baseNode.Nodes)
-                            //    {
-                            //        int ind = newnode.Nodes.IndexOfKey(oldnode.Name);
-                            //        if (ind < 0) continue;
-                            //        if (newnode.Nodes[ind].Nodes.Cast<TreeNode>().All(x => {
-                            //            var i = oldnode.Nodes.IndexOfKey(x.Name);
-                            //            if (i < 0) return false;
-                            //            return oldnode.Nodes[i].Nodes.Count == x.Nodes.Count;
-                            //        }))
-                            //        {
-                            //            newnode.Nodes.RemoveAt(ind);
-                            //            newnode.Nodes.Insert(ind, oldnode.Clone() as TreeNode);
-                            //        }
-                            //    }
-                            //    baseNode.Nodes.Clear();
-                            //    baseNode.Nodes.AddRange(newnode.Nodes.Cast<TreeNode>().ToArray());
-
-                            //}
-                            //else
-                            //{
-                            //    baseNode.Nodes.AddRange(
-                            //        (await GenerateTreeNode(o as IEnumerable<TSviewCloudPlugin.IRemoteItem>))
-                            //        .OrderByDescending(x => (x.Tag as TSviewCloudPlugin.IRemoteItem).ItemType)
-                            //        .ThenBy(x => (x.Tag as TSviewCloudPlugin.IRemoteItem).Name)
-                            //        .ToArray()
-                            //    );
-                            //}
                             baseNode.Nodes.Clear();
                             baseNode.Nodes.AddRange(
                                 (await GenerateTreeNode(o as IEnumerable<TSviewCloudPlugin.IRemoteItem>))
@@ -1064,7 +1029,11 @@ namespace TSviewCloud
             if (item == null) return;
 
             textBox_address.Text = item.FullPath;
-            if (AddressLogSelecting) return;
+            if (AddressLogSelecting > 0)
+            {
+                Interlocked.Decrement(ref AddressLogSelecting);
+                return;
+            }
             if (AddressLog.Count - 1 > AddressLogPtr)
             {
                 AddressLog.RemoveRange(AddressLogPtr + 1, AddressLog.Count - AddressLogPtr - 1);
@@ -1305,36 +1274,29 @@ namespace TSviewCloud
 
         private void AddressItem_Click(object sender, EventArgs e)
         {
-            AddressLogSelecting = true;
+            Interlocked.Increment(ref AddressLogSelecting);
             GotoAddress((sender as ToolStripItem).Text);
             AddressLogPtr = ((sender as ToolStripItem).Tag as int?).Value;
-            AddressLogSelecting = false;
         }
 
         private void button_prev_Click(object sender, EventArgs e)
         {
-            contextMenuStrip_address.Items.Clear();
-            for (var i = AddressLogPtr - 1; i >= 0 && i >= AddressLogPtr - 20; i--)
+            if (contextMenuStrip_address.Visible) return;
+            if(AddressLogPtr - 1 >= 0)
             {
-                var item = contextMenuStrip_address.Items.Add(AddressLog[i]);
-                item.Click += AddressItem_Click;
-                item.Tag = i;
+                Interlocked.Increment(ref AddressLogSelecting);
+                GotoAddress(AddressLog[--AddressLogPtr]);
             }
-
-            contextMenuStrip_address.Show(button_prev, new Point(0, button_prev.Height));
         }
 
         private void button_next_Click(object sender, EventArgs e)
         {
-            contextMenuStrip_address.Items.Clear();
-            for (var i = AddressLogPtr + 1; i >= 0 && i < AddressLog.Count && i < AddressLogPtr + 20; i++)
+            if (contextMenuStrip_address.Visible) return;
+            if (AddressLogPtr + 1 < AddressLog.Count)
             {
-                var item = contextMenuStrip_address.Items.Add(AddressLog[i]);
-                item.Click += AddressItem_Click;
-                item.Tag = i;
+                Interlocked.Increment(ref AddressLogSelecting);
+                GotoAddress(AddressLog[++AddressLogPtr]);
             }
-
-            contextMenuStrip_address.Show(button_next, new Point(0, button_next.Height));
         }
 
         private void listView1_ColumnClick(object sender, ColumnClickEventArgs e)
@@ -1415,7 +1377,7 @@ namespace TSviewCloud
 
         private void Form1_Activated(object sender, EventArgs e)
         {
-            TSviewCloud.FormClosing.Instance.Active = false;
+            TSviewCloud.FormClosing.Instance.Active = true;
         }
 
         private void Form1_Deactivate(object sender, EventArgs e)
@@ -2531,6 +2493,65 @@ namespace TSviewCloud
                     DragDrop_FileDrop(drags, current, "listview");
                 }
             }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        bool button_prev_down = false;
+
+        private void button_prev_MouseDown(object sender, MouseEventArgs e)
+        {
+            button_prev_down = true;
+            Task.Delay(200).ContinueWith((t) =>
+            {
+                if (!button_prev_down) return;
+                synchronizationContext.Post((o) =>
+                {
+                    contextMenuStrip_address.Items.Clear();
+                    for (var i = AddressLogPtr - 1; i >= 0 && i >= AddressLogPtr - 20; i--)
+                    {
+                        var item = contextMenuStrip_address.Items.Add(AddressLog[i]);
+                        item.Click += AddressItem_Click;
+                        item.Tag = i;
+                    }
+
+                    contextMenuStrip_address.Show(button_prev, new Point(0, button_prev.Height));
+                }, null);
+            });
+        }
+
+        private void button_prev_MouseUp(object sender, MouseEventArgs e)
+        {
+            button_prev_down = false;
+        }
+
+        bool button_next_down = false;
+
+        private void button_next_MouseDown(object sender, MouseEventArgs e)
+        {
+            button_next_down = true;
+            Task.Delay(200).ContinueWith((t) =>
+            {
+                if (!button_next_down) return;
+                synchronizationContext.Post((o) =>
+                {
+                    contextMenuStrip_address.Items.Clear();
+                    for (var i = AddressLogPtr + 1; i >= 0 && i < AddressLog.Count && i < AddressLogPtr + 20; i++)
+                    {
+                        var item = contextMenuStrip_address.Items.Add(AddressLog[i]);
+                        item.Click += AddressItem_Click;
+                        item.Tag = i;
+                    }
+
+                    contextMenuStrip_address.Show(button_next, new Point(0, button_next.Height));
+                }, null);
+            });
+        }
+
+
+        private void button_next_MouseUp(object sender, MouseEventArgs e)
+        {
+            button_next_down = false;
         }
     }
 
