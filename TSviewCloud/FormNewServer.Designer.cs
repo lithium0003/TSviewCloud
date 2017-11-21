@@ -85,7 +85,7 @@
             this.Controls.Add(this.textBox_Name);
             this.Name = "FormNewServer";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "FormNewServer";
+            this.Text = "NewServer";
             this.ResumeLayout(false);
             this.PerformLayout();
 

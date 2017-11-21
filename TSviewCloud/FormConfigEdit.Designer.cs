@@ -72,6 +72,13 @@
             this.textBox_fontpath = new System.Windows.Forms.TextBox();
             this.tabPage_TSsend = new System.Windows.Forms.TabPage();
             this.flowLayoutPanel30 = new System.Windows.Forms.FlowLayoutPanel();
+            this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
+            this.flowLayoutPanel2 = new System.Windows.Forms.FlowLayoutPanel();
+            this.label24 = new System.Windows.Forms.Label();
+            this.textBox_SendHost = new System.Windows.Forms.TextBox();
+            this.flowLayoutPanel3 = new System.Windows.Forms.FlowLayoutPanel();
+            this.label25 = new System.Windows.Forms.Label();
+            this.textBox_SendPort = new System.Windows.Forms.TextBox();
             this.flowLayoutPanel23 = new System.Windows.Forms.FlowLayoutPanel();
             this.flowLayoutPanel20 = new System.Windows.Forms.FlowLayoutPanel();
             this.label11 = new System.Windows.Forms.Label();
@@ -103,13 +110,6 @@
             this.label23 = new System.Windows.Forms.Label();
             this.textBox_keySendApp = new System.Windows.Forms.TextBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-            this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
-            this.flowLayoutPanel2 = new System.Windows.Forms.FlowLayoutPanel();
-            this.label24 = new System.Windows.Forms.Label();
-            this.textBox_SendHost = new System.Windows.Forms.TextBox();
-            this.flowLayoutPanel3 = new System.Windows.Forms.FlowLayoutPanel();
-            this.label25 = new System.Windows.Forms.Label();
-            this.textBox_SendPort = new System.Windows.Forms.TextBox();
             this.panel1.SuspendLayout();
             this.tabPage_general.SuspendLayout();
             this.groupBox5.SuspendLayout();
@@ -124,6 +124,9 @@
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_FontPtSize)).BeginInit();
             this.tabPage_TSsend.SuspendLayout();
             this.flowLayoutPanel30.SuspendLayout();
+            this.flowLayoutPanel1.SuspendLayout();
+            this.flowLayoutPanel2.SuspendLayout();
+            this.flowLayoutPanel3.SuspendLayout();
             this.flowLayoutPanel23.SuspendLayout();
             this.flowLayoutPanel20.SuspendLayout();
             this.flowLayoutPanel21.SuspendLayout();
@@ -134,9 +137,6 @@
             this.flowLayoutPanel27.SuspendLayout();
             this.flowLayoutPanel28.SuspendLayout();
             this.flowLayoutPanel29.SuspendLayout();
-            this.flowLayoutPanel1.SuspendLayout();
-            this.flowLayoutPanel2.SuspendLayout();
-            this.flowLayoutPanel3.SuspendLayout();
             this.SuspendLayout();
             // 
             // panel1
@@ -624,6 +624,87 @@
             this.flowLayoutPanel30.Size = new System.Drawing.Size(559, 502);
             this.flowLayoutPanel30.TabIndex = 27;
             // 
+            // flowLayoutPanel1
+            // 
+            this.flowLayoutPanel1.AutoSize = true;
+            this.flowLayoutPanel1.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowLayoutPanel1.Controls.Add(this.flowLayoutPanel2);
+            this.flowLayoutPanel1.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
+            this.flowLayoutPanel1.Location = new System.Drawing.Point(4, 4);
+            this.flowLayoutPanel1.Margin = new System.Windows.Forms.Padding(4);
+            this.flowLayoutPanel1.Name = "flowLayoutPanel1";
+            this.flowLayoutPanel1.Size = new System.Drawing.Size(316, 80);
+            this.flowLayoutPanel1.TabIndex = 26;
+            // 
+            // flowLayoutPanel2
+            // 
+            this.flowLayoutPanel2.AutoSize = true;
+            this.flowLayoutPanel2.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowLayoutPanel2.Controls.Add(this.label24);
+            this.flowLayoutPanel2.Controls.Add(this.textBox_SendHost);
+            this.flowLayoutPanel2.Controls.Add(this.flowLayoutPanel3);
+            this.flowLayoutPanel2.Location = new System.Drawing.Point(4, 4);
+            this.flowLayoutPanel2.Margin = new System.Windows.Forms.Padding(4);
+            this.flowLayoutPanel2.Name = "flowLayoutPanel2";
+            this.flowLayoutPanel2.Size = new System.Drawing.Size(308, 72);
+            this.flowLayoutPanel2.TabIndex = 20;
+            // 
+            // label24
+            // 
+            this.label24.AutoSize = true;
+            this.label24.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.label24.ImeMode = System.Windows.Forms.ImeMode.NoControl;
+            this.label24.Location = new System.Drawing.Point(5, 0);
+            this.label24.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
+            this.label24.Name = "label24";
+            this.label24.Size = new System.Drawing.Size(129, 32);
+            this.label24.TabIndex = 0;
+            this.label24.Text = "Send UDP to Host:";
+            this.label24.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // textBox_SendHost
+            // 
+            this.textBox_SendHost.ImeMode = System.Windows.Forms.ImeMode.Off;
+            this.textBox_SendHost.Location = new System.Drawing.Point(144, 5);
+            this.textBox_SendHost.Margin = new System.Windows.Forms.Padding(5);
+            this.textBox_SendHost.Name = "textBox_SendHost";
+            this.textBox_SendHost.Size = new System.Drawing.Size(154, 22);
+            this.textBox_SendHost.TabIndex = 1;
+            // 
+            // flowLayoutPanel3
+            // 
+            this.flowLayoutPanel3.AutoSize = true;
+            this.flowLayoutPanel3.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowLayoutPanel3.Controls.Add(this.label25);
+            this.flowLayoutPanel3.Controls.Add(this.textBox_SendPort);
+            this.flowLayoutPanel3.Location = new System.Drawing.Point(4, 36);
+            this.flowLayoutPanel3.Margin = new System.Windows.Forms.Padding(4);
+            this.flowLayoutPanel3.Name = "flowLayoutPanel3";
+            this.flowLayoutPanel3.Size = new System.Drawing.Size(300, 32);
+            this.flowLayoutPanel3.TabIndex = 21;
+            // 
+            // label25
+            // 
+            this.label25.AutoSize = true;
+            this.label25.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.label25.ImeMode = System.Windows.Forms.ImeMode.NoControl;
+            this.label25.Location = new System.Drawing.Point(5, 0);
+            this.label25.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
+            this.label25.Name = "label25";
+            this.label25.Size = new System.Drawing.Size(126, 32);
+            this.label25.TabIndex = 0;
+            this.label25.Text = "Send UDP to Port:";
+            this.label25.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // textBox_SendPort
+            // 
+            this.textBox_SendPort.ImeMode = System.Windows.Forms.ImeMode.Off;
+            this.textBox_SendPort.Location = new System.Drawing.Point(141, 5);
+            this.textBox_SendPort.Margin = new System.Windows.Forms.Padding(5);
+            this.textBox_SendPort.Name = "textBox_SendPort";
+            this.textBox_SendPort.Size = new System.Drawing.Size(154, 22);
+            this.textBox_SendPort.TabIndex = 1;
+            // 
             // flowLayoutPanel23
             // 
             this.flowLayoutPanel23.AutoSize = true;
@@ -990,87 +1071,6 @@
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
-            // flowLayoutPanel1
-            // 
-            this.flowLayoutPanel1.AutoSize = true;
-            this.flowLayoutPanel1.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.flowLayoutPanel1.Controls.Add(this.flowLayoutPanel2);
-            this.flowLayoutPanel1.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
-            this.flowLayoutPanel1.Location = new System.Drawing.Point(4, 4);
-            this.flowLayoutPanel1.Margin = new System.Windows.Forms.Padding(4);
-            this.flowLayoutPanel1.Name = "flowLayoutPanel1";
-            this.flowLayoutPanel1.Size = new System.Drawing.Size(316, 80);
-            this.flowLayoutPanel1.TabIndex = 26;
-            // 
-            // flowLayoutPanel2
-            // 
-            this.flowLayoutPanel2.AutoSize = true;
-            this.flowLayoutPanel2.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.flowLayoutPanel2.Controls.Add(this.label24);
-            this.flowLayoutPanel2.Controls.Add(this.textBox_SendHost);
-            this.flowLayoutPanel2.Controls.Add(this.flowLayoutPanel3);
-            this.flowLayoutPanel2.Location = new System.Drawing.Point(4, 4);
-            this.flowLayoutPanel2.Margin = new System.Windows.Forms.Padding(4);
-            this.flowLayoutPanel2.Name = "flowLayoutPanel2";
-            this.flowLayoutPanel2.Size = new System.Drawing.Size(308, 72);
-            this.flowLayoutPanel2.TabIndex = 20;
-            // 
-            // label24
-            // 
-            this.label24.AutoSize = true;
-            this.label24.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.label24.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.label24.Location = new System.Drawing.Point(5, 0);
-            this.label24.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
-            this.label24.Name = "label24";
-            this.label24.Size = new System.Drawing.Size(129, 32);
-            this.label24.TabIndex = 0;
-            this.label24.Text = "Send UDP to Host:";
-            this.label24.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // textBox_SendHost
-            // 
-            this.textBox_SendHost.ImeMode = System.Windows.Forms.ImeMode.Off;
-            this.textBox_SendHost.Location = new System.Drawing.Point(144, 5);
-            this.textBox_SendHost.Margin = new System.Windows.Forms.Padding(5);
-            this.textBox_SendHost.Name = "textBox_SendHost";
-            this.textBox_SendHost.Size = new System.Drawing.Size(154, 22);
-            this.textBox_SendHost.TabIndex = 1;
-            // 
-            // flowLayoutPanel3
-            // 
-            this.flowLayoutPanel3.AutoSize = true;
-            this.flowLayoutPanel3.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.flowLayoutPanel3.Controls.Add(this.label25);
-            this.flowLayoutPanel3.Controls.Add(this.textBox_SendPort);
-            this.flowLayoutPanel3.Location = new System.Drawing.Point(4, 36);
-            this.flowLayoutPanel3.Margin = new System.Windows.Forms.Padding(4);
-            this.flowLayoutPanel3.Name = "flowLayoutPanel3";
-            this.flowLayoutPanel3.Size = new System.Drawing.Size(300, 32);
-            this.flowLayoutPanel3.TabIndex = 21;
-            // 
-            // label25
-            // 
-            this.label25.AutoSize = true;
-            this.label25.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.label25.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.label25.Location = new System.Drawing.Point(5, 0);
-            this.label25.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
-            this.label25.Name = "label25";
-            this.label25.Size = new System.Drawing.Size(126, 32);
-            this.label25.TabIndex = 0;
-            this.label25.Text = "Send UDP to Port:";
-            this.label25.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // textBox_SendPort
-            // 
-            this.textBox_SendPort.ImeMode = System.Windows.Forms.ImeMode.Off;
-            this.textBox_SendPort.Location = new System.Drawing.Point(141, 5);
-            this.textBox_SendPort.Margin = new System.Windows.Forms.Padding(5);
-            this.textBox_SendPort.Name = "textBox_SendPort";
-            this.textBox_SendPort.Size = new System.Drawing.Size(154, 22);
-            this.textBox_SendPort.TabIndex = 1;
-            // 
             // FormConfigEdit
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(120F, 120F);
@@ -1080,7 +1080,7 @@
             this.Controls.Add(this.panel1);
             this.Name = "FormConfigEdit";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "FormConfigEdit";
+            this.Text = "Config";
             this.Load += new System.EventHandler(this.FormConfigEdit_Load);
             this.panel1.ResumeLayout(false);
             this.tabPage_general.ResumeLayout(false);
@@ -1103,6 +1103,12 @@
             this.tabPage_TSsend.PerformLayout();
             this.flowLayoutPanel30.ResumeLayout(false);
             this.flowLayoutPanel30.PerformLayout();
+            this.flowLayoutPanel1.ResumeLayout(false);
+            this.flowLayoutPanel1.PerformLayout();
+            this.flowLayoutPanel2.ResumeLayout(false);
+            this.flowLayoutPanel2.PerformLayout();
+            this.flowLayoutPanel3.ResumeLayout(false);
+            this.flowLayoutPanel3.PerformLayout();
             this.flowLayoutPanel23.ResumeLayout(false);
             this.flowLayoutPanel23.PerformLayout();
             this.flowLayoutPanel20.ResumeLayout(false);
@@ -1123,12 +1129,6 @@
             this.flowLayoutPanel28.PerformLayout();
             this.flowLayoutPanel29.ResumeLayout(false);
             this.flowLayoutPanel29.PerformLayout();
-            this.flowLayoutPanel1.ResumeLayout(false);
-            this.flowLayoutPanel1.PerformLayout();
-            this.flowLayoutPanel2.ResumeLayout(false);
-            this.flowLayoutPanel2.PerformLayout();
-            this.flowLayoutPanel3.ResumeLayout(false);
-            this.flowLayoutPanel3.PerformLayout();
             this.ResumeLayout(false);
 
         }

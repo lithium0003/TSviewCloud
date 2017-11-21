@@ -190,21 +190,21 @@
             this.fFmpegToolStripMenuItem,
             this.tSSendToolStripMenuItem});
             this.contextMenuStrip_play.Name = "contextMenuStrip_play";
-            this.contextMenuStrip_play.Size = new System.Drawing.Size(176, 84);
+            this.contextMenuStrip_play.Size = new System.Drawing.Size(131, 56);
             // 
             // fFmpegToolStripMenuItem
             // 
             this.fFmpegToolStripMenuItem.Checked = true;
             this.fFmpegToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.fFmpegToolStripMenuItem.Name = "fFmpegToolStripMenuItem";
-            this.fFmpegToolStripMenuItem.Size = new System.Drawing.Size(175, 26);
+            this.fFmpegToolStripMenuItem.Size = new System.Drawing.Size(130, 26);
             this.fFmpegToolStripMenuItem.Text = "FFmpeg";
             this.fFmpegToolStripMenuItem.Click += new System.EventHandler(this.playerTypeToolStripMenuItem_Click);
             // 
             // tSSendToolStripMenuItem
             // 
             this.tSSendToolStripMenuItem.Name = "tSSendToolStripMenuItem";
-            this.tSSendToolStripMenuItem.Size = new System.Drawing.Size(175, 26);
+            this.tSSendToolStripMenuItem.Size = new System.Drawing.Size(130, 26);
             this.tSSendToolStripMenuItem.Text = "TS send";
             this.tSSendToolStripMenuItem.Click += new System.EventHandler(this.playerTypeToolStripMenuItem_Click);
             // 
@@ -852,7 +852,7 @@
             this.Controls.Add(this.menuStrip1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Form1";
-            this.Text = "Form1";
+            this.Text = "TSviewCloud";
             this.Activated += new System.EventHandler(this.Form1_Activated);
             this.Deactivate += new System.EventHandler(this.Form1_Deactivate);
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosingAsync);

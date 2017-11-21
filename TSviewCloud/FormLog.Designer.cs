@@ -56,7 +56,7 @@
             this.ClientSize = new System.Drawing.Size(609, 567);
             this.Controls.Add(this.textBox_log);
             this.Name = "FormLog";
-            this.Text = "FormLog";
+            this.Text = "Log";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormLog_FormClosing);
             this.ResumeLayout(false);
             this.PerformLayout();
