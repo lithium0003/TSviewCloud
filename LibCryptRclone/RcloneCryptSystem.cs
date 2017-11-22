@@ -34,6 +34,11 @@ namespace TSviewCloudPlugin
             }
         }
 
+        public override void SetField()
+        {
+            orgItem.SetField();
+        }
+
         private string decryptedName;
         private string decryptedPath;
 
@@ -712,7 +717,7 @@ namespace TSviewCloudPlugin
         {
             if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
-            TSviewCloudConfig.Config.Log.LogOut("[RenameItem(CarotCryptSystem)] " + targetItem.FullPath);
+            TSviewCloudConfig.Config.Log.LogOut("[RenameItem(RcloneCryptSystem)] " + targetItem.FullPath);
             var cname = (Encrypter.IsEncryptedName) ? Encrypter.EncryptName(newName) : (targetItem.ItemType == RemoteItemType.File)? newName + CryptRclone.encryptedSuffix : newName;
             var job = (targetItem as RcloneCryptSystemItem).orgItem.RenameItem(cname, WeekDepend, prevJob);
 
@@ -731,5 +736,29 @@ namespace TSviewCloudPlugin
             });
             return waitjob;
         }
+
+        public override Job<IRemoteItem> ChangeAttribItem(IRemoteItem targetItem, IRemoteItemAttrib newAttrib, bool WeekDepend = false, params Job[] prevJob)
+        {
+            if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
+
+            TSviewCloudConfig.Config.Log.LogOut("[ChangeAttribItem(RcloneCryptSystem)] " + targetItem.FullPath);
+            var job = (targetItem as RcloneCryptSystemItem).orgItem.ChangeAttribItem(newAttrib, WeekDepend, prevJob);
+
+            var waitjob = JobControler.CreateNewJob<IRemoteItem>(
+                type: JobClass.RemoteOperation,
+                depends: job);
+            JobControler.Run<IRemoteItem>(waitjob, (j) =>
+            {
+                var result = j.ResultOfDepend[0];
+                if (result.TryGetTarget(out var prevresult))
+                {
+                    j.Result = prevresult;
+                }
+                var parent = targetItem.Parents.First();
+                SetUpdate(parent);
+            });
+            return waitjob;
+        }
+
     }
 }

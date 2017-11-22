@@ -39,6 +39,7 @@ namespace TSviewCloudPlugin
                 itemtype = (file.Attributes.HasFlag(FileAttributes.Directory)) ? RemoteItemType.Folder : RemoteItemType.File;
                 modifiedDate = file.LastWriteTime;
                 createdDate = file.CreationTime;
+                accessDate = file.LastAccessTime;
                 if (itemtype == RemoteItemType.File)
                 {
                     try
@@ -58,7 +59,29 @@ namespace TSviewCloudPlugin
             if (isRoot) SetParent(this);
         }
 
- 
+
+        public override void SetField()
+        {
+            if (!string.IsNullOrEmpty(fullpath))
+            {
+                if(itemtype == RemoteItemType.File)
+                {
+                    var finfo = new FileInfo(ItemControl.GetLongFilename(fullpath));
+                    modifiedDate = finfo.LastWriteTime;
+                    createdDate = finfo.CreationTime;
+                    accessDate = finfo.LastAccessTime;
+                    size = finfo.Length;
+                }
+                else
+                {
+                    var dinfo = new DirectoryInfo(ItemControl.GetLongFilename(fullpath));
+                    modifiedDate = dinfo.LastWriteTime;
+                    createdDate = dinfo.CreationTime;
+                    accessDate = dinfo.LastAccessTime;
+                }
+            }
+        }
+
         public override void FixChain(IRemoteServer server)
         {
             _server = server;
@@ -673,6 +696,56 @@ namespace TSviewCloudPlugin
                     RemoveItem(targetItem.ID);
 
                     j.Result = newitem;
+                    j.ProgressStr = "Done";
+                    j.Progress = 1;
+                }
+                catch (OperationCanceledException)
+                {
+
+                }
+                catch (Exception e)
+                {
+                    throw new RemoteServerErrorException("MoveItemOnServer Failed.", e);
+                }
+                SetUpdate(parent);
+            });
+            return job;
+        }
+
+        public override Job<IRemoteItem> ChangeAttribItem(IRemoteItem targetItem, IRemoteItemAttrib newAttrib, bool WeekDepend = false, params Job[] prevJob)
+        {
+            if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
+
+            TSviewCloudConfig.Config.Log.LogOut("[ChangeAttribItem(LocalSystem)] " + targetItem.FullPath);
+            var job = JobControler.CreateNewJob<IRemoteItem>(
+                type: JobClass.RemoteOperation,
+                depends: prevJob);
+            job.WeekDepend = WeekDepend;
+            job.DisplayName = "ChangeAttribute item : " + targetItem.Name;
+            job.ProgressStr = "wait for operation.";
+            var ct = job.Ct;
+            JobControler.Run<IRemoteItem>(job, (j) =>
+            {
+                TSviewCloudConfig.Config.Log.LogOut("[ChangeAttribute] " + targetItem.Name);
+
+                j.ProgressStr = "ChangeAttribute...";
+                j.Progress = -1;
+
+                var parent = targetItem.Parents.First();
+                try
+                {
+                    if (targetItem.ItemType == RemoteItemType.File)
+                    {
+                        File.SetLastWriteTime(ItemControl.GetLongFilename(targetItem.ID), newAttrib.ModifiedDate.Value);
+                    }
+                    else
+                    {
+                        Directory.SetLastWriteTime(ItemControl.GetLongFilename(targetItem.ID), newAttrib.ModifiedDate.Value);
+                    }
+
+                    targetItem.SetField();
+
+                    j.Result = targetItem;
                     j.ProgressStr = "Done";
                     j.Progress = 1;
                 }

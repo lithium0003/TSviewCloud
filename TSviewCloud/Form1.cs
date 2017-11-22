@@ -2072,8 +2072,10 @@ namespace TSviewCloud
                 if (selectItem == null) return;
                 var currentview = listData.CurrentViewItem;
 
-                var inputform = new FormInputName();
-                inputform.NewItemName = selectItem.Name;
+                var inputform = new FormInputName
+                {
+                    NewItemName = selectItem.Name
+                };
                 if (inputform.ShowDialog(this) == DialogResult.OK)
                 {
                     if (inputform.NewItemName == selectItem.Name) return;
@@ -2081,6 +2083,43 @@ namespace TSviewCloud
                     var dispjob = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(
                         type: TSviewCloudPlugin.JobClass.Display,
                         depends: selectItem.RenameItem(inputform.NewItemName)
+                        );
+                    TSviewCloudPlugin.JobControler.Run(dispjob, (j) =>
+                    {
+                        if (currentview == null) return;
+                        if (listData.CurrentViewItem?.FullPath == currentview?.FullPath)
+                        {
+                            synchronizationContext.Post((o) =>
+                            {
+                                GotoAddress(currentview.FullPath, TSviewCloudPlugin.ReloadType.Reload);
+                            }, null);
+                        }
+                    });
+                }
+            }
+        }
+
+        private void ChangeAttribute(object sender, EventArgs e)
+        {
+            if (listView1.SelectedIndices.Count == 1)
+            {
+                var selectItem = listView1.SelectedIndices.Cast<int>()
+                    .Where(i => !listData.IsSpetialItem(i))
+                    .Select(i => listData[i]).FirstOrDefault();
+
+                if (selectItem == null) return;
+                var currentview = listData.CurrentViewItem;
+
+                var inputform = new FormInputAttribute
+                {
+                    ModifiedTime = selectItem.ModifiedDate.Value
+                };
+                if (inputform.ShowDialog(this) == DialogResult.OK)
+                {
+                    if (inputform.ModifiedTime == selectItem.ModifiedDate) return;
+                    var dispjob = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(
+                        type: TSviewCloudPlugin.JobClass.Display,
+                        depends: selectItem.ChangeAttribItem(new TSviewCloudPlugin.RemoteItemAttrib(inputform.ModifiedTime))
                         );
                     TSviewCloudPlugin.JobControler.Run(dispjob, (j) =>
                     {

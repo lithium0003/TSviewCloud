@@ -44,6 +44,27 @@ namespace TSviewCloudPlugin
         Folder,
     };
 
+    public interface IRemoteItemAttrib
+    {
+        DateTime? ModifiedDate { get; }
+    }
+
+    public class RemoteItemAttrib : IRemoteItemAttrib
+    {
+        private DateTime? _modifiedDate;
+
+        public RemoteItemAttrib()
+        {
+        }
+
+        public RemoteItemAttrib(DateTime? modifiedDate)
+        {
+            _modifiedDate = modifiedDate ?? throw new ArgumentNullException(nameof(modifiedDate));
+        }
+
+        public DateTime? ModifiedDate => _modifiedDate;
+    }
+
     public interface IRemoteItem
     {
         bool IsRoot { get; }
@@ -56,8 +77,9 @@ namespace TSviewCloudPlugin
 
         string Name { get; }
         long? Size { get; }
-        DateTime? ModifiedDate { get; }
+        DateTime? ModifiedDate { get; set; }
         DateTime? CreatedDate { get; }
+        DateTime? AccessDate { get; }
         string Hash { get; }
 
         DateTime Age { get; }
@@ -66,6 +88,7 @@ namespace TSviewCloudPlugin
         IEnumerable<IRemoteItem> Children { get; }
         RemoteItemType ItemType { get; }
 
+        void SetField();
         void FixChain(IRemoteServer server);
         void SetParents(IEnumerable<IRemoteItem> newparents);
         void SetParent(IRemoteItem newparent);
@@ -81,6 +104,7 @@ namespace TSviewCloudPlugin
         Job<IRemoteItem> DeleteItem(bool WeekDepend = false, params Job[] prevJob); // returns parent item
         Job<IRemoteItem> MoveItem(IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob);
         Job<IRemoteItem> RenameItem(string newName, bool WeekDepend = false, params Job[] prevJob);
+        Job<IRemoteItem> ChangeAttribItem(IRemoteItemAttrib newAttrib, bool WeekDepend = false, params Job[] prevJob);
     }
 
     public interface IRemoteServer
@@ -107,6 +131,7 @@ namespace TSviewCloudPlugin
         Job<IRemoteItem> DeleteItem(IRemoteItem deleteTarget, bool WeekDepend = false, params Job[] prevJob); // returns parent item
         Job<IRemoteItem> MoveItem(IRemoteItem moveItem, IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob);
         Job<IRemoteItem> RenameItem(IRemoteItem targetItem, string newName, bool WeekDepend = false, params Job[] prevJob);
+        Job<IRemoteItem> ChangeAttribItem(IRemoteItem targetItem, IRemoteItemAttrib newAttrib, bool WeekDepend = false, params Job[] prevJob);
     }
 
 
@@ -128,6 +153,8 @@ namespace TSviewCloudPlugin
         protected DateTime? modifiedDate;
         [DataMember(Name = "CreatedDate")]
         protected DateTime? createdDate;
+        [DataMember(Name = "AccessDate")]
+        protected DateTime? accessDate;
         [DataMember(Name = "Hash")]
         protected string hash;
 
@@ -149,6 +176,8 @@ namespace TSviewCloudPlugin
             serverName = Server;
             Age = DateTime.Now;
         }
+        public abstract void SetField();
+
 
         public abstract string ID { get; }
         public abstract string Path { get; }
@@ -162,12 +191,19 @@ namespace TSviewCloudPlugin
         public string Server => _server.Name;
 
         public virtual long? Size => size;
-        public virtual DateTime? ModifiedDate => modifiedDate;
+        public virtual DateTime? ModifiedDate { get => modifiedDate; set => SetModifiedDate(value); }
         public virtual DateTime? CreatedDate => createdDate;
+        public virtual DateTime? AccessDate => accessDate;
         public virtual string Hash => hash;
         public virtual string FullPath => Server + "://" + Path;
 
         public virtual DateTime Age { get => age; set => age = value; }
+
+        protected virtual void SetModifiedDate(DateTime? newdateTime)
+        {
+            var job = _server.ChangeAttribItem(this, new RemoteItemAttrib(newdateTime));
+            job.Wait();
+        }
 
         public virtual bool IsReadyRead => true;
 
@@ -247,6 +283,11 @@ namespace TSviewCloudPlugin
         {
             return _server.RenameItem(this, newName, WeekDepend, prevJob);
         }
+
+        public Job<IRemoteItem> ChangeAttribItem(IRemoteItemAttrib newAttrib, bool WeekDepend = false, params Job[] prevJob)
+        {
+            return _server.ChangeAttribItem(this, newAttrib, WeekDepend, prevJob);
+        }
     }
 
     [DataContract]
@@ -311,6 +352,7 @@ namespace TSviewCloudPlugin
         public abstract Job<IRemoteItem> UploadStream(Stream source, IRemoteItem remoteTarget, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob);
         public abstract Job<Stream> DownloadItem(IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] prevJob);
         public abstract Job<IRemoteItem> RenameItem(IRemoteItem targetItem, string newName, bool WeekDepend = false, params Job[] prevJob);
+        public abstract Job<IRemoteItem> ChangeAttribItem(IRemoteItem targetItem, IRemoteItemAttrib newAttrib, bool WeekDepend = false, params Job[] prevJob);
 
         protected abstract Job<IRemoteItem> MoveItemOnServer(IRemoteItem moveItem, IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob);
 
