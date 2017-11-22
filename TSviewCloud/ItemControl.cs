@@ -284,7 +284,6 @@ namespace TSviewCloudPlugin
                     joblist.AddRange(Directory.EnumerateDirectories(GetLongFilename(uploadFolderName)).Select(x => UploadFolder(folder, GetOrgFilename(x), true, j)));
                     joblist.AddRange(UploadFiles(folder, Directory.EnumerateFiles(GetLongFilename(uploadFolderName)), true, j));
                 }
-                //Parallel.ForEach(joblist, (x)=>x.Wait(ct: job.Ct));
                 j.ProgressStr = "done";
                 j.Progress = 1;
             });

@@ -593,6 +593,8 @@ namespace Secretbox {
 			if (counter->Length != 16) throw gcnew ArgumentException("counter length must be 16");
 			if (key->Length != 32) throw gcnew ArgumentException("key length must be 32");
 
+			if ((input->Length - input_offset) == 0) return;
+
 			array<Byte>^ block;
 			array<Byte>^ inCounter = gcnew array<Byte>(16);
 			pin_ptr<Byte> pinCounter = &inCounter[0];
@@ -638,7 +640,9 @@ namespace Secretbox {
 		{
 			if (counter->Length != 16) throw gcnew ArgumentException("counter length must be 16");
 			if (key->Length != 32) throw gcnew ArgumentException("key length must be 32");
-			if (output->Length - output_offset != input->Length - input_offset) throw gcnew ArgumentException("output buffer is short");
+			if ((output->Length - output_offset) != (input->Length - input_offset)) throw gcnew ArgumentException("output buffer is short");
+
+			if ((output->Length - output_offset) == 0) return;
 
 			array<Byte>^ block;
 			array<Byte>^ inCounter = gcnew array<Byte>(16);

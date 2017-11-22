@@ -110,11 +110,14 @@ namespace TSviewCloud
                     Console.WriteLine("\tlist (REMOTE_PATH)                        : list item");
                     Console.WriteLine("\t\t--recursive: recursive mode");
                     Console.WriteLine("\t\t--hash: show hash");
+                    Console.WriteLine("\tdownload (remotepath) (localpath)         : download item(s)");
                     break;
                 case "list":
                     return RunList(targetArgs, paramArgs);
                 case "download":
                     return RunDownload(targetArgs, paramArgs);
+                case "upload":
+                    return RunUpload(targetArgs, paramArgs);
             }
             return 0;
         }
@@ -310,6 +313,101 @@ namespace TSviewCloud
         }
 
 
+
+        private static int RunUpload(string[] targetArgs, string[] paramArgs)
+        {
+            string remotePath;
+            string localPath;
+            if (targetArgs.Length < 3)
+            {
+                Console.Error.WriteLine("upload needs more 2 arguments.");
+                Console.Error.WriteLine("upload (localpath) (remotetarget)");
+                return 0;
+            }
+
+            remotePath = targetArgs[2];
+            remotePath = remotePath.Replace('\\', '/');
+            localPath = targetArgs[1];
+            if (!localPath.Contains(':') && !localPath.StartsWith(@"\\"))
+            {
+                localPath = Path.GetFullPath(localPath);
+            }
+            if (!localPath.StartsWith(@"\\"))
+            {
+                localPath = ItemControl.GetLongFilename(localPath);
+            }
+
+            Console.Error.WriteLine("upload");
+            Console.Error.WriteLine("remote: " + remotePath);
+            Console.Error.WriteLine("local: " + ItemControl.GetOrgFilename(localPath));
+
+            var job = JobControler.CreateNewJob(JobClass.ControlMaster);
+            job.DisplayName = "Upload";
+            JobControler.Run(job, (j) =>
+            {
+                try
+                {
+                    var j2 = InitServer(j);
+                    j2.Wait(ct: j.Ct);
+
+                    var target = FindItems(remotePath, ct: j.Ct);
+
+                    if (target.Count() != 1)
+                    {
+                        Console.Error.WriteLine("upload needs 1 remote target item.");
+                        j.ResultAsObject = 2;
+                        return;
+                    }
+                    var remote = target.First();
+
+
+                    ConsoleJobDisp.Run();
+
+                    if (File.Exists(localPath))
+                    {
+                        ItemControl.UploadFiles(remote, new[] { localPath }, true, j);
+                    }
+                    else if (Directory.Exists(localPath))
+                    {
+                        ItemControl.UploadFolder(remote, localPath, true, j);
+                    }
+                    else
+                    {
+                        Console.Error.WriteLine("upload localitem not found.");
+                        j.ResultAsObject = 2;
+                        return;
+                    }
+
+                    while(JobControler.JobTypeCount(JobClass.Upload) > 0)
+                    {
+                        JobControler.JobList().Where(x => x.JobType == JobClass.Upload).FirstOrDefault()?.Wait(ct: j.Ct);
+                    }
+
+                    job.ResultAsObject = 0;
+                }
+                catch (OperationCanceledException)
+                {
+                    job.ResultAsObject = -1;
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine("error: " + ex.ToString());
+                    job.ResultAsObject = 1;
+                }
+            });
+            try
+            {
+                job.Wait(ct: job.Ct);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            TSviewCloudConfig.Config.ApplicationExit = true;
+            Console.Out.Flush();
+            return (job.ResultAsObject as int?) ?? -1;
+        }
+
+
         public static int CountChar(string s, char c)
         {
             return s.Length - s.Replace(c.ToString(), "").Length;
@@ -409,6 +507,7 @@ namespace TSviewCloud
                 else
                 {
                     root = RemoteServerFactory.PathToItem(root.FullPath, ReloadType.Reload);
+                    if (root == null) return ret;
                     ret.Add(root);
                     var children = root.Children;
                     if (recursive)
@@ -445,6 +544,7 @@ namespace TSviewCloud
                 path_str = m.Groups["next"].Value;
 
                 root = RemoteServerFactory.PathToItem(root.FullPath, ReloadType.Reload);
+                if (root == null) return ret;
                 var children = root.Children;
 
                 var itemname = m.Groups["current"].Value;

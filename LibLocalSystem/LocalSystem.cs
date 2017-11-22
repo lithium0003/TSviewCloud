@@ -245,6 +245,9 @@ namespace TSviewCloudPlugin
             bool master = true;
             loadinglist.AddOrUpdate(ID, new ManualResetEventSlim(false), (k, v) =>
             {
+                if (v.IsSet)
+                    return new ManualResetEventSlim(false);
+
                 master = false;
                 return v;
             });
