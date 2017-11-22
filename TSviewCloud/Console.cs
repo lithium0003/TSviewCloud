@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
+using TSviewCloudPlugin;
 
 namespace TSviewCloud
 {
@@ -106,9 +107,269 @@ namespace TSviewCloud
                 case "help":
                     Console.WriteLine("usage");
                     Console.WriteLine("\thelp                                      : show help");
+                    Console.WriteLine("\tlist (REMOTE_PATH)                        : list item");
+                    Console.WriteLine("\t\t--recursive: recursive mode");
+                    Console.WriteLine("\t\t--hash: show hash");
                     break;
+                case "list":
+                    return RunList(targetArgs, paramArgs);
+                case "download":
+                    return RunDownload(targetArgs, paramArgs);
             }
             return 0;
+        }
+
+
+
+        static int RunList(string[] targetArgs, string[] paramArgs)
+        {
+            var job = JobControler.CreateNewJob(JobClass.ControlMaster);
+            job.DisplayName = "ListItem";
+            JobControler.Run(job, (j) =>
+            {
+                string remotepath = null;
+                IEnumerable<IRemoteItem> target = null;
+
+                if (targetArgs.Length > 1)
+                {
+                    remotepath = targetArgs[1];
+                    remotepath = remotepath.Replace('\\', '/');
+                }
+
+                bool recursive = false;
+                bool showhash = false;
+                foreach (var p in paramArgs)
+                {
+                    switch (p)
+                    {
+                        case "recursive":
+                            Console.Error.WriteLine("(--recursive: recursive mode)");
+                            recursive = true;
+                            break;
+                        case "hash":
+                            Console.Error.WriteLine("(--hash: show hash)");
+                            showhash = true;
+                            break;
+                    }
+                }
+
+                try
+                {
+                    var j2 = InitServer(j);
+                    j2.Wait(ct: j.Ct);
+
+                    target = FindItems(remotepath, recursive: recursive, ct: j.Ct);
+
+                    if (target.Count() < 1)
+                    {
+                        j.Result = 2;
+                        return;
+                    }
+
+                    if (remotepath.Contains("**"))
+                        recursive = true;
+
+                    Console.Error.WriteLine("Found : " + target.Count());
+                    foreach (var item in target.OrderBy(x => x.FullPath))
+                    {
+                        string detail = "";
+                        if (showhash) detail = "\t" + item.Hash;
+
+                        if (recursive)
+                            Console.WriteLine(item.FullPath + detail);
+                        else
+                        {
+                            if (item.IsRoot)
+                                Console.WriteLine(item.FullPath + detail);
+                            else
+                                Console.WriteLine(item.Name + ((item.ItemType == RemoteItemType.Folder) ? "/" : "") + detail);
+                        }
+                    }
+
+                    job.Result = 0;
+                }
+                catch (OperationCanceledException)
+                {
+                    job.Result = -1;
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine("error: " + ex.ToString());
+                    job.Result = 1;
+                }
+            });
+            try
+            {
+                job.Wait(ct: job.Ct);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            TSviewCloudConfig.Config.ApplicationExit = true;
+            Console.Out.Flush();
+            return (job.Result as int?) ?? -1;
+        }
+
+
+
+        private static int RunDownload(string [] targetArgs, string[] paramArgs)
+        {
+            string remotePath;
+            string localPath;
+            if(targetArgs.Length < 1)
+            {
+
+            }
+ 
+            return 0;
+        }
+
+        class RemoteItemEqualityComparer : IEqualityComparer<IRemoteItem>
+        {
+            public bool Equals(IRemoteItem x, IRemoteItem y)
+            {
+                if (x == null && y == null)
+                    return true;
+                if (x == null || y == null)
+                    return false;
+                return x.FullPath == y.FullPath;
+            }
+
+            public int GetHashCode(IRemoteItem p)
+              => p.FullPath.GetHashCode();
+        }
+
+        static IEnumerable<IRemoteItem> FindItems(string path_str, bool recursive = false, IRemoteItem root = null, CancellationToken ct = default(CancellationToken))
+        {
+            ct.ThrowIfCancellationRequested();
+            List<IRemoteItem> ret = new List<IRemoteItem>();
+            if (string.IsNullOrEmpty(path_str))
+            {
+                if (root == null)
+                {
+                    if (recursive)
+                    {
+                        ret.AddRange(RemoteServerFactory.ServerList.Values.Select(x => x[""]).Select(x => FindItems("", true, x, ct)).SelectMany(x => x));
+                        return ret;
+                    }
+                    else
+                    {
+                        ret.AddRange(RemoteServerFactory.ServerList.Values.Select(x => x[""]));
+                        return ret;
+                    }
+                }
+                else
+                {
+                    root = RemoteServerFactory.PathToItem(root.FullPath, ReloadType.Reload);
+                    ret.Add(root);
+                    var children = root.Children;
+                    if (recursive)
+                    {
+                        ret.AddRange(children.Where(x => x.ItemType == RemoteItemType.File));
+                        ret.AddRange(children.Where(x => x.ItemType == RemoteItemType.Folder).Select(x => FindItems("", true, x, ct)).SelectMany(x => x));
+                    }
+                    return ret;
+                }
+            }
+
+            var m = Regex.Match(path_str, @"^(?<server>[^:]+)(://)(?<path>.*)$");
+            if (m.Success)
+            {
+                var servername = m.Groups["server"].Value;
+                if (servername.IndexOfAny(new[] { '?', '*' }) < 0)
+                {
+                    var server = RemoteServerFactory.ServerList[servername];
+                    return FindItems(m.Groups["path"].Value, recursive, server[""], ct);
+                }
+                else
+                {
+                    var servers = RemoteServerFactory.ServerList.Keys;
+                    return servers.Where(x => Regex.IsMatch(x, "^" + Regex.Escape(servername).Replace("\\*", ".*").Replace("\\?", ".") + "$"))
+                        .Select(x => FindItems(m.Groups["path"].Value, recursive, RemoteServerFactory.ServerList[x][""], ct))
+                        .SelectMany(x => x);
+                }
+            }
+            else
+            {
+                if (root == null) return ret;
+
+                m = Regex.Match(path_str, @"^(?<current>[^/\\]*)(/|\\)?(?<next>.*)$");
+                path_str = m.Groups["next"].Value;
+
+                root = RemoteServerFactory.PathToItem(root.FullPath, ReloadType.Reload);
+                var children = root.Children;
+
+                var itemname = m.Groups["current"].Value;
+                if(itemname == "**")
+                {
+                    ret.AddRange(FindItems(path_str, true, root, ct));
+                    ret.AddRange(children
+                        .Select(x => FindItems(path_str, true, x, ct))
+                        .SelectMany(x => x));
+                    ret.AddRange(children
+                        .Select(x => FindItems("**/"+path_str, true, x, ct))
+                        .SelectMany(x => x));
+                    return ret.Distinct(new RemoteItemEqualityComparer());
+                }
+                else if(itemname.IndexOfAny(new[] { '?', '*' }) < 0)
+                {
+                    return children.Where(x => x.Name == itemname)
+                        .Select(x => FindItems(path_str, recursive, x, ct))
+                        .SelectMany(x => x);
+                }
+                else
+                {
+                    return children.Where(x => Regex.IsMatch(x.Name, "^"+Regex.Escape(itemname).Replace("\\*", ".*").Replace("\\?", ".")+"$"))
+                        .Select(x => FindItems(path_str, recursive, x, ct))
+                        .SelectMany(x => x);
+                }
+            }
+        }
+
+        private static Job InitServer(Job master)
+        {
+            var loadJob = JobControler.CreateNewJob(JobClass.Normal, depends: master);
+            loadJob.WeekDepend = true;
+            loadJob.DisplayName = "Load server list";
+            JobControler.Run(loadJob, (j) =>
+            {
+                j.Progress = -1;
+                j.ProgressStr = "Loading...";
+                RemoteServerFactory.Restore();
+
+                while (!RemoteServerFactory.ServerList.Values.All(x => x.IsReady))
+                {
+                    loadJob.Ct.ThrowIfCancellationRequested();
+                    Task.Delay(500).Wait(loadJob.Ct);
+                }
+
+                j.Progress = 1;
+                j.ProgressStr = "Done.";
+            });
+            return loadJob;
+        }
+
+        static void CheckMasterPassword()
+        {
+            if (!TSviewCloudConfig.Config.IsMasterPasswordCorrect)
+            {
+                Thread t = new Thread(new ThreadStart(() =>
+                {
+                    using (var f = new FormMasterPass())
+                    {
+                        f.ShowDialog();
+                    }
+                }));
+                t.SetApartmentState(System.Threading.ApartmentState.STA);
+                t.Start();
+                t.Join();
+
+                if (!TSviewCloudConfig.Config.IsMasterPasswordCorrect)
+                {
+                    Console.Error.Write("Master Password Incorrect.");
+                    Environment.Exit(1);
+                }
+            }
         }
 
         async protected static void CtrlC_Handler(object sender, ConsoleCancelEventArgs args)
