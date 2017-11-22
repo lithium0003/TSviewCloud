@@ -63,6 +63,13 @@ namespace TSviewCloudPlugin
                 return createdDate = orgItem?.CreatedDate;
             }
         }
+        public override DateTime? AccessDate
+        {
+            get
+            {
+                return accessDate = orgItem?.AccessDate;
+            }
+        }
 
         public RcloneCryptSystemItem() : base()
         {
@@ -603,6 +610,8 @@ namespace TSviewCloudPlugin
             job.DisplayName = "Download item:" + remoteTarget.Name;
             job.ProgressStr = "wait for system...";
             job.ForceHidden = hidden;
+            job.WeekDepend = false;
+
             JobControler.Run<Stream>(job, (j) =>
             {
                 var result = j.ResultOfDepend[0];

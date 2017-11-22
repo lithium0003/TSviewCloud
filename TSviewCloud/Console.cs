@@ -123,36 +123,36 @@ namespace TSviewCloud
 
         static int RunList(string[] targetArgs, string[] paramArgs)
         {
+            string remotepath = null;
+            IEnumerable<IRemoteItem> target = null;
+
+            if (targetArgs.Length > 1)
+            {
+                remotepath = targetArgs[1];
+                remotepath = remotepath.Replace('\\', '/');
+            }
+
+            bool recursive = false;
+            bool showhash = false;
+            foreach (var p in paramArgs)
+            {
+                switch (p)
+                {
+                    case "recursive":
+                        Console.Error.WriteLine("(--recursive: recursive mode)");
+                        recursive = true;
+                        break;
+                    case "hash":
+                        Console.Error.WriteLine("(--hash: show hash)");
+                        showhash = true;
+                        break;
+                }
+            }
+
             var job = JobControler.CreateNewJob(JobClass.ControlMaster);
             job.DisplayName = "ListItem";
             JobControler.Run(job, (j) =>
             {
-                string remotepath = null;
-                IEnumerable<IRemoteItem> target = null;
-
-                if (targetArgs.Length > 1)
-                {
-                    remotepath = targetArgs[1];
-                    remotepath = remotepath.Replace('\\', '/');
-                }
-
-                bool recursive = false;
-                bool showhash = false;
-                foreach (var p in paramArgs)
-                {
-                    switch (p)
-                    {
-                        case "recursive":
-                            Console.Error.WriteLine("(--recursive: recursive mode)");
-                            recursive = true;
-                            break;
-                        case "hash":
-                            Console.Error.WriteLine("(--hash: show hash)");
-                            showhash = true;
-                            break;
-                    }
-                }
-
                 try
                 {
                     var j2 = InitServer(j);
@@ -162,11 +162,11 @@ namespace TSviewCloud
 
                     if (target.Count() < 1)
                     {
-                        j.Result = 2;
+                        j.ResultAsObject = 2;
                         return;
                     }
 
-                    if (remotepath.Contains("**"))
+                    if (remotepath?.Contains("**") ?? true)
                         recursive = true;
 
                     Console.Error.WriteLine("Found : " + target.Count());
@@ -186,16 +186,16 @@ namespace TSviewCloud
                         }
                     }
 
-                    job.Result = 0;
+                    job.ResultAsObject = 0;
                 }
                 catch (OperationCanceledException)
                 {
-                    job.Result = -1;
+                    job.ResultAsObject = -1;
                 }
                 catch (Exception ex)
                 {
                     Console.Error.WriteLine("error: " + ex.ToString());
-                    job.Result = 1;
+                    job.ResultAsObject = 1;
                 }
             });
             try
@@ -207,7 +207,7 @@ namespace TSviewCloud
             }
             TSviewCloudConfig.Config.ApplicationExit = true;
             Console.Out.Flush();
-            return (job.Result as int?) ?? -1;
+            return (job.ResultAsObject as int?) ?? -1;
         }
 
 
@@ -216,12 +216,160 @@ namespace TSviewCloud
         {
             string remotePath;
             string localPath;
-            if(targetArgs.Length < 1)
+            if(targetArgs.Length < 3)
             {
-
+                Console.Error.WriteLine("download needs more 2 arguments.");
+                Console.Error.WriteLine("download (remotepath) (localpath)");
+                return 0;
             }
- 
-            return 0;
+
+            remotePath = targetArgs[1];
+            remotePath = remotePath.Replace('\\', '/');
+            localPath = targetArgs[2];
+            if(!localPath.Contains(':') && !localPath.StartsWith(@"\\"))
+            {
+                localPath = Path.GetFullPath(localPath);
+            }
+            if (!localPath.StartsWith(@"\\"))
+            {
+                localPath = ItemControl.GetLongFilename(localPath);
+            }
+
+            Console.Error.WriteLine("download");
+            Console.Error.WriteLine("remote: "+ remotePath);
+            Console.Error.WriteLine("local: "+  ItemControl.GetOrgFilename(localPath));
+
+            var job = JobControler.CreateNewJob(JobClass.ControlMaster);
+            job.DisplayName = "Download";
+            JobControler.Run(job, (j) =>
+            {
+                try
+                {
+                    var j2 = InitServer(j);
+                    j2.Wait(ct: j.Ct);
+
+                    var target = FindItems(remotePath, ct: j.Ct);
+
+                    if (target.Count() < 1)
+                    {
+                        j.ResultAsObject = 2;
+                        return;
+                    }
+
+                    string remotePathBase = null;
+                    if (remotePath.IndexOfAny(new[] { '*', '?' }) < 0)
+                    {
+                        remotePathBase = ItemControl.GetCommonPath(target);
+                    }
+                    else
+                    {
+                        remotePathBase = GetBasePath(remotePath);
+                    }
+
+                    target = RemoveDup(target);
+
+                    ConsoleJobDisp.Run();
+
+                    var j3 = target
+                    .Where(x => x.ItemType == RemoteItemType.File)
+                    .Select(x => RemoteServerFactory.PathToItem(x.FullPath, ReloadType.Reload))
+                    .Select(x => ItemControl.DownloadFile(Path.Combine(localPath, ItemControl.GetLocalFullPath(x.FullPath, remotePathBase)), x, j, true));
+                    var j4 = target
+                    .Where(x => x.ItemType == RemoteItemType.Folder)
+                    .Select(x => RemoteServerFactory.PathToItem(x.FullPath, ReloadType.Reload))
+                    .Select(x => ItemControl.DownloadFolder(Path.GetDirectoryName(Path.Combine(localPath, ItemControl.GetLocalFullPath(x.FullPath, remotePathBase))), new[] { x }, j, true));
+
+                    foreach (var jx in j3.Concat(j4).ToArray())
+                    {
+                        j.Ct.ThrowIfCancellationRequested();
+                        jx.Wait(ct: j.Ct);
+                    }
+
+                    job.ResultAsObject = 0;
+                }
+                catch (OperationCanceledException)
+                {
+                    job.ResultAsObject = -1;
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine("error: " + ex.ToString());
+                    job.ResultAsObject = 1;
+                }
+            });
+            try
+            {
+                job.Wait(ct: job.Ct);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            TSviewCloudConfig.Config.ApplicationExit = true;
+            Console.Out.Flush();
+            return (job.ResultAsObject as int?) ?? -1;
+        }
+
+
+        public static int CountChar(string s, char c)
+        {
+            return s.Length - s.Replace(c.ToString(), "").Length;
+        }
+
+        public static bool IsAncestor(IRemoteItem childitem, IRemoteItem parentitem)
+        {
+            var p = childitem.Parents.Where(x => x.FullPath != childitem.FullPath);
+            return p.Any(x => parentitem.FullPath == x.FullPath) || p.Any(x => IsAncestor(x, parentitem));
+        }
+
+        static IEnumerable<IRemoteItem> RemoveDup(IEnumerable<IRemoteItem> items)
+        {
+            var ret = new List<IRemoteItem>();
+            foreach (var i in items.OrderBy(x => CountChar(x.FullPath, '/')))
+            {
+                if (i.IsRoot) continue;
+                if (ret.All(x => !IsAncestor(i, x)))
+                {
+                    ret.Add(i);
+                }
+            }
+            return ret;
+        }
+
+        static string GetBasePath(string path)
+        {
+            string result = "";
+            var m = Regex.Match(path, @"^(?<server>[^:]+)(://)(?<path>.*)$");
+            if (m.Success)
+            {
+                var servername = m.Groups["server"].Value;
+                if (servername.IndexOfAny(new[] { '?', '*' }) >= 0)
+                {
+                    return "";
+                }
+                path = m.Groups["path"].Value;
+                result = servername + "://";
+            }
+
+            while (!string.IsNullOrEmpty(path))
+            {
+                m = Regex.Match(path, @"^(?<current>[^/\\]*)(/|\\)?(?<next>.*)$");
+                path = m.Groups["next"].Value;
+
+                var itemname = m.Groups["current"].Value;
+                if (itemname == "**")
+                {
+                    return result;
+                }
+                else if (itemname.IndexOfAny(new[] { '?', '*' }) >= 0)
+                {
+                    return result;
+                }
+                else
+                {
+                    result += itemname + ((path == "") ? "" : "/");
+                }
+            }
+            return result;
         }
 
         class RemoteItemEqualityComparer : IEqualityComparer<IRemoteItem>

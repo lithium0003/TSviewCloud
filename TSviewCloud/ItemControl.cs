@@ -37,6 +37,64 @@ namespace TSviewCloudPlugin
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+        static public string GetCommonPath(IEnumerable<IRemoteItem> items)
+        {
+            string common = null;
+            foreach(var item in items)
+            {
+                if(common == null)
+                {
+                    common = item.FullPath;
+                    continue;
+                }
+                while (!item.FullPath.StartsWith(common) && common != "")
+                {
+                    if (common.EndsWith("://"))
+                    {
+                        return "";
+                    }
+                    else
+                    {
+                        var ind = common.LastIndexOf('/');
+                        common = common.Substring(0, ind);
+                    }
+                }
+            }
+            return common;
+        }
+
+        static public string GetLocalFullPath(string fullpath, string commonpath = "")
+        {
+            var ret = new List<string>();
+
+            if (fullpath.StartsWith(commonpath))
+            {
+                if (fullpath == commonpath) return "";
+                fullpath = fullpath.Substring(commonpath.Length);
+            }
+
+            var m = Regex.Match(fullpath, @"^(?<server>[^:]+)(://)(?<path>.*)$");
+            if (m.Success)
+            {
+                var servername = m.Groups["server"].Value;
+                fullpath = m.Groups["path"].Value;
+                ret.Add(servername);
+            }
+
+            while (!string.IsNullOrEmpty(fullpath))
+            {
+                m = Regex.Match(fullpath, @"^(?<current>[^/\\]*)(/|\\)?(?<next>.*)$");
+                fullpath = m.Groups["next"].Value;
+
+                var itemname = m.Groups["current"].Value;
+                ret.Add(itemname);
+            }
+            return string.Join("\\", ret);
+        }
+
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         static private void MakeSureItem(IRemoteItem item)
         {
             item = RemoteServerFactory.PathToItem(item.FullPath);
@@ -84,9 +142,12 @@ namespace TSviewCloudPlugin
         {
             Config.Log.LogOut("Download : " + remoteItem.Name);
 
-            var download = remoteItem.DownloadItemRawJob(prevJob: prevJob);
-            download.WeekDepend = weekdepend;
+            Directory.CreateDirectory(Path.GetDirectoryName(GetLongFilename(localfilename)));
+            if (Path.GetFileName(GetLongFilename(localfilename)) == "")
+                localfilename += remoteItem.Name;
 
+            var download = remoteItem.DownloadItemRawJob(prevJob: prevJob, WeekDepend: weekdepend);
+ 
             var job = JobControler.CreateNewJob<Stream>(
                  type: JobClass.Download,
                  info: new JobControler.SubInfo
@@ -97,6 +158,7 @@ namespace TSviewCloudPlugin
                  depends: download);
             job.DisplayName = remoteItem.Name;
             job.ProgressStr = "Wait for download";
+            job.WeekDepend = false;
 
             JobControler.Run<Stream>(job, (j) =>
             {
@@ -164,12 +226,13 @@ namespace TSviewCloudPlugin
         }
 
 
-        static public Job DownloadFolder(string localfoldername, IEnumerable<IRemoteItem> remoteItems, Job prevJob = null)
+        static public Job DownloadFolder(string localfoldername, IEnumerable<IRemoteItem> remoteItems, Job prevJob = null, bool weekdepend = false)
         {
             var items = remoteItems.ToArray();
 
             var job = JobControler.CreateNewJob(JobClass.LoadItem, depends: prevJob);
             job.DisplayName = "Search Items";
+            job.WeekDepend = weekdepend;
             JobControler.Run(job, (j) =>
             {
                 foreach (var item in items)

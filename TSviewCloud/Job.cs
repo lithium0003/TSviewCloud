@@ -316,7 +316,7 @@ namespace TSviewCloudPlugin
         {
         }
 
-        public object Result { get => result; set => result = value; }
+        public object ResultAsObject { get => result; set => result = value; }
     }
 
     public class Job<T> : Job where T : class
@@ -328,7 +328,7 @@ namespace TSviewCloudPlugin
         {
         }
 
-        public new T Result { get => result as T; set => result = value; }
+        public T Result { get => result as T; set => result = value; }
         public WeakReference<T>[] ResultOfDepend
         {
             get
