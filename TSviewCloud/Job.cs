@@ -315,6 +315,8 @@ namespace TSviewCloudPlugin
         public Job(CancellationToken ct) : base(ct)
         {
         }
+
+        public object Result { get => result; set => result = value; }
     }
 
     public class Job<T> : Job where T : class
@@ -326,7 +328,7 @@ namespace TSviewCloudPlugin
         {
         }
 
-        public T Result { get => result as T; set => result = value; }
+        public new T Result { get => result as T; set => result = value; }
         public WeakReference<T>[] ResultOfDepend
         {
             get

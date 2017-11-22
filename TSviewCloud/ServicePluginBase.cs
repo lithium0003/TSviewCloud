@@ -80,6 +80,7 @@ namespace TSviewCloudPlugin
         Job<IRemoteItem> MakeFolder(string foldername, bool WeekDepend = false, params Job[] parentJob);
         Job<IRemoteItem> DeleteItem(bool WeekDepend = false, params Job[] prevJob); // returns parent item
         Job<IRemoteItem> MoveItem(IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob);
+        Job<IRemoteItem> RenameItem(string newName, bool WeekDepend = false, params Job[] prevJob);
     }
 
     public interface IRemoteServer
@@ -104,7 +105,8 @@ namespace TSviewCloudPlugin
         Job<Stream> DownloadItemRaw(IRemoteItem remoteTarget, long offset = 0, bool WeekDepend = false, bool hidden = false, params Job[] prevJob);
         Job<Stream> DownloadItem(IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] prevJob);
         Job<IRemoteItem> DeleteItem(IRemoteItem deleteTarget, bool WeekDepend = false, params Job[] prevJob); // returns parent item
-        Job<IRemoteItem> MoveItem(IRemoteItem moveItem, IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob); 
+        Job<IRemoteItem> MoveItem(IRemoteItem moveItem, IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob);
+        Job<IRemoteItem> RenameItem(IRemoteItem targetItem, string newName, bool WeekDepend = false, params Job[] prevJob);
     }
 
 
@@ -241,7 +243,11 @@ namespace TSviewCloudPlugin
             return _server.MoveItem(this, moveToItem, WeekDepend, prevJob);
         }
 
-     }
+        public Job<IRemoteItem> RenameItem(string newName, bool WeekDepend = false, params Job[] prevJob)
+        {
+            return _server.RenameItem(this, newName, WeekDepend, prevJob);
+        }
+    }
 
     [DataContract]
     public abstract class RemoteServerBase : IRemoteServer
@@ -304,6 +310,9 @@ namespace TSviewCloudPlugin
         public abstract Job<IRemoteItem> DeleteItem(IRemoteItem delteTarget, bool WeekDepend = false, params Job[] prevJob);
         public abstract Job<IRemoteItem> UploadStream(Stream source, IRemoteItem remoteTarget, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob);
         public abstract Job<Stream> DownloadItem(IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] prevJob);
+        public abstract Job<IRemoteItem> RenameItem(IRemoteItem targetItem, string newName, bool WeekDepend = false, params Job[] prevJob);
+
+        protected abstract Job<IRemoteItem> MoveItemOnServer(IRemoteItem moveItem, IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob);
 
         public virtual Job<IRemoteItem> MoveItem(IRemoteItem moveItem, IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob)
         {
@@ -345,8 +354,6 @@ namespace TSviewCloudPlugin
             });
             return job;
         }
-
-        protected abstract Job<IRemoteItem> MoveItemOnServer(IRemoteItem moveItem, IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob);
     }
 
     public class RemoteServerFactory

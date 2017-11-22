@@ -20,6 +20,8 @@ namespace TSviewCloudPlugin
         [DataMember(Name = "ID")]
         private string fullpath;
 
+        DateTime lastLoaded;
+
         public LocalSystemItem() : base()
         {
 
@@ -77,6 +79,8 @@ namespace TSviewCloudPlugin
         public override string ID => fullpath;
         public override string Path => FullpathToPath(fullpath);
         public override string Name => System.IO.Path.GetFileName(ItemControl.GetLongFilename(fullpath));
+
+        public DateTime LastLoaded { get => lastLoaded; set => lastLoaded = value; }
     }
 
     [DataContract]
@@ -242,6 +246,19 @@ namespace TSviewCloudPlugin
 
                 throw new ArgumentException("ID is not in localPathBase", "ID");
             }
+            if (pathlist.ContainsKey(ID))
+            {
+                if(DateTime.Now - pathlist[ID].LastLoaded < TimeSpan.FromSeconds(30))
+                {
+                    ManualResetEventSlim tmp2;
+                    while (!loadinglist.TryRemove(ID, out tmp2))
+                        Thread.Sleep(10);
+                    tmp2.Set();
+
+                    return;
+                }
+            }
+
             if (Directory.Exists(ItemControl.GetLongFilename(dirname)))
             {
                 try
@@ -267,6 +284,7 @@ namespace TSviewCloudPlugin
                          }
                     );
                     pathlist[ID].SetChildren(ret);
+                    pathlist[ID].LastLoaded = DateTime.Now;
 
                     ManualResetEventSlim tmp2;
                     while (!loadinglist.TryRemove(ID, out tmp2))
@@ -609,6 +627,64 @@ namespace TSviewCloudPlugin
                 }
                 SetUpdate(oldparent);
                 SetUpdate(moveToItem);
+            });
+            return job;
+        }
+
+        public override Job<IRemoteItem> RenameItem(IRemoteItem targetItem, string newName, bool WeekDepend = false, params Job[] prevJob)
+        {
+            if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
+
+            TSviewCloudConfig.Config.Log.LogOut("[RenameItem(LocalSystem)] " + targetItem.FullPath);
+            var job = JobControler.CreateNewJob<IRemoteItem>(
+                type: JobClass.RemoteOperation,
+                depends: prevJob);
+            job.WeekDepend = WeekDepend;
+            job.DisplayName = "Rename item : " + targetItem.Name;
+            job.ProgressStr = "wait for operation.";
+            var ct = job.Ct;
+            JobControler.Run<IRemoteItem>(job, (j) =>
+            {
+                TSviewCloudConfig.Config.Log.LogOut("[Rename] " + targetItem.Name);
+
+                j.ProgressStr = "Rename...";
+                j.Progress = -1;
+
+                var parent = targetItem.Parents.First();
+                try
+                {
+                    if (targetItem.ItemType == RemoteItemType.File)
+                    {
+                        File.Move(ItemControl.GetLongFilename(targetItem.ID), Path.Combine(Path.GetDirectoryName(ItemControl.GetLongFilename(targetItem.ID)), newName));
+                    }
+                    else
+                    {
+                        Directory.Move(ItemControl.GetLongFilename(targetItem.ID), Path.Combine(Path.GetDirectoryName(ItemControl.GetLongFilename(targetItem.ID)), newName));
+                    }
+
+                    var info = new DirectoryInfo(ItemControl.GetLongFilename(parent.ID));
+                    var item = info.EnumerateFileSystemInfos().Where(x => ItemControl.GetOrgFilename(x.Name) == newName).FirstOrDefault();
+
+                    var newitem = new LocalSystemItem(this, item, parent);
+                    pathlist.AddOrUpdate(newitem.ID, (k) => newitem, (k, v) => newitem);
+
+                    parent.SetChildren(parent.Children.Concat(new[] { newitem }));
+
+                    RemoveItem(targetItem.ID);
+
+                    j.Result = newitem;
+                    j.ProgressStr = "Done";
+                    j.Progress = 1;
+                }
+                catch (OperationCanceledException)
+                {
+
+                }
+                catch (Exception e)
+                {
+                    throw new RemoteServerErrorException("MoveItemOnServer Failed.", e);
+                }
+                SetUpdate(parent);
             });
             return job;
         }

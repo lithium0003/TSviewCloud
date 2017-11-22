@@ -662,5 +662,29 @@ namespace TSviewCloudPlugin
             });
             return waitjob;
         }
+
+        public override Job<IRemoteItem> RenameItem(IRemoteItem targetItem, string newName, bool WeekDepend = false, params Job[] prevJob)
+        {
+            if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
+
+            TSviewCloudConfig.Config.Log.LogOut("[RenameItem(CarotCryptSystem)] " + targetItem.FullPath);
+            var cname = CryptCarot.EncryptFilename(newName);
+            var job = (targetItem as CarotCryptSystemItem).orgItem.RenameItem(cname, WeekDepend, prevJob);
+
+            var waitjob = JobControler.CreateNewJob<IRemoteItem>(
+                type: JobClass.RemoteOperation,
+                depends: job);
+            JobControler.Run<IRemoteItem>(waitjob, (j) =>
+            {
+                var result = j.ResultOfDepend[0];
+                if (result.TryGetTarget(out var prevresult))
+                {
+                    j.Result = prevresult;
+                }
+                var parent = targetItem.Parents.First();
+                SetUpdate(parent);
+            });
+            return waitjob;
+        }
     }
 }

@@ -2061,6 +2061,42 @@ namespace TSviewCloud
             }
         }
 
+        private void Rename(object sender, EventArgs e)
+        {
+            if (listView1.SelectedIndices.Count == 1)
+            {
+                var selectItem = listView1.SelectedIndices.Cast<int>()
+                    .Where(i => !listData.IsSpetialItem(i))
+                    .Select(i => listData[i]).FirstOrDefault();
+
+                if (selectItem == null) return;
+                var currentview = listData.CurrentViewItem;
+
+                var inputform = new FormInputName();
+                inputform.NewItemName = selectItem.Name;
+                if (inputform.ShowDialog(this) == DialogResult.OK)
+                {
+                    if (inputform.NewItemName == selectItem.Name) return;
+                    if (inputform.NewItemName == "") return;
+                    var dispjob = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(
+                        type: TSviewCloudPlugin.JobClass.Display,
+                        depends: selectItem.RenameItem(inputform.NewItemName)
+                        );
+                    TSviewCloudPlugin.JobControler.Run(dispjob, (j) =>
+                    {
+                        if (currentview == null) return;
+                        if (listData.CurrentViewItem?.FullPath == currentview?.FullPath)
+                        {
+                            synchronizationContext.Post((o) =>
+                            {
+                                GotoAddress(currentview.FullPath, TSviewCloudPlugin.ReloadType.Reload);
+                            }, null);
+                        }
+                    });
+                }
+            }
+        }
+
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         private async void listView1_ItemDragAsync(object sender, ItemDragEventArgs e)
