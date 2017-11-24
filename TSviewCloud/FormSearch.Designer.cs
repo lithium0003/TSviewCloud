@@ -63,9 +63,9 @@
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.panel1 = new System.Windows.Forms.Panel();
             this.groupBox5 = new System.Windows.Forms.GroupBox();
-            this.radioButton_typeAll = new System.Windows.Forms.RadioButton();
-            this.radioButton_typeFolder = new System.Windows.Forms.RadioButton();
             this.radioButton_typeFile = new System.Windows.Forms.RadioButton();
+            this.radioButton_typeFolder = new System.Windows.Forms.RadioButton();
+            this.radioButton_typeAll = new System.Windows.Forms.RadioButton();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.groupBox3.SuspendLayout();
@@ -335,7 +335,7 @@
             // dateTimePicker_createdTo
             // 
             this.dateTimePicker_createdTo.Checked = false;
-            this.dateTimePicker_createdTo.CustomFormat = "yyyy-MM-dd (dddd) hh:mm:ss";
+            this.dateTimePicker_createdTo.CustomFormat = "yyyy-MM-dd (dddd) HH:mm:ss";
             this.dateTimePicker_createdTo.DropDownAlign = System.Windows.Forms.LeftRightAlignment.Right;
             this.dateTimePicker_createdTo.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.dateTimePicker_createdTo.Location = new System.Drawing.Point(517, 70);
@@ -347,7 +347,7 @@
             // dateTimePicker_modifiedTo
             // 
             this.dateTimePicker_modifiedTo.Checked = false;
-            this.dateTimePicker_modifiedTo.CustomFormat = "yyyy-MM-dd (dddd) hh:mm:ss";
+            this.dateTimePicker_modifiedTo.CustomFormat = "yyyy-MM-dd (dddd) HH:mm:ss";
             this.dateTimePicker_modifiedTo.DropDownAlign = System.Windows.Forms.LeftRightAlignment.Right;
             this.dateTimePicker_modifiedTo.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.dateTimePicker_modifiedTo.Location = new System.Drawing.Point(517, 41);
@@ -368,7 +368,7 @@
             // dateTimePicker_createdFrom
             // 
             this.dateTimePicker_createdFrom.Checked = false;
-            this.dateTimePicker_createdFrom.CustomFormat = "yyyy-MM-dd (dddd) hh:mm:ss";
+            this.dateTimePicker_createdFrom.CustomFormat = "yyyy-MM-dd (dddd) HH:mm:ss";
             this.dateTimePicker_createdFrom.DropDownAlign = System.Windows.Forms.LeftRightAlignment.Right;
             this.dateTimePicker_createdFrom.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.dateTimePicker_createdFrom.Location = new System.Drawing.Point(166, 70);
@@ -389,7 +389,7 @@
             // dateTimePicker_modifiedFrom
             // 
             this.dateTimePicker_modifiedFrom.Checked = false;
-            this.dateTimePicker_modifiedFrom.CustomFormat = "yyyy-MM-dd (dddd) hh:mm:ss";
+            this.dateTimePicker_modifiedFrom.CustomFormat = "yyyy-MM-dd (dddd) HH:mm:ss";
             this.dateTimePicker_modifiedFrom.DropDownAlign = System.Windows.Forms.LeftRightAlignment.Right;
             this.dateTimePicker_modifiedFrom.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.dateTimePicker_modifiedFrom.Location = new System.Drawing.Point(166, 42);
@@ -469,17 +469,15 @@
             this.groupBox5.TabStop = false;
             this.groupBox5.Text = "Search Item by type";
             // 
-            // radioButton_typeAll
+            // radioButton_typeFile
             // 
-            this.radioButton_typeAll.AutoSize = true;
-            this.radioButton_typeAll.Checked = true;
-            this.radioButton_typeAll.Location = new System.Drawing.Point(31, 21);
-            this.radioButton_typeAll.Name = "radioButton_typeAll";
-            this.radioButton_typeAll.Size = new System.Drawing.Size(43, 19);
-            this.radioButton_typeAll.TabIndex = 0;
-            this.radioButton_typeAll.TabStop = true;
-            this.radioButton_typeAll.Text = "All";
-            this.radioButton_typeAll.UseVisualStyleBackColor = true;
+            this.radioButton_typeFile.AutoSize = true;
+            this.radioButton_typeFile.Location = new System.Drawing.Point(31, 71);
+            this.radioButton_typeFile.Name = "radioButton_typeFile";
+            this.radioButton_typeFile.Size = new System.Drawing.Size(50, 19);
+            this.radioButton_typeFile.TabIndex = 2;
+            this.radioButton_typeFile.Text = "File";
+            this.radioButton_typeFile.UseVisualStyleBackColor = true;
             // 
             // radioButton_typeFolder
             // 
@@ -491,15 +489,17 @@
             this.radioButton_typeFolder.Text = "Folder";
             this.radioButton_typeFolder.UseVisualStyleBackColor = true;
             // 
-            // radioButton_typeFile
+            // radioButton_typeAll
             // 
-            this.radioButton_typeFile.AutoSize = true;
-            this.radioButton_typeFile.Location = new System.Drawing.Point(31, 71);
-            this.radioButton_typeFile.Name = "radioButton_typeFile";
-            this.radioButton_typeFile.Size = new System.Drawing.Size(50, 19);
-            this.radioButton_typeFile.TabIndex = 2;
-            this.radioButton_typeFile.Text = "File";
-            this.radioButton_typeFile.UseVisualStyleBackColor = true;
+            this.radioButton_typeAll.AutoSize = true;
+            this.radioButton_typeAll.Checked = true;
+            this.radioButton_typeAll.Location = new System.Drawing.Point(31, 21);
+            this.radioButton_typeAll.Name = "radioButton_typeAll";
+            this.radioButton_typeAll.Size = new System.Drawing.Size(43, 19);
+            this.radioButton_typeAll.TabIndex = 0;
+            this.radioButton_typeAll.TabStop = true;
+            this.radioButton_typeAll.Text = "All";
+            this.radioButton_typeAll.UseVisualStyleBackColor = true;
             // 
             // FormSearch
             // 

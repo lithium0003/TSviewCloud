@@ -144,6 +144,12 @@
     <Compile Include="FormConfigEdit.Designer.cs">
       <DependentUpon>FormConfigEdit.cs</DependentUpon>
     </Compile>
+    <Compile Include="FormConflicts.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormConflicts.Designer.cs">
+      <DependentUpon>FormConflicts.cs</DependentUpon>
+    </Compile>
     <Compile Include="FormErrorLog.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -255,6 +261,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="FormConfigEdit.resx">
       <DependentUpon>FormConfigEdit.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FormConflicts.resx">
+      <DependentUpon>FormConflicts.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="FormErrorLog.resx">
       <DependentUpon>FormErrorLog.cs</DependentUpon>

@@ -20,7 +20,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibCryptRclone", "LibCryptR
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Secretbox", "Secretbox\Secretbox.vcxproj", "{CCFCE44A-D6AB-4D60-919A-924B8BB166B5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibAmazonDrive", "LibAmazonDrive\LibAmazonDrive.csproj", "{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "SecretKeys", "SecretKeys\SecretKeys.shproj", "{FCD37600-3501-4EED-9B7F-8BF3EF3B696F}"
+EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		SecretKeys\SecretKeys.projitems*{fcd37600-3501-4eed-9b7f-8bf3ef3b696f}*SharedItemsImports = 13
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Debug|x64 = Debug|x64
@@ -101,6 +108,17 @@ Global
 		{CCFCE44A-D6AB-4D60-919A-924B8BB166B5}.Release|x64.Build.0 = Release|x64
 		{CCFCE44A-D6AB-4D60-919A-924B8BB166B5}.Release|x86.ActiveCfg = Release|Win32
 		{CCFCE44A-D6AB-4D60-919A-924B8BB166B5}.Release|x86.Build.0 = Release|Win32
+		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Debug|x64.ActiveCfg = Debug|x64
+		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Debug|x64.Build.0 = Debug|x64
+		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Debug|x86.ActiveCfg = Debug|x86
+		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Debug|x86.Build.0 = Debug|x86
+		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Release|x64.ActiveCfg = Release|x64
+		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Release|x64.Build.0 = Release|x64
+		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Release|x86.ActiveCfg = Release|x86
+		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

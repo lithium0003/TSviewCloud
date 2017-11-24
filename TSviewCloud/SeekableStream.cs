@@ -12,8 +12,8 @@ namespace ProjectUtil
 {
     class SeekableStreamConfig
     {
-        public const int slotsize = 4 * 1024 * 1024;
-        public const int slotbacklog = 32;
+        public const int slotsize = 2 * 1024 * 1024;
+        public const int slotbacklog = 128;
         public const int lockslotfirstnum = 4;
         public const int lockslotlastnum = 4;
         public const int preforwardnum = 10;

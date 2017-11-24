@@ -56,7 +56,6 @@ namespace TSviewCloud
 
             InitializeComponent();
             listData = new RemoteListViewItemList(this);
-
         }
 
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
@@ -817,21 +816,110 @@ namespace TSviewCloud
             if (f.ShowDialog() == DialogResult.OK)
             {
                 var server = f.Target;
-                listView1.SmallImageList.Images.Add(server.Icon);
-                listView1.LargeImageList.Images.Add(server.Icon);
-
-                var root = new TreeNode(server.Name, treeView1.ImageList.Images.Count - 1, treeView1.ImageList.Images.Count - 1)
+                if (server.IsReady)
                 {
-                    Name = server.Name,
-                    Tag = server[""]
-                };
-                treeView1.Nodes.Add(root);
-                ExpandItem(root);
+                    listView1.SmallImageList.Images.Add(server.Icon);
+                    listView1.LargeImageList.Images.Add(server.Icon);
 
-                var item = new ToolStripMenuItem(server.Name, server.Icon.ToBitmap());
-                item.Click += DisconnectServer;
-                item.Tag = server;
-                disconnectToolStripMenuItem.DropDownItems.Add(item);
+                    var root = new TreeNode(server.Name, treeView1.ImageList.Images.Count - 1, treeView1.ImageList.Images.Count - 1)
+                    {
+                        Name = server.Name,
+                        Tag = server[""]
+                    };
+                    treeView1.Nodes.Add(root);
+                    ExpandItem(root);
+
+                    var item = new ToolStripMenuItem(server.Name, server.Icon.ToBitmap());
+                    item.Click += DisconnectServer;
+                    item.Tag = server;
+                    disconnectToolStripMenuItem.DropDownItems.Add(item);
+                }
+                else
+                {
+                    var loadJob = TSviewCloudPlugin.JobControler.CreateNewJob(TSviewCloudPlugin.JobClass.Normal);
+                    loadJob.DisplayName = "Waiting new server ready";
+                    TSviewCloudPlugin.JobControler.Run(loadJob, (j) =>
+                    {
+                        j.Progress = -1;
+                        j.ProgressStr = "Loading...";
+                        while (!server.IsReady)
+                        {
+                            loadJob.Ct.ThrowIfCancellationRequested();
+                            Task.Delay(500).Wait(loadJob.Ct);
+                        }
+                        j.Progress = 1;
+                        j.ProgressStr = "Done.";
+                    });
+
+
+                    var displayJob = TSviewCloudPlugin.JobControler.CreateNewJob(TSviewCloudPlugin.JobClass.LoadItem, depends: loadJob);
+                    displayJob.DisplayName = "Display new server";
+                    TSviewCloudPlugin.JobControler.Run(displayJob, (j) =>
+                    {
+                        j.Progress = -1;
+                        j.ProgressStr = "Loading...";
+
+                        synchronizationContext.Send((o) =>
+                        {
+                            listView1.SmallImageList.Images.Add(server.Icon);
+                            listView1.LargeImageList.Images.Add(server.Icon);
+
+                            var root = new TreeNode(server.Name, treeView1.ImageList.Images.Count - 1, treeView1.ImageList.Images.Count - 1)
+                            {
+                                Name = server.Name
+                            };
+                            treeView1.Nodes.Add(root);
+
+                            var item = new ToolStripMenuItem(server.Name, server.Icon.ToBitmap());
+                            item.Click += DisconnectServer;
+                            item.Tag = server;
+                            disconnectToolStripMenuItem.DropDownItems.Add(item);
+
+                            j.Progress = 1;
+                            j.ProgressStr = "Done.";
+                        }, null);
+                    });
+
+                    var load2Job = TSviewCloudPlugin.JobControler.CreateNewJob(TSviewCloudPlugin.JobClass.ControlMaster);
+                    TSviewCloudPlugin.JobControler.Run(load2Job, (j) =>
+                    {
+                        displayJob.Wait(ct: j.Ct);
+                        var display2Job = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(
+                            type: TSviewCloudPlugin.JobClass.LoadItem,
+                            depends: TSviewCloudPlugin.RemoteServerFactory.PathToItemJob(server.Name + "://")
+                        );
+                        display2Job.DisplayName = "Display  server";
+                        display2Job.ProgressStr = "wait for load";
+                        TSviewCloudPlugin.JobControler.Run<TSviewCloudPlugin.IRemoteItem>(display2Job, (j2j) =>
+                        {
+                            displayJob.Wait(ct: j.Ct);
+                            j2j.Progress = -1;
+                            j2j.ProgressStr = "Loading...";
+                            var results = new List<TSviewCloudPlugin.IRemoteItem>();
+                            foreach (var item in j2j.ResultOfDepend)
+                            {
+                                if (item.TryGetTarget(out var result))
+                                {
+                                    results.Add(result);
+                                }
+                            }
+
+                            synchronizationContext.Post((o) =>
+                            {
+                                Cursor.Current = Cursors.WaitCursor;
+                                foreach (var item in o as IEnumerable<TSviewCloudPlugin.IRemoteItem>)
+                                {
+                                    var treenode = treeView1.Nodes.Find(item.Server, false).First();
+                                    treenode.Tag = item;
+                                    ExpandItem(treenode);
+                                }
+                            }, results);
+                        });
+                    });
+
+
+                }
+
             }
         }
 
@@ -854,6 +942,7 @@ namespace TSviewCloud
         {
             synchronizationContext = SynchronizationContext.Current;
             TSviewCloudPlugin.ItemControl.synchronizationContext = SynchronizationContext.Current;
+            FormConflicts.Instance.Init();
 
             if (!TSviewCloudConfig.Config.IsMasterPasswordCorrect)
             {
@@ -1007,7 +1096,9 @@ namespace TSviewCloud
             if (AddressSelecting) return;
             if (supressListviewRefresh) return;
 
-            var path = (e.Node.Tag as TSviewCloudPlugin.IRemoteItem).FullPath;
+            var path = (e.Node.Tag as TSviewCloudPlugin.IRemoteItem)?.FullPath;
+            if (path == null) return;
+
             textBox_address.Text = path;
 
             Cursor.Current = Cursors.WaitCursor;
@@ -1368,6 +1459,11 @@ namespace TSviewCloud
         private void fFplayerToolStripMenuItem_Click(object sender, EventArgs e)
         {
             (new FormConfigEdit() { SelectedTabpage = 1 }).ShowDialog(this);
+        }
+
+        private void tSSendToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            (new FormConfigEdit() { SelectedTabpage = 2 }).ShowDialog(this);
         }
 
         private void logWindowToolStripMenuItem_Click(object sender, EventArgs e)
@@ -2112,14 +2208,15 @@ namespace TSviewCloud
 
                 var inputform = new FormInputAttribute
                 {
-                    ModifiedTime = selectItem.ModifiedDate.Value
+                    ModifiedTime = selectItem.ModifiedDate.Value,
+                    CreatedTime = selectItem.CreatedDate.Value,
                 };
                 if (inputform.ShowDialog(this) == DialogResult.OK)
                 {
-                    if (inputform.ModifiedTime == selectItem.ModifiedDate) return;
+                    if (inputform.ModifiedTime == selectItem.ModifiedDate && inputform.CreatedTime == selectItem.CreatedDate) return;
                     var dispjob = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(
                         type: TSviewCloudPlugin.JobClass.Display,
-                        depends: selectItem.ChangeAttribItem(new TSviewCloudPlugin.RemoteItemAttrib(inputform.ModifiedTime))
+                        depends: selectItem.ChangeAttribItem(new TSviewCloudPlugin.RemoteItemAttrib(inputform.ModifiedTime, inputform.CreatedTime))
                         );
                     TSviewCloudPlugin.JobControler.Run(dispjob, (j) =>
                     {
@@ -2775,7 +2872,6 @@ namespace TSviewCloud
         {
             button_next_down = false;
         }
-
     }
 
 

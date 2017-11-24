@@ -23,5 +23,10 @@ namespace TSviewCloud
             set => dateTimePicker1.Value = value;
         }
 
+        public DateTime CreatedTime
+        {
+            get => dateTimePicker2.Value;
+            set => dateTimePicker2.Value = value;
+        }
     }
 }

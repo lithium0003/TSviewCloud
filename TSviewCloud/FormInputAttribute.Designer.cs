@@ -32,6 +32,8 @@
             this.button2 = new System.Windows.Forms.Button();
             this.dateTimePicker1 = new System.Windows.Forms.DateTimePicker();
             this.label1 = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
+            this.dateTimePicker2 = new System.Windows.Forms.DateTimePicker();
             this.SuspendLayout();
             // 
             // button1
@@ -56,7 +58,7 @@
             // 
             // dateTimePicker1
             // 
-            this.dateTimePicker1.CustomFormat = "yyyy-MM-dd (dddd) hh:mm:ss";
+            this.dateTimePicker1.CustomFormat = "yyyy-MM-dd (dddd) HH:mm:ss";
             this.dateTimePicker1.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.dateTimePicker1.Location = new System.Drawing.Point(26, 42);
             this.dateTimePicker1.Name = "dateTimePicker1";
@@ -72,11 +74,31 @@
             this.label1.TabIndex = 3;
             this.label1.Text = "ModifiedTime";
             // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(18, 84);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(88, 15);
+            this.label2.TabIndex = 5;
+            this.label2.Text = "CreatedTime";
+            // 
+            // dateTimePicker2
+            // 
+            this.dateTimePicker2.CustomFormat = "yyyy-MM-dd (dddd) HH:mm:ss";
+            this.dateTimePicker2.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
+            this.dateTimePicker2.Location = new System.Drawing.Point(26, 106);
+            this.dateTimePicker2.Name = "dateTimePicker2";
+            this.dateTimePicker2.Size = new System.Drawing.Size(379, 22);
+            this.dateTimePicker2.TabIndex = 4;
+            // 
             // FormInputAttribute
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(436, 211);
+            this.Controls.Add(this.label2);
+            this.Controls.Add(this.dateTimePicker2);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.dateTimePicker1);
             this.Controls.Add(this.button2);
@@ -94,5 +116,7 @@
         private System.Windows.Forms.Button button2;
         private System.Windows.Forms.DateTimePicker dateTimePicker1;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.DateTimePicker dateTimePicker2;
     }
 }

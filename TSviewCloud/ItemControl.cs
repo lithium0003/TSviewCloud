@@ -167,24 +167,39 @@ namespace TSviewCloudPlugin
                 {
                     using (remotestream)
                     {
-                        FileStream outfile;
-                        try
+                        FileStream outfile = null;
+                        if (Config.DownloadConflictBehavior == DownloadBehavior.OverrideAlways)
                         {
-                            outfile = new FileStream(GetLongFilename(localfilename), FileMode.CreateNew);
-                        }
-                        catch (IOException)
-                        {
-                            synchronizationContext.Send((o) =>
-                            {
-                                var ans = MessageBox.Show("Override file? " + localfilename, "File already exists", MessageBoxButtons.YesNoCancel);
-                                if (ans == DialogResult.Cancel)
-                                    throw new OperationCanceledException("User cancel");
-                                if (ans == DialogResult.No)
-                                    j.Cancel();
-                            }, null);
-
-                            if (j.IsCanceled) return;
                             outfile = new FileStream(GetLongFilename(localfilename), FileMode.Create);
+                        }
+                        else
+                        {
+                            try
+                            {
+                                outfile = new FileStream(GetLongFilename(localfilename), FileMode.CreateNew);
+                            }
+                            catch (IOException)
+                            {
+                                if (Config.DownloadConflictBehavior == DownloadBehavior.Prompt)
+                                {
+                                    synchronizationContext.Send((o) =>
+                                    {
+                                        var ans = MessageBox.Show("Override file? " + localfilename, "File already exists", MessageBoxButtons.YesNoCancel);
+                                        if (ans == DialogResult.Cancel)
+                                            throw new OperationCanceledException("User cancel");
+                                        if (ans == DialogResult.No)
+                                            j.Cancel();
+                                    }, null);
+
+                                    if (j.IsCanceled) return;
+                                    outfile = new FileStream(GetLongFilename(localfilename), FileMode.Create);
+                                }
+                                else
+                                {
+                                    TSviewCloud.FormConflicts.Instance.AddResult(remoteItem.FullPath, "Skip download");
+                                    return;
+                                }
+                            }
                         }
                         using (outfile)
                         {

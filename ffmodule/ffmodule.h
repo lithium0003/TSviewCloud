@@ -45,7 +45,7 @@ extern "C" {
 #include <stdlib.h>
 #include <inttypes.h>
 
-#define SDL_AUDIO_BUFFER_SIZE 256 * 1024
+#define SDL_AUDIO_BUFFER_SIZE 512 * 1024
 #define MAX_AUDIO_FRAME_SIZE 192000
 
 #define FF_REFRESH_EVENT (SDL_USEREVENT)
@@ -54,8 +54,8 @@ extern "C" {
 
 #define VIDEO_PICTURE_QUEUE_SIZE 10
 
-#define MAX_AUDIOQ_SIZE (32 * 64 * 1024)
-#define MAX_VIDEOQ_SIZE (32 * 64 * 1024)
+#define MAX_AUDIOQ_SIZE (8 * 1024 * 1024)
+#define MAX_VIDEOQ_SIZE (64 * 1024 * 1024)
 
 #define AV_SYNC_THRESHOLD 0.01
 #define AV_NOSYNC_THRESHOLD 8.0

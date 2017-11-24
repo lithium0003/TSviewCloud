@@ -66,7 +66,7 @@ namespace TSviewCloud
 
         public void LogOut(string str)
         {
-            str = DateTime.Now.ToString("yyyy/MM/dd hh:mm:ss.ffff ") + str;
+            str = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss.ffff ") + str;
 
             LogStream?.Write(str+"\r\n");
             if (lastLogDate.AddSeconds(10) < DateTime.Now && backlog == null)

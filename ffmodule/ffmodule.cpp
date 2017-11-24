@@ -796,6 +796,7 @@ namespace ffmodule {
 		AVFilterContext *filt_asrc = NULL, *filt_asink = NULL;
 		AVFilterContext *filt_volume = NULL;
 		AVFilterContext *filt_loudnorm = NULL;
+		AVFilterContext *filt_aresample = NULL;
 
 		afilt_in = NULL;
 		afilt_out = NULL;
@@ -838,6 +839,15 @@ namespace ffmodule {
 				asrc_args, NULL, graph.get()) < 0)
 				return false;
 		}
+		if (audio_filter_src.freq != audio_out_sample_rate) {
+			snprintf(asrc_args, sizeof(asrc_args),
+				"%d", audio_out_sample_rate);
+			if (avfilter_graph_create_filter(&filt_aresample,
+				avfilter_get_by_name("aresample"), "ffplay_resample",
+				asrc_args, NULL, graph.get()) < 0)
+				return false;
+		}
+
 		AVFilterContext *filt_last = filt_asrc;
 		if (filt_loudnorm) {
 			if (avfilter_link(filt_last, 0, filt_loudnorm, 0) != 0)
@@ -848,6 +858,11 @@ namespace ffmodule {
 			if (avfilter_link(filt_last, 0, filt_volume, 0) != 0)
 				return false;
 			filt_last = filt_volume;
+		}
+		if (filt_aresample) {
+			if (avfilter_link(filt_last, 0, filt_aresample, 0) != 0)
+				return false;
+			filt_last = filt_aresample;
 		}
 		if (avfilter_link(filt_last, 0, filt_asink, 0) != 0)
 			return false;
@@ -1872,6 +1887,7 @@ namespace ffmodule {
 	int _FFplayer::decode_thread(void *arg)
 	{
 		av_log(NULL, AV_LOG_INFO, "decode_thread start\n");
+		SDL_SetThreadPriority(SDL_ThreadPriority::SDL_THREAD_PRIORITY_HIGH);
 		_FFplayer *is = (_FFplayer *)arg;
 		notfree = false;
 		is->pFormatCtx = std::shared_ptr<AVFormatContext>(avformat_alloc_context(), [](AVFormatContext *ptr) { if(!notfree)avformat_close_input(&ptr); });

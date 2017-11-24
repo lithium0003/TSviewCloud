@@ -30,11 +30,6 @@ namespace TSviewCloudPlugin
             }
         }
 
-        public override void SetField()
-        {
-            orgItem.SetField();
-        }
-
         private string decryptedName;
         private string decryptedPath;
 
@@ -602,25 +597,23 @@ namespace TSviewCloudPlugin
             return job;
         }
 
-        public override Job<IRemoteItem> UploadFile(string filename, IRemoteItem remoteTarget, string uploadname = null, bool WeekDepend = false, params Job[] parentJob)
-        {
-            if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
-
-            filename = ItemControl.GetOrgFilename(filename);
-
-            TSviewCloudConfig.Config.Log.LogOut("[UploadFile(CarotCryptSystem)] " + filename);
-            var filesize = new FileInfo(ItemControl.GetLongFilename(filename)).Length;
-            var short_filename = Path.GetFileName(ItemControl.GetLongFilename(filename));
-
-            var filestream = new FileStream(ItemControl.GetLongFilename(filename), FileMode.Open, FileAccess.Read, FileShare.Read, 256 * 1024);
-            var job = UploadStream(filestream, remoteTarget, short_filename, filesize, WeekDepend, parentJob);
-
-            return job;
-        }
-
         public override Job<IRemoteItem> UploadStream(Stream source, IRemoteItem remoteTarget, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob)
         {
             if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
+
+            try
+            {
+                var check = CheckUpload(remoteTarget, uploadname, streamsize, WeekDepend, parentJob);
+                if (check != null)
+                {
+                    WeekDepend = false;
+                    parentJob = new[] { check };
+                }
+            }
+            catch
+            {
+                return null;
+            }
 
             TSviewCloudConfig.Config.Log.LogOut("[UploadStream(CarotCryptSystem)] " + uploadname);
             streamsize += (CryptCarotDAV.BlockSizeByte + CryptCarotDAV.CryptFooterByte + CryptCarotDAV.CryptFooterByte);

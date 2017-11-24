@@ -34,11 +34,6 @@ namespace TSviewCloudPlugin
             }
         }
 
-        public override void SetField()
-        {
-            orgItem.SetField();
-        }
-
         private string decryptedName;
         private string decryptedPath;
 
@@ -646,30 +641,29 @@ namespace TSviewCloudPlugin
             return job;
         }
 
-        public override Job<IRemoteItem> UploadFile(string filename, IRemoteItem remoteTarget, string uploadname = null, bool WeekDepend = false, params Job[] parentJob)
-        {
-            if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
-
-            filename = ItemControl.GetOrgFilename(filename);
-
-            TSviewCloudConfig.Config.Log.LogOut("[UploadFile(RcloneCryptSystem)] " + filename);
-            var filesize = new FileInfo(ItemControl.GetLongFilename(filename)).Length;
-            var short_filename = Path.GetFileName(ItemControl.GetLongFilename(filename));
-
-            var filestream = new FileStream(ItemControl.GetLongFilename(filename), FileMode.Open, FileAccess.Read, FileShare.Read, 256 * 1024);
-            var job = UploadStream(filestream, remoteTarget, short_filename, filesize, WeekDepend, parentJob);
-
-            return job;
-        }
-
+ 
         public override Job<IRemoteItem> UploadStream(Stream source, IRemoteItem remoteTarget, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob)
         {
             if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
+            try
+            {
+                var check = CheckUpload(remoteTarget, uploadname, streamsize, WeekDepend, parentJob);
+                if (check != null)
+                {
+                    WeekDepend = false;
+                    parentJob = new[] { check };
+                }
+            }
+            catch
+            {
+                return null;
+            }
+
             TSviewCloudConfig.Config.Log.LogOut("[UploadStream(RcloneCryptSystem)] " + uploadname);
-            streamsize = CryptRclone.CalcEncryptedSize(streamsize);
             var cname = (Encrypter.IsEncryptedName)? Encrypter.EncryptName(uploadname): uploadname + CryptRclone.encryptedSuffix;
-            var cstream = new CryptRclone.CryptRclone_CryptStream(Encrypter, source);
+            var cstream = new CryptRclone.CryptRclone_CryptStream(Encrypter, source, streamsize);
+            streamsize = CryptRclone.CalcEncryptedSize(streamsize);
 
             TSviewCloudConfig.Config.Log.LogOut("[Upload] File: {0} -> {1}", uploadname, cname);
 

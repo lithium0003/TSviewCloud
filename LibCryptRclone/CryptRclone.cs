@@ -1172,6 +1172,7 @@ namespace LibCryptRclone
         public class CryptRclone_CryptStream : Stream
         {
             Stream innerStream;
+            long orgLength;
             long _position = 0;
             long _cryptedlen = 0;
             byte[] plainBlock;
@@ -1184,7 +1185,7 @@ namespace LibCryptRclone
             byte[] _nonce;
             private bool disposed;
 
-            public CryptRclone_CryptStream(CryptRclone cRclone, Stream baseStream, byte[] nonce = null) : base()
+            public CryptRclone_CryptStream(CryptRclone cRclone, Stream baseStream, long? length = null, byte[] nonce = null) : base()
             {
                 if (nonce != null && nonce.Length != fileNonceSize) throw new ArgumentOutOfRangeException("nonce");
                 if (nonce == null)
@@ -1198,7 +1199,8 @@ namespace LibCryptRclone
                 }
 
                 innerStream = baseStream;
-                _cryptedlen = EncryptedSize(innerStream.Length);
+                orgLength = length ?? innerStream.Length;
+                _cryptedlen = EncryptedSize(orgLength);
                 last_blockno = (_cryptedlen == fileHeaderSize) ? 0 : (_cryptedlen - fileHeaderSize - 1) / chunkSize;
                 this.cRclone = cRclone;
             }
@@ -1294,8 +1296,12 @@ namespace LibCryptRclone
 
                         plainBlock = new byte[len];
                         System.Diagnostics.Debug.Assert(innerStream.Position == blockno * blockDataSize);
-                        len = innerStream.Read(plainBlock, 0, len);
-                        Array.Resize(ref plainBlock, len);
+                        var readlen = 0;
+                        while (readlen < len && innerStream.Position < orgLength)
+                        {
+                            readlen += innerStream.Read(plainBlock, readlen, len - readlen);
+                        }
+                        Array.Resize(ref plainBlock, readlen);
 
                         crypter.Seal(out cryptedBlock, plainBlock, _nonce, cRclone.dataKey);
                         crypted_blockno = blockno;
@@ -1376,10 +1382,16 @@ namespace LibCryptRclone
                 _Possition = orignalOffset;
                 if (_CryptPossition < fileMagicSize)
                 {
+                    if(cryptedLength < fileMagicSize)
+                        throw new FormatException("CryptRclone Crypted file: Header error");
+
                     int len = (int)(fileMagicSize - _CryptPossition);
                     byte[] buf = new byte[len];
-                    if (innerStream.Read(buf, 0, len) != len)
-                        throw new FormatException("CryptRclone Crypted file: Header error");
+                    int readlen = 0;
+                    while(readlen < len)
+                    {
+                        readlen += innerStream.Read(buf, readlen, len - readlen);
+                    }
 
                     byte[] header = Encoding.ASCII.GetBytes(fileMagic);
 
@@ -1392,13 +1404,17 @@ namespace LibCryptRclone
                 }
                 if (_CryptPossition < fileHeaderSize)
                 {
+                    if (cryptedLength < fileHeaderSize)
+                        throw new FormatException("CryptRclone Crypted file: Header error");
+
                     int len = (int)(fileHeaderSize - _CryptPossition);
                     if (len != fileNonceSize && _nonce == null) throw new ArgumentOutOfRangeException("nonce");
                     _nonce = new byte[fileNonceSize];
-                    len = innerStream.Read(_nonce, 0, fileNonceSize);
-
-                    if (len != fileNonceSize)
-                        throw new FormatException("CryptRclone Crypted file: Header error");
+                    int readlen = 0;
+                    while (readlen < fileNonceSize)
+                    {
+                        readlen += innerStream.Read(_nonce, readlen, fileNonceSize - readlen);
+                    }
 
                     _nonce_base = (byte[])_nonce.Clone();
 

@@ -60,7 +60,7 @@ namespace TSviewCloudPlugin
         }
 
 
-        public override void SetField()
+        public void SetField()
         {
             if (!string.IsNullOrEmpty(fullpath))
             {
@@ -411,6 +411,20 @@ namespace TSviewCloudPlugin
         {
             if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
+            try
+            {
+                var check = CheckUpload(remoteTarget, uploadname, streamsize, WeekDepend, parentJob);
+                if (check != null)
+                {
+                    WeekDepend = false;
+                    parentJob = new[] { check };
+                }
+            }
+            catch
+            {
+                return null;
+            }
+
             TSviewCloudConfig.Config.Log.LogOut("[UploadStream(LocalSystem)] " + uploadname);
             var filesize = streamsize;
             var short_filename = uploadname;
@@ -482,22 +496,6 @@ namespace TSviewCloudPlugin
 
                 SetUpdate(remoteTarget);
             });
-            return job;
-        }
-
-        public override Job<IRemoteItem> UploadFile(string filename, IRemoteItem remoteTarget, string uploadname = null, bool WeekDepend = false, params Job[] parentJob)
-        {
-            if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
-
-            filename = ItemControl.GetOrgFilename(filename);
-
-            TSviewCloudConfig.Config.Log.LogOut("[UploadFile(LocalSystem)] " + filename);
-            var filesize = new FileInfo(filename).Length;
-            var short_filename = Path.GetFileName(filename);
-
-            var filestream = new FileStream(ItemControl.GetLongFilename(filename), FileMode.Open, FileAccess.Read, FileShare.Read, 256 * 1024);
-            var job = UploadStream(filestream, remoteTarget, short_filename, filesize, WeekDepend, parentJob);
-
             return job;
         }
 
@@ -740,13 +738,15 @@ namespace TSviewCloudPlugin
                     if (targetItem.ItemType == RemoteItemType.File)
                     {
                         File.SetLastWriteTime(ItemControl.GetLongFilename(targetItem.ID), newAttrib.ModifiedDate.Value);
+                        File.SetCreationTime(ItemControl.GetLongFilename(targetItem.ID), newAttrib.CreatedDate.Value);
                     }
                     else
                     {
                         Directory.SetLastWriteTime(ItemControl.GetLongFilename(targetItem.ID), newAttrib.ModifiedDate.Value);
+                        Directory.SetCreationTime(ItemControl.GetLongFilename(targetItem.ID), newAttrib.CreatedDate.Value);
                     }
 
-                    targetItem.SetField();
+                    (targetItem as LocalSystemItem).SetField();
 
                     j.Result = targetItem;
                     j.ProgressStr = "Done";

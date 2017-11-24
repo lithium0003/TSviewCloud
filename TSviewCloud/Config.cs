@@ -31,6 +31,9 @@ namespace TSviewCloudConfig
         public static System.Drawing.Point? Main_Location;
         public static System.Drawing.Size? Main_Size;
 
+        public static UploadBehavior UploadConflictBehavior = default(UploadBehavior);
+        public static DownloadBehavior DownloadConflictBehavior = default(DownloadBehavior);
+
         public static bool LogToFile
         {
             get { return Log.LogToFile; }
@@ -304,6 +307,10 @@ namespace TSviewCloudConfig
                         Main_Size = data.Main_Size;
                     if (data.Main_Location != null)
                         Main_Location = data.Main_Location;
+                    if (data.UploadConflictBehavior != default(UploadBehavior))
+                        UploadConflictBehavior = data.UploadConflictBehavior;
+                    if (data.DownloadConflictBehavior != default(DownloadBehavior))
+                        DownloadConflictBehavior = data.DownloadConflictBehavior;
 
                     if (data.FFplayer != default(SavedataFFplayer))
                     {
@@ -422,11 +429,35 @@ namespace TSviewCloudConfig
                         DrivePasswordCheck = Enc_Check_drive_password,
                         Main_Size = TSviewCloud.Program.MainForm?.Size ?? Main_Size,
                         Main_Location = TSviewCloud.Program.MainForm?.Location ?? Main_Location,
+                        UploadConflictBehavior = UploadConflictBehavior,
+                        DownloadConflictBehavior = DownloadConflictBehavior,
                     };
                     serializer.WriteObject(xmlw, data);
                 }
             }
         }
+    }
+
+    [DataContract]
+    public enum UploadBehavior
+    {
+        [EnumMember]
+        OverrideAlways,
+        [EnumMember]
+        SkipSameSize,
+        [EnumMember]
+        SkipAlways,
+    }
+
+    [DataContract]
+    public enum DownloadBehavior
+    {
+        [EnumMember]
+        OverrideAlways,
+        [EnumMember]
+        Prompt,
+        [EnumMember]
+        SkipAlways,
     }
 
     [DataContract]
@@ -456,6 +487,11 @@ namespace TSviewCloudConfig
         public System.Drawing.Size? Main_Size;
         [DataMember]
         public System.Drawing.Point? Main_Location;
+        [DataMember]
+        public UploadBehavior UploadConflictBehavior;
+        [DataMember]
+        public DownloadBehavior DownloadConflictBehavior;
+
 
         [DataMember]
         public string DrivePasswordCheck;

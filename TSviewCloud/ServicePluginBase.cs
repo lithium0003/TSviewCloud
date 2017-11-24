@@ -47,22 +47,26 @@ namespace TSviewCloudPlugin
     public interface IRemoteItemAttrib
     {
         DateTime? ModifiedDate { get; }
+        DateTime? CreatedDate { get; }
     }
 
     public class RemoteItemAttrib : IRemoteItemAttrib
     {
         private DateTime? _modifiedDate;
+        private DateTime? _createdDate;
 
         public RemoteItemAttrib()
         {
         }
 
-        public RemoteItemAttrib(DateTime? modifiedDate)
+        public RemoteItemAttrib(DateTime? modifiedDate, DateTime? createdDate)
         {
             _modifiedDate = modifiedDate ?? throw new ArgumentNullException(nameof(modifiedDate));
+            _createdDate = createdDate ?? throw new ArgumentNullException(nameof(createdDate));
         }
 
         public DateTime? ModifiedDate => _modifiedDate;
+        public DateTime? CreatedDate => _createdDate;
     }
 
     public interface IRemoteItem
@@ -74,6 +78,7 @@ namespace TSviewCloudPlugin
         string FullPath { get; }
 
         bool IsReadyRead { get; }
+        bool IsBroken { get; set; }
 
         string Name { get; }
         long? Size { get; }
@@ -88,7 +93,6 @@ namespace TSviewCloudPlugin
         IEnumerable<IRemoteItem> Children { get; }
         RemoteItemType ItemType { get; }
 
-        void SetField();
         void FixChain(IRemoteServer server);
         void SetParents(IEnumerable<IRemoteItem> newparents);
         void SetParent(IRemoteItem newparent);
@@ -164,6 +168,7 @@ namespace TSviewCloudPlugin
         protected string[] ChildrenIDs;
 
         private DateTime age;
+        private bool _isBroken;
 
         public RemoteItemBase()
         {
@@ -176,15 +181,14 @@ namespace TSviewCloudPlugin
             serverName = Server;
             Age = DateTime.Now;
         }
-        public abstract void SetField();
-
+ 
 
         public abstract string ID { get; }
         public abstract string Path { get; }
         public abstract string Name { get; }
         public bool IsRoot => isRoot;
-        public virtual IEnumerable<IRemoteItem> Parents => parentIDs?.Select(x => _server.PeakItem(x))?.Where(x => x != null) ?? new List<IRemoteItem>();
-        public virtual IEnumerable<IRemoteItem> Children => ChildrenIDs?.Select(x => _server.PeakItem(x))?.Where(x => x != null) ?? new List<IRemoteItem>();
+        public virtual IEnumerable<IRemoteItem> Parents => parentIDs?.Where(x => x != null).Select(x => _server.PeakItem(x))?.Where(x => x != null) ?? new List<IRemoteItem>();
+        public virtual IEnumerable<IRemoteItem> Children => ChildrenIDs?.Where(x => x != null).Select(x => _server.PeakItem(x))?.Where(x => x != null) ?? new List<IRemoteItem>();
 
         public RemoteItemType ItemType => itemtype;
 
@@ -201,11 +205,13 @@ namespace TSviewCloudPlugin
 
         protected virtual void SetModifiedDate(DateTime? newdateTime)
         {
-            var job = _server.ChangeAttribItem(this, new RemoteItemAttrib(newdateTime));
+            var job = _server.ChangeAttribItem(this, new RemoteItemAttrib(newdateTime, null));
             job.Wait();
         }
 
         public virtual bool IsReadyRead => true;
+
+        public bool IsBroken { get => _isBroken; set => _isBroken = value; }
 
         public void SetParents(IEnumerable<IRemoteItem> newparents)
         {
@@ -216,6 +222,7 @@ namespace TSviewCloudPlugin
         public void SetParent(IRemoteItem newparent)
         {
             SetParents(new[] { newparent });
+            Age = DateTime.Now;
         }
 
         public void SetChildren(IEnumerable<IRemoteItem> newchildren)
@@ -240,6 +247,11 @@ namespace TSviewCloudPlugin
             return _server.UploadFile(filename, this, uploadname, WeekDepend, parentJob);
         }
 
+        public virtual Job<IRemoteItem> UploadStream(Stream source, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob)
+        {
+            return _server.UploadStream(source, this, uploadname, streamsize, WeekDepend, parentJob);
+        }
+
         public virtual Job<IRemoteItem> MakeFolder(string foldername, bool WeekDepend = false, params Job[] parentJob)
         {
             return _server.MakeFolder(foldername, this, WeekDepend, parentJob);
@@ -248,11 +260,6 @@ namespace TSviewCloudPlugin
         public virtual Job<IRemoteItem> DeleteItem(bool WeekDepend = false, params Job[] prevJob)
         {
             return _server.DeleteItem(this, WeekDepend, prevJob);
-        }
-
-        public virtual Job<IRemoteItem> UploadStream(Stream source, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob)
-        {
-            return _server.UploadStream(source, this, uploadname, streamsize, WeekDepend, parentJob);
         }
 
         public virtual Job<Stream> DownloadItemJob(bool WeekDepend = false, params Job[] prevJob)
@@ -345,14 +352,66 @@ namespace TSviewCloudPlugin
             }
         }
 
-        public abstract Job<IRemoteItem> UploadFile(string filename, IRemoteItem remoteTarget, string uploadname = null, bool WeekDepend = false, params Job[] parentJob);
         public abstract Job<Stream> DownloadItemRaw(IRemoteItem remoteTarget, long offset = 0, bool WeekDepend = false, bool hidden = false, params Job[] prevJob);
         public abstract Job<IRemoteItem> MakeFolder(string foldername, IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] parentJob);
         public abstract Job<IRemoteItem> DeleteItem(IRemoteItem delteTarget, bool WeekDepend = false, params Job[] prevJob);
-        public abstract Job<IRemoteItem> UploadStream(Stream source, IRemoteItem remoteTarget, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob);
         public abstract Job<Stream> DownloadItem(IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] prevJob);
         public abstract Job<IRemoteItem> RenameItem(IRemoteItem targetItem, string newName, bool WeekDepend = false, params Job[] prevJob);
         public abstract Job<IRemoteItem> ChangeAttribItem(IRemoteItem targetItem, IRemoteItemAttrib newAttrib, bool WeekDepend = false, params Job[] prevJob);
+
+        public abstract Job<IRemoteItem> UploadStream(Stream source, IRemoteItem remoteTarget, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob);
+
+        public virtual Job CheckUpload(IRemoteItem remoteTarget, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob)
+        {
+            var conflicts = remoteTarget.Children?.Where(x => x.Name.ToLower() == uploadname.ToLower());
+            if((conflicts?.Count()?? 0) == 0)
+            {
+                return null;
+            }
+            if(TSviewCloudConfig.Config.UploadConflictBehavior == TSviewCloudConfig.UploadBehavior.SkipAlways)
+            {
+                TSviewCloud.FormConflicts.Instance.AddResult(remoteTarget.FullPath + "/" + uploadname, "Skip upload");
+                throw new Exception("conflict and always skip");
+            }
+            if (TSviewCloudConfig.Config.UploadConflictBehavior == TSviewCloudConfig.UploadBehavior.SkipSameSize)
+            {
+                if (conflicts.Any(x => x.Size == streamsize))
+                {
+                    TSviewCloud.FormConflicts.Instance.AddResult(remoteTarget.FullPath + "/" + uploadname, "Skip upload (same size)");
+                    throw new Exception("conflict and same size skip");
+                }
+            }
+
+            var job = JobControler.CreateNewJob(JobClass.ControlMaster, depends: parentJob);
+            job.WeekDepend = WeekDepend;
+            JobControler.Run(job, (j) =>
+            {
+                var del = conflicts.Select(x => DeleteItem(x, true, j));
+
+                foreach(var d in del)
+                {
+                    d.Wait(ct: j.Ct);
+                }
+            });
+            return job;
+        }
+
+        public virtual Job<IRemoteItem> UploadFile(string filename, IRemoteItem remoteTarget, string uploadname = null, bool WeekDepend = false, params Job[] parentJob)
+        {
+            if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
+
+            filename = ItemControl.GetOrgFilename(filename);
+
+            TSviewCloudConfig.Config.Log.LogOut("[UploadFile] " + filename);
+            var filesize = new FileInfo(ItemControl.GetLongFilename(filename)).Length;
+            var short_filename = Path.GetFileName(ItemControl.GetLongFilename(filename));
+
+            var filestream = new FileStream(ItemControl.GetLongFilename(filename), FileMode.Open, FileAccess.Read, FileShare.Read, 256 * 1024);
+            var job = UploadStream(filestream, remoteTarget, short_filename, filesize, WeekDepend, parentJob);
+
+            return job;
+        }
+
 
         protected abstract Job<IRemoteItem> MoveItemOnServer(IRemoteItem moveItem, IRemoteItem moveToItem, bool WeekDepend = false, params Job[] prevJob);
 

@@ -191,6 +191,30 @@ namespace TSviewCloud
             SetBandwidthInfo();
             textBox_UploadParallel.Text = TSviewCloudConfig.Config.ParallelUpload.ToString();
             textBox_DownloadParallel.Text = TSviewCloudConfig.Config.ParallelDownload.ToString();
+            switch (TSviewCloudConfig.Config.UploadConflictBehavior)
+            {
+                case TSviewCloudConfig.UploadBehavior.OverrideAlways:
+                    radioButton_override.Checked = true;
+                    break;
+                case TSviewCloudConfig.UploadBehavior.SkipSameSize:
+                    radioButton_checksize.Checked = true;
+                    break;
+                case TSviewCloudConfig.UploadBehavior.SkipAlways:
+                    radioButton_skip.Checked = true;
+                    break;
+            }
+            switch (TSviewCloudConfig.Config.DownloadConflictBehavior)
+            {
+                case TSviewCloudConfig.DownloadBehavior.OverrideAlways:
+                    radioButton_downover.Checked = true;
+                    break;
+                case TSviewCloudConfig.DownloadBehavior.Prompt:
+                    radioButton_prompt.Checked = true;
+                    break;
+                case TSviewCloudConfig.DownloadBehavior.SkipAlways:
+                    radioButton_downskip.Checked = true;
+                    break;
+            }
 
             textBox_fontpath.Text = TSviewCloudConfig.ConfigFFplayer.FontFilePath;
             numericUpDown_FontPtSize.Value = TSviewCloudConfig.ConfigFFplayer.FontPtSize;
@@ -372,6 +396,33 @@ namespace TSviewCloud
             {
                 TSviewCloudConfig.Config.ParallelDownload = 1;
             }
+
+            if (radioButton_override.Checked)
+            {
+                TSviewCloudConfig.Config.UploadConflictBehavior = TSviewCloudConfig.UploadBehavior.OverrideAlways;
+            }
+            if (radioButton_checksize.Checked)
+            {
+                TSviewCloudConfig.Config.UploadConflictBehavior = TSviewCloudConfig.UploadBehavior.SkipSameSize;
+            }
+            if (radioButton_skip.Checked)
+            {
+                TSviewCloudConfig.Config.UploadConflictBehavior = TSviewCloudConfig.UploadBehavior.SkipAlways;
+            }
+
+            if (radioButton_downover.Checked)
+            {
+                TSviewCloudConfig.Config.DownloadConflictBehavior = TSviewCloudConfig.DownloadBehavior.OverrideAlways;
+            }
+            if (radioButton_prompt.Checked)
+            {
+                TSviewCloudConfig.Config.DownloadConflictBehavior = TSviewCloudConfig.DownloadBehavior.Prompt;
+            }
+            if (radioButton_downskip.Checked)
+            {
+                TSviewCloudConfig.Config.DownloadConflictBehavior = TSviewCloudConfig.DownloadBehavior.SkipAlways;
+            }
+
 
             if (File.Exists(textBox_fontpath.Text))
             {
@@ -718,5 +769,6 @@ namespace TSviewCloud
             textBox_VK.Text = e.KeyCode.ToString();
             SendVK = e.KeyCode;
         }
+
     }
 }

@@ -33,6 +33,14 @@
             this.button_Cancel = new System.Windows.Forms.Button();
             this.button_OK = new System.Windows.Forms.Button();
             this.tabPage_general = new System.Windows.Forms.TabPage();
+            this.groupBox7 = new System.Windows.Forms.GroupBox();
+            this.radioButton_downskip = new System.Windows.Forms.RadioButton();
+            this.radioButton_prompt = new System.Windows.Forms.RadioButton();
+            this.radioButton_downover = new System.Windows.Forms.RadioButton();
+            this.groupBox6 = new System.Windows.Forms.GroupBox();
+            this.radioButton_skip = new System.Windows.Forms.RadioButton();
+            this.radioButton_checksize = new System.Windows.Forms.RadioButton();
+            this.radioButton_override = new System.Windows.Forms.RadioButton();
             this.groupBox5 = new System.Windows.Forms.GroupBox();
             this.label10 = new System.Windows.Forms.Label();
             this.label9 = new System.Windows.Forms.Label();
@@ -112,6 +120,8 @@
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.panel1.SuspendLayout();
             this.tabPage_general.SuspendLayout();
+            this.groupBox7.SuspendLayout();
+            this.groupBox6.SuspendLayout();
             this.groupBox5.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.tabControl1.SuspendLayout();
@@ -175,6 +185,8 @@
             // 
             // tabPage_general
             // 
+            this.tabPage_general.Controls.Add(this.groupBox7);
+            this.tabPage_general.Controls.Add(this.groupBox6);
             this.tabPage_general.Controls.Add(this.groupBox5);
             this.tabPage_general.Controls.Add(this.groupBox1);
             this.tabPage_general.Location = new System.Drawing.Point(4, 25);
@@ -184,6 +196,96 @@
             this.tabPage_general.TabIndex = 1;
             this.tabPage_general.Text = "General";
             this.tabPage_general.UseVisualStyleBackColor = true;
+            // 
+            // groupBox7
+            // 
+            this.groupBox7.Controls.Add(this.radioButton_downskip);
+            this.groupBox7.Controls.Add(this.radioButton_prompt);
+            this.groupBox7.Controls.Add(this.radioButton_downover);
+            this.groupBox7.Dock = System.Windows.Forms.DockStyle.Top;
+            this.groupBox7.Location = new System.Drawing.Point(3, 360);
+            this.groupBox7.Name = "groupBox7";
+            this.groupBox7.Size = new System.Drawing.Size(559, 100);
+            this.groupBox7.TabIndex = 4;
+            this.groupBox7.TabStop = false;
+            this.groupBox7.Text = "Download conflict behavior";
+            // 
+            // radioButton_downskip
+            // 
+            this.radioButton_downskip.AutoSize = true;
+            this.radioButton_downskip.Location = new System.Drawing.Point(6, 71);
+            this.radioButton_downskip.Name = "radioButton_downskip";
+            this.radioButton_downskip.Size = new System.Drawing.Size(156, 19);
+            this.radioButton_downskip.TabIndex = 2;
+            this.radioButton_downskip.Text = "Skip donlowd always";
+            this.radioButton_downskip.UseVisualStyleBackColor = true;
+            // 
+            // radioButton_prompt
+            // 
+            this.radioButton_prompt.AutoSize = true;
+            this.radioButton_prompt.Checked = true;
+            this.radioButton_prompt.Location = new System.Drawing.Point(6, 46);
+            this.radioButton_prompt.Name = "radioButton_prompt";
+            this.radioButton_prompt.Size = new System.Drawing.Size(152, 19);
+            this.radioButton_prompt.TabIndex = 1;
+            this.radioButton_prompt.TabStop = true;
+            this.radioButton_prompt.Text = "Always prompt user";
+            this.radioButton_prompt.UseVisualStyleBackColor = true;
+            // 
+            // radioButton_downover
+            // 
+            this.radioButton_downover.AutoSize = true;
+            this.radioButton_downover.Location = new System.Drawing.Point(6, 21);
+            this.radioButton_downover.Name = "radioButton_downover";
+            this.radioButton_downover.Size = new System.Drawing.Size(128, 19);
+            this.radioButton_downover.TabIndex = 0;
+            this.radioButton_downover.Text = "Override always";
+            this.radioButton_downover.UseVisualStyleBackColor = true;
+            // 
+            // groupBox6
+            // 
+            this.groupBox6.Controls.Add(this.radioButton_skip);
+            this.groupBox6.Controls.Add(this.radioButton_checksize);
+            this.groupBox6.Controls.Add(this.radioButton_override);
+            this.groupBox6.Dock = System.Windows.Forms.DockStyle.Top;
+            this.groupBox6.Location = new System.Drawing.Point(3, 260);
+            this.groupBox6.Name = "groupBox6";
+            this.groupBox6.Size = new System.Drawing.Size(559, 100);
+            this.groupBox6.TabIndex = 3;
+            this.groupBox6.TabStop = false;
+            this.groupBox6.Text = "Upload conflict behavior";
+            // 
+            // radioButton_skip
+            // 
+            this.radioButton_skip.AutoSize = true;
+            this.radioButton_skip.Location = new System.Drawing.Point(6, 71);
+            this.radioButton_skip.Name = "radioButton_skip";
+            this.radioButton_skip.Size = new System.Drawing.Size(145, 19);
+            this.radioButton_skip.TabIndex = 2;
+            this.radioButton_skip.Text = "Skip upload always";
+            this.radioButton_skip.UseVisualStyleBackColor = true;
+            // 
+            // radioButton_checksize
+            // 
+            this.radioButton_checksize.AutoSize = true;
+            this.radioButton_checksize.Checked = true;
+            this.radioButton_checksize.Location = new System.Drawing.Point(6, 46);
+            this.radioButton_checksize.Name = "radioButton_checksize";
+            this.radioButton_checksize.Size = new System.Drawing.Size(353, 19);
+            this.radioButton_checksize.TabIndex = 1;
+            this.radioButton_checksize.TabStop = true;
+            this.radioButton_checksize.Text = "Override if it has same size. Otherwize skip upload.";
+            this.radioButton_checksize.UseVisualStyleBackColor = true;
+            // 
+            // radioButton_override
+            // 
+            this.radioButton_override.AutoSize = true;
+            this.radioButton_override.Location = new System.Drawing.Point(6, 21);
+            this.radioButton_override.Name = "radioButton_override";
+            this.radioButton_override.Size = new System.Drawing.Size(380, 19);
+            this.radioButton_override.TabIndex = 0;
+            this.radioButton_override.Text = "Override always (before upload, trash the conflict item)";
+            this.radioButton_override.UseVisualStyleBackColor = true;
             // 
             // groupBox5
             // 
@@ -1084,6 +1186,10 @@
             this.Load += new System.EventHandler(this.FormConfigEdit_Load);
             this.panel1.ResumeLayout(false);
             this.tabPage_general.ResumeLayout(false);
+            this.groupBox7.ResumeLayout(false);
+            this.groupBox7.PerformLayout();
+            this.groupBox6.ResumeLayout(false);
+            this.groupBox6.PerformLayout();
             this.groupBox5.ResumeLayout(false);
             this.groupBox5.PerformLayout();
             this.groupBox1.ResumeLayout(false);
@@ -1216,5 +1322,13 @@
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel3;
         private System.Windows.Forms.Label label25;
         private System.Windows.Forms.TextBox textBox_SendPort;
+        private System.Windows.Forms.GroupBox groupBox6;
+        private System.Windows.Forms.RadioButton radioButton_skip;
+        private System.Windows.Forms.RadioButton radioButton_checksize;
+        private System.Windows.Forms.RadioButton radioButton_override;
+        private System.Windows.Forms.GroupBox groupBox7;
+        private System.Windows.Forms.RadioButton radioButton_downskip;
+        private System.Windows.Forms.RadioButton radioButton_prompt;
+        private System.Windows.Forms.RadioButton radioButton_downover;
     }
 }
