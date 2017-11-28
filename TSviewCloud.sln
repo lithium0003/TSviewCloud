@@ -28,6 +28,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibGoogleDrive", "LibGoogle
 EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Setup64bit", "Setup64bit\Setup64bit.vdproj", "{42D0ED6F-C4A0-43C0-B003-6381326955A9}"
 EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Setup32bit", "Setup32bit\Setup32bit.vdproj", "{BBD26ED8-A190-4C15-AA1D-F450447E9283}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		SecretKeys\SecretKeys.projitems*{fcd37600-3501-4eed-9b7f-8bf3ef3b696f}*SharedItemsImports = 13
@@ -139,6 +141,13 @@ Global
 		{42D0ED6F-C4A0-43C0-B003-6381326955A9}.Release|x64.ActiveCfg = Release
 		{42D0ED6F-C4A0-43C0-B003-6381326955A9}.Release|x64.Build.0 = Release
 		{42D0ED6F-C4A0-43C0-B003-6381326955A9}.Release|x86.ActiveCfg = Release
+		{BBD26ED8-A190-4C15-AA1D-F450447E9283}.Debug|Any CPU.ActiveCfg = Debug
+		{BBD26ED8-A190-4C15-AA1D-F450447E9283}.Debug|x64.ActiveCfg = Debug
+		{BBD26ED8-A190-4C15-AA1D-F450447E9283}.Debug|x86.ActiveCfg = Debug
+		{BBD26ED8-A190-4C15-AA1D-F450447E9283}.Release|Any CPU.ActiveCfg = Release
+		{BBD26ED8-A190-4C15-AA1D-F450447E9283}.Release|x64.ActiveCfg = Release
+		{BBD26ED8-A190-4C15-AA1D-F450447E9283}.Release|x86.ActiveCfg = Release
+		{BBD26ED8-A190-4C15-AA1D-F450447E9283}.Release|x86.Build.0 = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
