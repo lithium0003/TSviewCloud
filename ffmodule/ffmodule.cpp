@@ -2885,8 +2885,8 @@ namespace ffmodule {
 			/* computer the REAL delay */
 			double actual_delay = frame_timer - av_gettime() / 1000000.0;
 
-			if (actual_delay > AV_SYNC_THRESHOLD) {
-				schedule_refresh((int)(actual_delay * 1000 - 10));
+			if (actual_delay > AV_SYNC_THRESHOLD + 0.01) {
+				schedule_refresh((int)(actual_delay * 1000) - 20);
 			}
 			else if (actual_delay > skepdelay) {
 				schedule_refresh(1);
