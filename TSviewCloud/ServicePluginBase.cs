@@ -443,17 +443,25 @@ namespace TSviewCloudPlugin
                 {
                     return null;
                 }
-                var movejob = JobControler.CreateNewJob<IRemoteItem>(JobClass.RemoteUpload, depends: prevJob);
+                var movejob = JobControler.CreateNewJob<IRemoteItem>(
+                    type: JobClass.RemoteUpload,
+                    info: new JobControler.SubInfo
+                    {
+                        type = JobControler.SubInfo.SubType.UploadFilePre,
+                        size = moveItem.Size ?? 0,
+                    },
+                    depends: prevJob);
                 movejob.WeekDepend = WeekDepend;
                 movejob.DisplayName = moveItem.FullPath;
                 movejob.ProgressStr = "wait for download";
-                movejob.ForceHidden = true;
                 JobControler.Run<IRemoteItem>(movejob, (j) =>
                 {
                     j.ProgressStr = "move progress...";
                     j.Progress = -1;
                     var downjob = RemoteServerFactory.PathToItem(moveItem.FullPath).DownloadItemRawJob(WeekDepend: true, prevJob: j);
                     downjob.Wait(ct: j.Ct);
+                    j.JobInfo.pos = moveItem.Size ?? 0; // hand over size to upload task
+                    j.ForceHidden = true;
                     var uploadjob = moveToItem.UploadStream(downjob.Result, moveItem.Name, moveItem.Size ?? 0, WeekDepend, prevJob);
                     uploadjob.Wait(ct: j.Ct);
                     j.Result = uploadjob.Result;

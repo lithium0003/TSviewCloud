@@ -374,9 +374,6 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <WCFMetadata Include="Connected Services\" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\ffmodule\ffmodule.vcxproj">
       <Project>{9affb411-07d7-4e7c-8b6e-60bae66dc530}</Project>
       <Name>ffmodule</Name>

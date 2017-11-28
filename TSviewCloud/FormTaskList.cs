@@ -95,7 +95,7 @@ namespace TSviewCloudPlugin
                 var str = new StringBuilder();
                 str.AppendFormat("All:{0} ", internalJobList.Length);
                 int d = JobControler.JobTypeCount(JobClass.Download);
-                int u = JobControler.JobTypeCount(JobClass.Upload);
+                int u = JobControler.JobTypeCount(JobClass.Upload) + JobControler.JobTypeCount(JobClass.RemoteUpload);
                 int p = JobControler.JobTypeCount(JobClass.PlayDownload);
                 int o = internalJobList.Length - (d + u + p);
                 if (d > 0)
@@ -355,7 +355,7 @@ namespace TSviewCloudPlugin
             {
                 set
                 {
-                    if (value > 0)
+                    if (value >= 0)
                     {
                         if (type == SubType.UploadFile)
                         {
@@ -365,6 +365,11 @@ namespace TSviewCloudPlugin
                         {
                             DownloadProgress.AddOrUpdate(index, value, (key, val) => value);
                         }
+                        else if (type == SubType.UploadFilePre)
+                        {
+                            Interlocked.Decrement(ref UploadFileAll);
+                            Interlocked.Add(ref UploadTotal, -value);
+                        }
                     }
                 }
             }
@@ -372,6 +377,7 @@ namespace TSviewCloudPlugin
             {
                 unknown,
                 UploadFile,
+                UploadFilePre,
                 UploadDirectory,
                 DownloadFile,
             }
@@ -449,7 +455,7 @@ namespace TSviewCloudPlugin
             };
             joblist.Add(newjob);
             jobempty = false;
-            if (type == JobClass.Upload)
+            if (type == JobClass.Upload || type == JobClass.RemoteUpload)
             {
                 if(UploadInfoJob == null)
                 {
@@ -462,6 +468,11 @@ namespace TSviewCloudPlugin
                 info.index = newjob.Index;
                 newjob.JobInfo = info;
                 if (info?.type == SubInfo.SubType.UploadFile)
+                {
+                    Interlocked.Increment(ref UploadFileAll);
+                    Interlocked.Add(ref UploadTotal, info.size);
+                }
+                else if (info?.type == SubInfo.SubType.UploadFilePre)
                 {
                     Interlocked.Increment(ref UploadFileAll);
                     Interlocked.Add(ref UploadTotal, info.size);

@@ -12,7 +12,7 @@ namespace TSviewCloud
 {
     class TSsendPlayer
     {
-        private static readonly SynchronizationContext synchronizationContext = SynchronizationContext.Current;
+        private static SynchronizationContext synchronizationContext;
 
         private TimeSpan SendDuration;
         private TimeSpan SendStartDelay;
@@ -24,6 +24,11 @@ namespace TSviewCloud
         private DateTime _playDateTime;
 
         CancellationTokenSource seekUDP_ct_source = new CancellationTokenSource();
+
+        public TSsendPlayer()
+        {
+            synchronizationContext = SynchronizationContext.Current;
+        }
 
         private void CancelForSeekUDP()
         {
