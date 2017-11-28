@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27004.2009
+VisualStudioVersion = 15.0.27004.2010
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TSviewCloud", "TSviewCloud\TSviewCloud.csproj", "{0BCE8096-C7DB-40E3-982D-7950CD77B6EE}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -25,6 +25,8 @@ EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "SecretKeys", "SecretKeys\SecretKeys.shproj", "{FCD37600-3501-4EED-9B7F-8BF3EF3B696F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibGoogleDrive", "LibGoogleDrive\LibGoogleDrive.csproj", "{1EA14841-C3C7-4D6C-A17D-F6108A5E76E4}"
+EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Setup64bit", "Setup64bit\Setup64bit.vdproj", "{42D0ED6F-C4A0-43C0-B003-6381326955A9}"
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
@@ -130,6 +132,13 @@ Global
 		{1EA14841-C3C7-4D6C-A17D-F6108A5E76E4}.Release|x64.Build.0 = Release|x64
 		{1EA14841-C3C7-4D6C-A17D-F6108A5E76E4}.Release|x86.ActiveCfg = Release|x86
 		{1EA14841-C3C7-4D6C-A17D-F6108A5E76E4}.Release|x86.Build.0 = Release|x86
+		{42D0ED6F-C4A0-43C0-B003-6381326955A9}.Debug|Any CPU.ActiveCfg = Debug
+		{42D0ED6F-C4A0-43C0-B003-6381326955A9}.Debug|x64.ActiveCfg = Debug
+		{42D0ED6F-C4A0-43C0-B003-6381326955A9}.Debug|x86.ActiveCfg = Debug
+		{42D0ED6F-C4A0-43C0-B003-6381326955A9}.Release|Any CPU.ActiveCfg = Release
+		{42D0ED6F-C4A0-43C0-B003-6381326955A9}.Release|x64.ActiveCfg = Release
+		{42D0ED6F-C4A0-43C0-B003-6381326955A9}.Release|x64.Build.0 = Release
+		{42D0ED6F-C4A0-43C0-B003-6381326955A9}.Release|x86.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

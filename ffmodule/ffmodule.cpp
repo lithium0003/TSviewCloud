@@ -2881,12 +2881,12 @@ namespace ffmodule {
 
 
 			frame_timer += delay;
-			const double skepdelay = 0.002;
+			const double skepdelay = 0.001;
 			/* computer the REAL delay */
 			double actual_delay = frame_timer - av_gettime() / 1000000.0;
 
 			if (actual_delay > AV_SYNC_THRESHOLD) {
-				schedule_refresh((int)(actual_delay * 1000 + 0.5));
+				schedule_refresh((int)(actual_delay * 1000 - 10));
 			}
 			else if (actual_delay > skepdelay) {
 				schedule_refresh(1);
