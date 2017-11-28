@@ -82,7 +82,14 @@ namespace TSviewCloudPlugin
                 .ThenBy(x => x.Index)
                 .ThenBy(x => (x.StartTime == default(DateTime)) ? now : x.StartTime)
                 .ThenBy(x => x.QueueTime).ToArray();
-            listView1.VirtualListSize = internalJobList.Length;
+            try
+            {
+                listView1.VirtualListSize = internalJobList.Length;
+            }
+            catch
+            {
+                return;
+            }
             if(listView1.VirtualListSize > 0)
             {
                 var str = new StringBuilder();
@@ -685,7 +692,17 @@ namespace TSviewCloudPlugin
                             running_count = joblist_type[jobtype].Where(x => (x.TryGetTarget(out var tmp)) ? tmp.IsRunning : false).Count();
                             max_running = TSviewCloudConfig.Config.ParallelDownload;
                         }
+                        else if (jobtype == JobClass.RemoteDownload)
+                        {
+                            running_count = joblist_type[jobtype].Where(x => (x.TryGetTarget(out var tmp)) ? tmp.IsRunning : false).Count();
+                            max_running = TSviewCloudConfig.Config.ParallelDownload;
+                        }
                         else if (jobtype == JobClass.Upload)
+                        {
+                            running_count = joblist_type[jobtype].Where(x => (x.TryGetTarget(out var tmp)) ? tmp.IsRunning : false).Count();
+                            max_running = TSviewCloudConfig.Config.ParallelUpload;
+                        }
+                        else if (jobtype == JobClass.RemoteUpload)
                         {
                             running_count = joblist_type[jobtype].Where(x => (x.TryGetTarget(out var tmp)) ? tmp.IsRunning : false).Count();
                             max_running = TSviewCloudConfig.Config.ParallelUpload;

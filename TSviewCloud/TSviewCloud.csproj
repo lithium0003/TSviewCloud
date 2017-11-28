@@ -180,11 +180,23 @@
     <Compile Include="FormMasterPass.designer.cs">
       <DependentUpon>FormMasterPass.cs</DependentUpon>
     </Compile>
+    <Compile Include="FormDiff.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormDiff.Designer.cs">
+      <DependentUpon>FormDiff.cs</DependentUpon>
+    </Compile>
     <Compile Include="FormMatch.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="FormMatch.Designer.cs">
       <DependentUpon>FormMatch.cs</DependentUpon>
+    </Compile>
+    <Compile Include="FormDiffResult.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormDiffResult.Designer.cs">
+      <DependentUpon>FormDiffResult.cs</DependentUpon>
     </Compile>
     <Compile Include="FormMatchResult.cs">
       <SubType>Form</SubType>
@@ -280,8 +292,14 @@
     <EmbeddedResource Include="FormMasterPass.resx">
       <DependentUpon>FormMasterPass.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="FormDiff.resx">
+      <DependentUpon>FormDiff.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="FormMatch.resx">
       <DependentUpon>FormMatch.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FormDiffResult.resx">
+      <DependentUpon>FormDiffResult.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="FormMatchResult.resx">
       <DependentUpon>FormMatchResult.cs</DependentUpon>

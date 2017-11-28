@@ -24,6 +24,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibAmazonDrive", "LibAmazon
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "SecretKeys", "SecretKeys\SecretKeys.shproj", "{FCD37600-3501-4EED-9B7F-8BF3EF3B696F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibGoogleDrive", "LibGoogleDrive\LibGoogleDrive.csproj", "{1EA14841-C3C7-4D6C-A17D-F6108A5E76E4}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		SecretKeys\SecretKeys.projitems*{fcd37600-3501-4eed-9b7f-8bf3ef3b696f}*SharedItemsImports = 13
@@ -114,11 +116,20 @@ Global
 		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Debug|x86.ActiveCfg = Debug|x86
 		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Debug|x86.Build.0 = Debug|x86
 		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Release|x64.ActiveCfg = Release|x64
 		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Release|x64.Build.0 = Release|x64
 		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Release|x86.ActiveCfg = Release|x86
 		{A17CA69E-FD42-470C-94BC-9D2C90FCA66E}.Release|x86.Build.0 = Release|x86
+		{1EA14841-C3C7-4D6C-A17D-F6108A5E76E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1EA14841-C3C7-4D6C-A17D-F6108A5E76E4}.Debug|x64.ActiveCfg = Debug|x64
+		{1EA14841-C3C7-4D6C-A17D-F6108A5E76E4}.Debug|x64.Build.0 = Debug|x64
+		{1EA14841-C3C7-4D6C-A17D-F6108A5E76E4}.Debug|x86.ActiveCfg = Debug|x86
+		{1EA14841-C3C7-4D6C-A17D-F6108A5E76E4}.Debug|x86.Build.0 = Debug|x86
+		{1EA14841-C3C7-4D6C-A17D-F6108A5E76E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1EA14841-C3C7-4D6C-A17D-F6108A5E76E4}.Release|x64.ActiveCfg = Release|x64
+		{1EA14841-C3C7-4D6C-A17D-F6108A5E76E4}.Release|x64.Build.0 = Release|x64
+		{1EA14841-C3C7-4D6C-A17D-F6108A5E76E4}.Release|x86.ActiveCfg = Release|x86
+		{1EA14841-C3C7-4D6C-A17D-F6108A5E76E4}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

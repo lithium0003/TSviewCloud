@@ -212,12 +212,29 @@ namespace TSviewCloudPlugin
         {
             _IsReady = false;
             pathlist.Clear();
-            var host = RemoteServerFactory.PathToItem(cryptRootPath, ReloadType.Reload);
-            if (host == null) return;
-            var root = new CarotCryptSystemItem(this, host, null);
-            pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
-            EnsureItem("", 1);
-            _IsReady = true;
+
+            var job = JobControler.CreateNewJob();
+            job.DisplayName = "Initialize CarotCrypt";
+            job.ProgressStr = "Initialize...";
+            JobControler.Run(job, (j) =>
+            {
+                job.Progress = -1;
+
+                job.ProgressStr = "waiting for base system...";
+                while (!RemoteServerFactory.ServerList[_dependService].IsReady)
+                    Task.Delay(1000, j.Ct).Wait(j.Ct);
+
+                job.ProgressStr = "loading...";
+                var host = RemoteServerFactory.PathToItem(cryptRootPath, ReloadType.Reload);
+                if (host == null) return;
+                var root = new CarotCryptSystemItem(this, host, null);
+                pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
+                EnsureItem("", 1);
+                _IsReady = true;
+
+                job.Progress = 1;
+                job.ProgressStr = "done.";
+            });
         }
 
 
@@ -452,6 +469,29 @@ namespace TSviewCloudPlugin
         public override Job<IRemoteItem> MakeFolder(string foldername, IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] parentJob)
         {
             if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
+
+            try
+            {
+                var check = CheckUpload(remoteTarget, foldername, null, WeekDepend, parentJob);
+                if (check != null)
+                {
+                    WeekDepend = false;
+                    parentJob = new[] { check };
+                }
+            }
+            catch
+            {
+                var mkjob = JobControler.CreateNewJob<IRemoteItem>(
+               type: JobClass.RemoteOperation,
+               depends: parentJob);
+                mkjob.WeekDepend = WeekDepend;
+                mkjob.ForceHidden = true;
+                JobControler.Run<IRemoteItem>(mkjob, (j) =>
+                {
+                    j.Result = remoteTarget.Children.Where(x => x.Name == foldername).FirstOrDefault();
+                });
+                return mkjob;
+            }
 
             TSviewCloudConfig.Config.Log.LogOut("[MakeFolder(CarotCryptSystem)] " + foldername);
  

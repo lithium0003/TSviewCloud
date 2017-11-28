@@ -361,6 +361,29 @@ namespace TSviewCloudPlugin
         {
             if (parentJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
+            try
+            {
+                var check = CheckUpload(remoteTarget, foldername, null, WeekDepend, parentJob);
+                if (check != null)
+                {
+                    WeekDepend = false;
+                    parentJob = new[] { check };
+                }
+            }
+            catch
+            {
+                var mkjob = JobControler.CreateNewJob<IRemoteItem>(
+                type: JobClass.RemoteOperation,
+                depends: parentJob);
+                mkjob.WeekDepend = WeekDepend;
+                mkjob.ForceHidden = true;
+                JobControler.Run<IRemoteItem>(mkjob, (j) =>
+                {
+                    j.Result = remoteTarget.Children.Where(x => x.Name == foldername).FirstOrDefault();
+                });
+                return mkjob;
+            }
+
             TSviewCloudConfig.Config.Log.LogOut("[MakeFolder(LocalSystem)] " + foldername);
             var job = JobControler.CreateNewJob<IRemoteItem>(
                 type: JobClass.RemoteOperation,

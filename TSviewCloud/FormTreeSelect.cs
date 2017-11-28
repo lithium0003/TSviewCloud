@@ -58,12 +58,12 @@ namespace TSviewCloud
 
                 var DisplayJob = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(TSviewCloudPlugin.JobClass.LoadItem, depends: loadjob);
                 DisplayJob.DisplayName = "Display  " + pitem.FullPath;
+                DisplayJob.ForceHidden = true;
                 TSviewCloudPlugin.JobControler.Run<IRemoteItem>(DisplayJob, (j) =>
                 {
                     j.Progress = -1;
                     j.ProgressStr = "Loading...";
-                    j.ForceHidden = true;
-
+ 
                     var result = j.ResultOfDepend[0];
                     if(result.TryGetTarget(out var item))
                     {

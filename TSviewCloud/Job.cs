@@ -16,6 +16,7 @@ namespace TSviewCloudPlugin
         Save,
         RemoteDownload,
         RemoteOperation,
+        RemoteUpload,
         Download,
         Upload,
         Trash,

@@ -11,49 +11,45 @@ using System.Runtime.Serialization.Formatters.Soap;
 using System.Runtime.Serialization.Json;
 using System.Collections.Concurrent;
 using System.Threading;
-using LibAmazonDrive;
+using LibGoogleDrive;
 using System.Net.Http;
 
 namespace TSviewCloudPlugin
 {
     [DataContract]
-    public class AmazonDriveSystemItem : RemoteItemBase
+    public class GoogleDriveSystemItem : RemoteItemBase
     {
         [DataMember(Name = "ID")]
         private string id;
         [DataMember(Name = "Name")]
         private string name;
+        [DataMember(Name = "LastLoaded")]
+        DateTime? lastLoaded;
 
-        DateTime lastLoaded;
-
-        public AmazonDriveSystemItem() : base()
+        public GoogleDriveSystemItem() : base()
         {
 
         }
 
-        public AmazonDriveSystemItem(IRemoteServer server, FileMetadata_Info info, params IRemoteItem[] parent) : base(server, parent)
+        public GoogleDriveSystemItem(IRemoteServer server, FileMetadata_Info info, params IRemoteItem[] parent) : base(server, parent)
         {
             SetFileds(info);
+            if (parent?.Length > 0) isRoot = false;
         }
 
         public void SetFileds(FileMetadata_Info info)
         {
             id = info.id;
             name = info.name;
-            itemtype = (info.kind == "FOLDER") ? RemoteItemType.Folder : RemoteItemType.File;
-            size = info.contentProperties?.size;
-            modifiedDate = info.modifiedDate;
-            createdDate = info.createdDate;
-            if(info.clientProperties != null)
-            {
-                modifiedDate = info.clientProperties.dateUpdated;
-                createdDate = info.clientProperties.dateCreated;
-            }
-            hash = info.contentProperties?.md5;
+            itemtype = (info.IsFolder) ? RemoteItemType.Folder : RemoteItemType.File;
+            size = info.size;
+            modifiedDate = info.ModifiedDate;
+            createdDate = info.CreatedDate;
+            hash = info.md5Checksum;
             if (hash != null) hash = "MD5:" + hash;
             parentIDs = info.parents;
 
-            isRoot = info.isRoot ?? isRoot;
+            isRoot = (parentIDs == null || parentIDs.Length == 0);
             if (isRoot) SetParent(this);
 
             Age = DateTime.Now;
@@ -86,22 +82,27 @@ namespace TSviewCloudPlugin
         public override string ID => id;
         public override string Path => (isRoot) ? "" : Parents.First().Path + ((Parents.First().Path == "") ? "" : "/") + PathItemName;
         public override string Name => name;
+        public override string PathItemName => Uri.EscapeDataString(Name);
 
-        public DateTime LastLoaded { get => lastLoaded; set => lastLoaded = value; }
+        public string[] RawParents => parentIDs;
+
+        public DateTime? LastLoaded { get => lastLoaded; set => lastLoaded = value; }
     }
 
     [DataContract]
-    public class AmazonDriveSystem: RemoteServerBase
+    public class GoogleDriveSystem: RemoteServerBase
     {
         [DataMember(Name = "RootID")]
         private string rootID;
         [DataMember(Name = "Cache")]
-        private ConcurrentDictionary<string, AmazonDriveSystemItem> pathlist;
+        private ConcurrentDictionary<string, GoogleDriveSystemItem> pathlist;
+
+        private ConcurrentDictionary<string, ManualResetEventSlim> loadinglist;
 
         [DataMember(Name = "RefreshToken")]
         public string _refresh_token;
 
-        const string hidden_pass = "AmazonDrive Tokens";
+        const string hidden_pass = "GoogleDrive Tokens";
         public string Refresh_Token
         {
             get
@@ -114,58 +115,46 @@ namespace TSviewCloudPlugin
             }
         }
 
-        [DataMember(Name = "EndpointInfo")]
-        private GetEndpoint_Info EndpointInfo;
-        [DataMember(Name = "EndpointDate")]
-        private DateTime EndpointDate;
+ 
+        private GoogleDrive Drive;
 
-        [DataMember(Name = "CheckPoint")]
-        private string CheckPoint;
-        [DataMember(Name = "LastSyncTime")]
-        private DateTime LastSyncTime;
-
-
-        private AmazonDrive Drive;
-
-        public AmazonDriveSystem()
+        public GoogleDriveSystem()
         {
-            pathlist = new ConcurrentDictionary<string, AmazonDriveSystemItem>();
+            pathlist = new ConcurrentDictionary<string, GoogleDriveSystemItem>();
+            loadinglist = new ConcurrentDictionary<string, ManualResetEventSlim>();
         }
 
         [OnDeserialized]
         public void OnDeserialized(StreamingContext c)
         {
-            TSviewCloudConfig.Config.Log.LogOut("[Restore] AmazonDriveSystem {0}", Name);
+            TSviewCloudConfig.Config.Log.LogOut("[Restore] GoogleDriveSystem {0}", Name);
 
-            Drive = new AmazonDrive()
+            loadinglist = new ConcurrentDictionary<string, ManualResetEventSlim>();
+            Drive = new GoogleDrive()
             {
                 Auth = new AuthKeys() { refresh_token = Refresh_Token },
-                endpoints = EndpointInfo,
-                endpoint_Age = EndpointDate,
             };
             var job = JobControler.CreateNewJob();
-            job.DisplayName = "login AmazonDrive";
+            job.DisplayName = "login GoogleDrive";
             job.ProgressStr = "login...";
             JobControler.Run(job, async (j) =>
             {
                 job.Progress = -1;
 
                 await Drive.EnsureToken(j.Ct);
-                await Drive.EnsureEndpoint(j.Ct);
-
-                EndpointInfo = await Drive.GetEndpoint(j.Ct);
-                EndpointDate = DateTime.Now;
 
                 job.ProgressStr = "loading cache...";
                 if (pathlist == null)
                 {
-                    pathlist = new ConcurrentDictionary<string, AmazonDriveSystemItem>();
+                    pathlist = new ConcurrentDictionary<string, GoogleDriveSystemItem>();
 
-                    var rootitme = Drive.ListMetadata(filters: "isRoot:true", ct: j.Ct).Result;
+                    var rootitem = Drive.FilesGet(ct: j.Ct).Result;
 
-                    var root = new AmazonDriveSystemItem(this, rootitme.data[0], null);
+                    var root = new GoogleDriveSystemItem(this, rootitem, null);
                     rootID = root.ID;
-                    pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
+                    pathlist[""] = pathlist[rootID] = root;
+
+                    LoadItems(rootID, 2);
                 }
                 else
                 {
@@ -174,9 +163,6 @@ namespace TSviewCloudPlugin
                         new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
                         (x) => x.FixChain(this));
                 }
-
-                job.ProgressStr = "refresh cache...";
-                ChangesLoad(j.Ct).Wait(j.Ct);
 
                 _IsReady = true;
 
@@ -209,6 +195,9 @@ namespace TSviewCloudPlugin
             if (ID == "") ID = RootID;
             try
             {
+                var item = pathlist[ID];
+                if (item.ItemType == RemoteItemType.Folder && item.LastLoaded == null)
+                    LoadItems(ID, 0);
                 return pathlist[ID];
             }
             catch
@@ -219,49 +208,53 @@ namespace TSviewCloudPlugin
         protected override void EnsureItem(string ID, int depth = 0)
         {
             if (ID == "") ID = RootID;
-            TSviewCloudConfig.Config.Log.LogOut("[EnsureItem(AmazonDriveSystem)] " + ID);
-            Reload(true);
+            TSviewCloudConfig.Config.Log.LogOut("[EnsureItem(GoogleDriveSystem)] " + ID);
+            try
+            {
+                var item = pathlist[ID];
+                if (item.ItemType == RemoteItemType.Folder)
+                    LoadItems(ID, depth);
+                item = pathlist[ID];
+            }
+            catch
+            {
+                LoadItems(ID, depth);
+            }
+
         }
 
         public override IRemoteItem ReloadItem(string ID)
         {
             if (ID == "") ID = RootID;
-            TSviewCloudConfig.Config.Log.LogOut("[ReloadItem(AmazonDriveSystem)] " + ID);
-            Reload(true);
+            TSviewCloudConfig.Config.Log.LogOut("[ReloadItem(GoogleDriveSystem)] " + ID);
+            try
+            {
+                var item = pathlist[ID];
+                if (item.ItemType == RemoteItemType.Folder)
+                    LoadItems(ID, 2);
+                item = pathlist[ID];
+            }
+            catch
+            {
+                LoadItems(ID, 2);
+            }
             return PeakItem(ID);
         }
 
-        private void Reload(bool wait = false)
-        {
-            if(DateTime.Now - LastSyncTime > TimeSpan.FromSeconds(15))
-            {
-                var job = JobControler.CreateNewJob(JobClass.LoadItem);
-                job.DisplayName = "Reload AmazonDrive";
-                job.ProgressStr = "loading...";
-                JobControler.Run(job, (j) =>
-                {
-                    job.Progress = -1;
-                    ChangesLoad(j.Ct).Wait(j.Ct);
-                    job.Progress = 1;
-                    job.ProgressStr = "done.";
-                });
-                job.Wait();
-            }
-        }
 
         public override void Init()
         {
-            RemoteServerFactory.Register(GetServiceName(), typeof(AmazonDriveSystem));
+            RemoteServerFactory.Register(GetServiceName(), typeof(GoogleDriveSystem));
         }
 
         public override string GetServiceName()
         {
-            return "AmazonDrive";
+            return "GoogleDrive";
         }
 
         public override Icon GetIcon()
         {
-            return LibAmazonDrive.Properties.Resources.AmazonDrive;
+            return LibGoogleDrive.Properties.Resources.GoogleDrive;
         }
 
 
@@ -273,7 +266,7 @@ namespace TSviewCloudPlugin
             var Authkey = formlogin.Login();
 
             var job = JobControler.CreateNewJob();
-            job.DisplayName = "login AmazonDrive";
+            job.DisplayName = "login GoogleDrive";
             job.ProgressStr = "login...";
             JobControler.Run(job, (j) =>
             {
@@ -281,13 +274,11 @@ namespace TSviewCloudPlugin
                 if (Authkey != null && !string.IsNullOrEmpty(Authkey.access_token))
                 {
                     job.ProgressStr = "initialize connection...";
-                    Drive = new AmazonDrive()
+                    Drive = new GoogleDrive()
                     {
                         Auth = Authkey,
                     };
                     Drive.EnsureToken(j.Ct).Wait(j.Ct);
-                    EndpointInfo = Drive.GetEndpoint(j.Ct).Result;
-                    EndpointDate = DateTime.Now;
 
                     ret = true;
                 }
@@ -299,199 +290,153 @@ namespace TSviewCloudPlugin
             return ret;
         }
 
-        private void AddNewDriveItem(FileMetadata_Info newdata)
+
+        private void LoadItems(string ID, int depth = 0)
         {
-            AmazonDriveSystemItem value;
-            if (newdata == null) return;
-            if (newdata.status == "AVAILABLE")
-            {
-                var id = newdata.id;
-                // exist item
-                if (pathlist.TryGetValue(id, out value))
-                {
-                    value.SetFileds(newdata);
-                }
-                else
-                {
-                    if (newdata.isRoot ?? false)
-                    {
-                        pathlist[""].SetFileds(newdata);
-                        pathlist[id] = pathlist[""];
-                    }
-                    else
-                    {
-                        pathlist[id] = new AmazonDriveSystemItem(this, newdata, null);
-                    }
-                }
-            }
-            else if (newdata.status == "TRASH" || newdata.status == "PURGED")
-            {
-                // deleted item
-                pathlist.TryRemove(newdata.id, out value);
-            }
-        }
+            if (depth < 0) return;
+            ID = ID ?? RootID;
 
-        private void ChangeDriveItem(FileMetadata_Info newdata)
-        {
-            AmazonDriveSystemItem value;
-            if (newdata == null) return;
-            if (newdata.status == "AVAILABLE")
-            {
-                var id = newdata.id;
-                // exist item
-                if (pathlist.TryGetValue(id, out value))
-                {
-                    if (value.Parents.Select(x => x.ID).SequenceEqual(newdata.parents))
-                    {
-                        value.SetFileds(newdata);
-                    }
-                    else
-                    {
-                        foreach(var p in value.Parents)
-                        {
-                            (p as AmazonDriveSystemItem).RemoveChild(value);
-                        }
-                        value.SetFileds(newdata);
-                        if (!value.IsRoot)
-                        {
-                            foreach (var p in value.Parents)
-                            {
-                                (p as AmazonDriveSystemItem).AddChild(value);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    if (newdata.isRoot ?? false)
-                    {
-                        pathlist[""].SetFileds(newdata);
-                        value = pathlist[id] = pathlist[""];
-                    }
-                    else
-                    {
-                        value = pathlist[id] = new AmazonDriveSystemItem(this, newdata, null);
-                    }
+            if (pathlist[ID].ItemType == RemoteItemType.File) return;
 
-                    if (!value.IsRoot)
-                    {
-                        foreach (var p in value.Parents)
-                        {
-                            (p as AmazonDriveSystemItem).AddChild(value);
-                        }
-                    }
-                }
-            }
-            else if (newdata.status == "TRASH" || newdata.status == "PURGED")
+            bool master = true;
+            loadinglist.AddOrUpdate(ID, new ManualResetEventSlim(false), (k, v) =>
             {
-                // deleted item
-                if(pathlist.TryRemove(newdata.id, out value))
-                {
-                    RemoveItemChain(value);
-                }
-            }
-        }
+                if (v.IsSet)
+                    return new ManualResetEventSlim(false);
 
-        private void RemoveItemChain(AmazonDriveSystemItem item)
-        {
-            foreach (var p in item.Parents)
-            {
-                (p as AmazonDriveSystemItem).RemoveChild(item);
-            }
-            foreach (var c in item.Children)
-            {
-                RemoveItemChain(c as AmazonDriveSystemItem);
-            }
-        }
+                master = false;
+                return v;
+            });
 
- 
-        private async Task ChangesLoad(CancellationToken ct = default(CancellationToken))
-        {
-            TSviewCloudConfig.Config.Log.LogOut("[ChangesLoad(AmazonDriveSystem)] ");
-            bool init = (CheckPoint == null);
-            while (!ct.IsCancellationRequested)
+            if (!master)
             {
-                Changes_Info[] history = null;
-                int retry = 6;
-                while (--retry > 0)
+                while (loadinglist.TryGetValue(ID, out var tmp) && tmp != null)
                 {
-                    try
-                    {
-                        history = await Drive.Changes(checkpoint: CheckPoint, ct: ct);
-                        LastSyncTime = DateTime.Now;
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        TSviewCloudConfig.Config.Log.LogOut("[ChangesLoad(AmazonDriveSystem)] ", ex.Message);
-                    }
+                    tmp.Wait();
                 }
-                if (history == null) break;
-                foreach (var h in history)
+                return;
+            }
+
+            if (pathlist.ContainsKey(ID))
+            {
+                if (DateTime.Now - pathlist[ID].LastLoaded < TimeSpan.FromSeconds(30))
                 {
-                    if (!(h.end ?? false))
-                    {
-                        if (h.nodes.Count() > 0)
-                        {
-                            if (init)
-                            {
-                                Parallel.ForEach(h.nodes, (item) =>
-                                {
-                                    ct.ThrowIfCancellationRequested();
-                                    AddNewDriveItem(item);
-                                });
-                            }
-                            else
-                            {
-                                foreach(var item in h.nodes)
-                                {
-                                    ChangeDriveItem(item);
-                                }
-                            }
-                        }
-                        CheckPoint = h.checkpoint;
-                    }
-                }
-                if ((history.LastOrDefault()?.end ?? false))
-                {
-                    break;
+                    ManualResetEventSlim tmp2;
+                    while (!loadinglist.TryRemove(ID, out tmp2))
+                        Thread.Sleep(10);
+                    tmp2.Set();
+
+                    return;
                 }
             }
-            if (init)
-            {
-                foreach (var item in pathlist.Values.ToArray())
-                {
-                    if (item.IsRoot) continue;
-                    ct.ThrowIfCancellationRequested();
-                    foreach (var p in item.Parents.ToArray())
-                    {
-                        (p as AmazonDriveSystemItem).AddChild(item);
-                    }
-                }
-            }
-        }
 
-        public override bool Add()
-        {
-            if(InitializeDrive())
-            {
-                TSviewCloudConfig.Config.Log.LogOut("[Add] AmazonDriveSystem {0}", Name);
+            TSviewCloudConfig.Config.Log.LogOut("[LoadItems(GoogleDriveSystem)] " + ID);
 
+            try
+            {
                 var job = JobControler.CreateNewJob();
-                job.DisplayName = "Initialize AmazonDrive";
+                job.DisplayName = "Loading GoogleDrive Item:" + ID;
                 job.ProgressStr = "Initialize...";
                 JobControler.Run(job, (j) =>
                 {
                     job.Progress = -1;
 
-                    var rootitme = Drive.ListMetadata(filters: "isRoot:true", ct: j.Ct).Result;
+                    job.ProgressStr = "Loading children...";
 
-                    var root = new AmazonDriveSystemItem(this, rootitme.data[0], null);
+                    var me = Drive.FilesGet(ID, ct: j.Ct).Result;
+                    if (me == null || (me.trashed ?? false))
+                    {
+                        RemoveItem(ID);
+                        return;
+                    }
+                    pathlist[ID].SetFileds(me);
+
+                    var children = Drive.ListChildren(ID, ct: j.Ct).Result;
+                    if (children != null)
+                    {
+                        var ret = new List<GoogleDriveSystemItem>();
+                        Parallel.ForEach(
+                            children,
+                            new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                            () => new List<GoogleDriveSystemItem>(),
+                            (x, state, local) =>
+                            {
+                                if (x.trashed ?? false) return local;
+                                var item = new GoogleDriveSystemItem(this, x, pathlist[ID]);
+                                pathlist.AddOrUpdate(item.ID, (k) => item, (k, v) => { v.SetFileds(x); return v; });
+                                local.Add(pathlist[item.ID]);
+                                return local;
+                            },
+                             (result) =>
+                             {
+                                 lock (ret)
+                                     ret.AddRange(result);
+                             }
+                        );
+                        pathlist[ID].SetChildren(ret);
+                    }
+                    pathlist[ID].LastLoaded = DateTime.Now;
+
+                    job.Progress = 1;
+                    job.ProgressStr = "done";
+                });
+                job.Wait();
+            }
+            catch
+            {
+                RemoveItem(ID);
+            }
+            finally
+            {
+                ManualResetEventSlim tmp3;
+                while (!loadinglist.TryRemove(ID, out tmp3))
+                    Thread.Sleep(10);
+                tmp3.Set();
+            }
+
+            if (depth > 0)
+            {
+                Parallel.ForEach(pathlist[ID].Children.Where(x => x.ItemType == RemoteItemType.Folder),
+                    new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                    (x) => { LoadItems(x.ID, depth - 1); });
+            }
+        }
+
+
+        private void RemoveItemChain(GoogleDriveSystemItem item)
+        {
+            foreach (var p in item.Parents)
+            {
+                (p as GoogleDriveSystemItem).RemoveChild(item);
+            }
+            foreach (var c in item.Children)
+            {
+                RemoveItemChain(c as GoogleDriveSystemItem);
+            }
+        }
+
+ 
+        public override bool Add()
+        {
+            if(InitializeDrive())
+            {
+                TSviewCloudConfig.Config.Log.LogOut("[Add] GoogleDriveSystem {0}", Name);
+
+                var job = JobControler.CreateNewJob();
+                job.DisplayName = "Initialize GoogleDrive";
+                job.ProgressStr = "Initialize...";
+                JobControler.Run(job, (j) =>
+                {
+                    job.Progress = -1;
+
+                    job.ProgressStr = "Loading root...";
+                    var rootitem = Drive.FilesGet(ct: j.Ct).Result;
+
+                    var root = new GoogleDriveSystemItem(this, rootitem, null);
                     rootID = root.ID;
-                    pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
-                    
-                    job.ProgressStr = "Loading tree...";
-                    ChangesLoad(j.Ct).Wait(j.Ct);
+                    pathlist[""] = pathlist[rootID] = root;
+
+                    LoadItems(rootID, 2);
 
                     _IsReady = true;
 
@@ -507,24 +452,21 @@ namespace TSviewCloudPlugin
         {
             _IsReady = false;
             pathlist.Clear();
-            CheckPoint = null;
-            LastSyncTime = default(DateTime);
 
             var job = JobControler.CreateNewJob();
-            job.DisplayName = "Initialize AmazonDrive";
+            job.DisplayName = "Initialize GoogleDrive";
             job.ProgressStr = "Initialize...";
             JobControler.Run(job, (j) =>
             {
                 job.Progress = -1;
 
-                var rootitme = Drive.ListMetadata(filters: "isRoot:true", ct: j.Ct).Result;
+                var rootitem = Drive.FilesGet(ct: j.Ct).Result;
 
-                var root = new AmazonDriveSystemItem(this, rootitme.data[0], null);
+                var root = new GoogleDriveSystemItem(this, rootitem, null);
                 rootID = root.ID;
-                pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
+                pathlist[""] = pathlist[rootID] = root;
 
-                job.ProgressStr = "Loading tree...";
-                ChangesLoad(j.Ct).Wait(j.Ct);
+                LoadItems(rootID, 2);
 
                 _IsReady = true;
 
@@ -536,7 +478,7 @@ namespace TSviewCloudPlugin
         private void RemoveItem(string ID)
         {
             TSviewCloudConfig.Config.Log.LogOut("[RemoveItem] " + ID);
-            if (pathlist.TryRemove(ID, out AmazonDriveSystemItem target))
+            if (pathlist.TryRemove(ID, out GoogleDriveSystemItem target))
             {
                 if (target != null)
                 {
@@ -580,7 +522,7 @@ namespace TSviewCloudPlugin
                 return mkjob;
             }
 
-            TSviewCloudConfig.Config.Log.LogOut("[MakeFolder(AmazonDriveSystem)] " + foldername);
+            TSviewCloudConfig.Config.Log.LogOut("[MakeFolder(GoogleDriveSystem)] " + foldername);
             var job = JobControler.CreateNewJob<IRemoteItem>(
                 type: JobClass.RemoteOperation,
                 depends: parentJob);
@@ -598,9 +540,11 @@ namespace TSviewCloudPlugin
                 try
                 {
                     var newremoteitem = Drive.CreateFolder(foldername, remoteTarget.ID, j.Ct).Result;
-                    var newitem = pathlist[newremoteitem.id] = new AmazonDriveSystemItem(this, newremoteitem, null);
+                    var newitem = pathlist[newremoteitem.id] = new GoogleDriveSystemItem(this, newremoteitem, null);
 
-                    (remoteTarget as AmazonDriveSystemItem).AddChild(newitem);
+                    (remoteTarget as GoogleDriveSystemItem).AddChild(newitem);
+
+                    j.Result = newitem;
 
                     j.ProgressStr = "Done";
                     j.Progress = 1;
@@ -617,45 +561,6 @@ namespace TSviewCloudPlugin
             });
             return job;
         }
-
-
-        private FileMetadata_Info CheckNewfile(int check_retry, string parentID, string uploadfilename, Job<IRemoteItem> job)
-        {
-            FileMetadata_Info result = null;
-            while (check_retry-- > 0)
-            {
-                try
-                {
-                    TSviewCloudConfig.Config.Log.LogOut("[CheckNewfile(AmazonDriveSystem)] : wait 10sec for retry..." + check_retry.ToString());
-                    job.ProgressStr = "Upload : wait 10sec for retry..." + check_retry.ToString();
-                    job.Progress = -1;
-                    Task.Delay(TimeSpan.FromSeconds(10), job.Ct).Wait(job.Ct);
-
-                    Drive.Changes(checkpoint: CheckPoint, ct: job.Ct).ContinueWith((t) =>
-                    {
-                        var children = t.Result.Where(x => (x?.nodes != null) && (!x.end ?? true)).Select(x => x.nodes).SelectMany(x => x);
-                        if (children.Where(x => x.name == uploadfilename).Where(x => x.parents.First() == parentID).LastOrDefault()?.status == "AVAILABLE")
-                        {
-                            TSviewCloudConfig.Config.Log.LogOut("[CheckNewfile(AmazonDriveSystem)] : child found");
-                            job.ProgressStr = "Upload : child found.";
-                            result = children.Where(x => x.name == uploadfilename).Where(x => x.parents.First() == parentID).LastOrDefault();
-                            throw new Exception("break");
-                        }
-                    }).Wait(job.Ct);
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception)
-                {
-                    break;
-                }
-            }
-            return result;
-        }
-
-        const long SmallFileSize = 10 * 1024 * 1024;
 
         public override Job<IRemoteItem> UploadStream(Stream source, IRemoteItem remoteTarget, string uploadname, long streamsize, bool WeekDepend = false, params Job[] parentJob)
         {
@@ -675,7 +580,7 @@ namespace TSviewCloudPlugin
                 return null;
             }
 
-            TSviewCloudConfig.Config.Log.LogOut("[UploadStream(AmazonDriveSystem)] " + uploadname);
+            TSviewCloudConfig.Config.Log.LogOut("[UploadStream(GoogleDriveSystem)] " + uploadname);
             var filesize = streamsize;
             var short_filename = uploadname;
             var job = JobControler.CreateNewJob<IRemoteItem>(
@@ -696,8 +601,6 @@ namespace TSviewCloudPlugin
                 j.ProgressStr = "Upload...";
                 j.Progress = 0;
 
-                var error_str = "";
-
                 try
                 {
                     FileMetadata_Info newremoteitem = null;
@@ -715,59 +618,7 @@ namespace TSviewCloudPlugin
                             j.JobInfo.pos = eo.Position;
                         };
 
-                        string uphash = null;
-                        int check_retry = 0;
-
-                        Drive.UploadStream(f, remoteTarget.ID, uploadname, streamsize, j.Ct)
-                        .ContinueWith((t) =>
-                        {
-                            if (t.IsFaulted)
-                            {
-                                var e = t.Exception;
-                                e.Flatten().Handle(ex =>
-                                {
-                                    if (ex is AmazonDriveUploadException)
-                                    {
-                                        uphash = ex.Message;
-                                        if (ex.InnerException is HttpRequestException)
-                                        {
-                                            if (ex.InnerException.Message.Contains("408")) check_retry = 6 * 5 + 1;
-                                            if (ex.InnerException.Message.Contains("409")) check_retry = 3;
-                                            if (ex.InnerException.Message.Contains("504")) check_retry = 6 * 5 + 1;
-                                            if (filesize < SmallFileSize) check_retry = 3;
-                                            error_str += ex.InnerException.Message + "\n";
-                                        }
-                                    }
-                                    else
-                                    {
-                                        error_str += ex.Message + "\n";
-                                        check_retry = 0;
-                                    }
-                                    return true;
-                                });
-                                e.Handle(ex =>
-                                {
-                                    return true;
-                                });
-                                return;
-                            }
-                            if (t.IsCanceled) return;
-
-                            newremoteitem = t.Result;
-                        }).Wait(j.Ct);
-
-                        if (newremoteitem != null)
-                        {
-                            j.ProgressStr = "Upload done.";
-                            j.Progress = -1;
-                        }
-                        else
-                        {
-                            j.ProgressStr = "Upload probably failed... checking new item.";
-                            j.Progress = double.NaN;
-
-                            newremoteitem = CheckNewfile(check_retry, remoteTarget.ID, uploadname, j);
-                        }
+                        newremoteitem = Drive.UploadStream(f, remoteTarget.ID, uploadname, streamsize, j.Ct).Result;
 
                         if(newremoteitem == null)
                         {
@@ -777,15 +628,8 @@ namespace TSviewCloudPlugin
                         else
                         {
                             j.Progress = 1;
-                            var newitem = pathlist[newremoteitem.id] = new AmazonDriveSystemItem(this, newremoteitem, null);
-                            (remoteTarget as AmazonDriveSystemItem).AddChild(newitem);
-
-                            if (uphash != null && uphash != newremoteitem.contentProperties.md5)
-                            {
-                                j.ProgressStr = "Upload failed. Hash not match";
-                                j.Progress = double.NaN;
-                                newitem.IsBroken = true;
-                            }
+                            var newitem = pathlist[newremoteitem.id] = new GoogleDriveSystemItem(this, newremoteitem, null);
+                            (remoteTarget as GoogleDriveSystemItem).AddChild(newitem);
 
                             j.Result = newitem;
                         }
@@ -810,7 +654,7 @@ namespace TSviewCloudPlugin
         public override Job<Stream> DownloadItemRaw(IRemoteItem remoteTarget,long offset = 0, bool WeekDepend = false, bool hidden = false, params Job[] prevJob)
         {
             if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
-            TSviewCloudConfig.Config.Log.LogOut("[DownloadItemRaw(AmazonDriveSystem)] " + remoteTarget.FullPath);
+            TSviewCloudConfig.Config.Log.LogOut("[DownloadItemRaw(GoogleDriveSystem)] " + remoteTarget.FullPath);
             var job = JobControler.CreateNewJob<Stream>(JobClass.RemoteDownload, depends: prevJob);
             job.DisplayName = "Download item:" + remoteTarget.ID;
             job.ProgressStr = "wait for system...";
@@ -845,7 +689,7 @@ namespace TSviewCloudPlugin
         {
             if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
             
-            TSviewCloudConfig.Config.Log.LogOut("[DownloadItem(AmazonDriveSystem)] " + remoteTarget.Path);
+            TSviewCloudConfig.Config.Log.LogOut("[DownloadItem(GoogleDriveSystem)] " + remoteTarget.Path);
             var job = JobControler.CreateNewJob<Stream>(JobClass.RemoteDownload, depends: prevJob);
             job.DisplayName = "Download item:" + remoteTarget.Name;
             job.ProgressStr = "wait for system...";
@@ -863,7 +707,7 @@ namespace TSviewCloudPlugin
         {
             if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
-            TSviewCloudConfig.Config.Log.LogOut("[DeleteItem(AmazonDriveSystem)] " + deleteTarget.FullPath);
+            TSviewCloudConfig.Config.Log.LogOut("[DeleteItem(GoogleDriveSystem)] " + deleteTarget.FullPath);
             var job = JobControler.CreateNewJob<IRemoteItem>(
                 type: JobClass.Trash,
                 depends: prevJob);
@@ -908,7 +752,7 @@ namespace TSviewCloudPlugin
         {
             if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
-            TSviewCloudConfig.Config.Log.LogOut("[MoveItemOnServer(AmazonDriveSystem)] " + moveItem.FullPath);
+            TSviewCloudConfig.Config.Log.LogOut("[MoveItemOnServer(GoogleDriveSystem)] " + moveItem.FullPath);
             var job = JobControler.CreateNewJob<IRemoteItem>(
                 type: JobClass.RemoteOperation,
                 depends: prevJob);
@@ -926,10 +770,14 @@ namespace TSviewCloudPlugin
                 var oldparent = moveItem.Parents.First();
                 try
                 {
-                    if(Drive.MoveChild(moveItem.ID, oldparent.ID, moveToItem.ID, j.Ct).Result)
-                    {
-                        ChangesLoad(j.Ct).Wait(j.Ct);
-                    }
+                    var newitem = Drive.MoveChild(moveItem.ID, oldparent.ID, moveToItem.ID, j.Ct).Result;
+                    (moveItem as GoogleDriveSystemItem).SetFileds(newitem);
+
+
+                    LoadItems(moveToItem.ID, 2);
+                    LoadItems(oldparent.ID, 2);
+
+                    j.Result = moveToItem;
 
                     j.ProgressStr = "Done";
                     j.Progress = 1;
@@ -952,7 +800,7 @@ namespace TSviewCloudPlugin
         {
             if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
-            TSviewCloudConfig.Config.Log.LogOut("[RenameItem(AmazonDriveSystem)] " + targetItem.FullPath);
+            TSviewCloudConfig.Config.Log.LogOut("[RenameItem(GoogleDriveSystem)] " + targetItem.FullPath);
             var job = JobControler.CreateNewJob<IRemoteItem>(
                 type: JobClass.RemoteOperation,
                 depends: prevJob);
@@ -971,10 +819,10 @@ namespace TSviewCloudPlugin
                 try
                 {
                     var newremoteitem = Drive.RenameItem(targetItem.ID, newName, j.Ct).Result;
-                    var newitem = pathlist[newremoteitem.id] = new AmazonDriveSystemItem(this, newremoteitem, null);
+                    var newitem = pathlist[newremoteitem.id] = new GoogleDriveSystemItem(this, newremoteitem, null);
 
                     RemoveItem(targetItem.ID);
-                    (parent as AmazonDriveSystemItem).AddChild(newitem);
+                    (parent as GoogleDriveSystemItem).AddChild(newitem);
 
                     j.Result = newitem;
 
@@ -998,7 +846,7 @@ namespace TSviewCloudPlugin
         {
             if (prevJob?.Any(x => x?.IsCanceled ?? false) ?? false) return null;
 
-            TSviewCloudConfig.Config.Log.LogOut("[ChangeAttribItem(AmazonDriveSystem)] " + targetItem.FullPath);
+            TSviewCloudConfig.Config.Log.LogOut("[ChangeAttribItem(GoogleDriveSystem)] " + targetItem.FullPath);
             var job = JobControler.CreateNewJob<IRemoteItem>(
                 type: JobClass.RemoteOperation,
                 depends: prevJob);
@@ -1016,10 +864,13 @@ namespace TSviewCloudPlugin
                 var parent = targetItem.Parents.First();
                 try
                 {
-                    var attr = new RemoteItemAttrib(newAttrib.ModifiedDate ?? targetItem.ModifiedDate, newAttrib.CreatedDate ?? targetItem.CreatedDate);
-                    var newremoteitem = Drive.SetFileMetadata(targetItem.ID, attr, j.Ct).Result;
+                    var newremoteitem = Drive.FilesUpdate(targetItem.ID, new FileMetadata_Info()
+                    {
+                        modifiedTime_prop = newAttrib.ModifiedDate?.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                        createdTime_prop = newAttrib.CreatedDate?.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                    }, ct: j.Ct).Result;
 
-                    (targetItem as AmazonDriveSystemItem).SetFileds(newremoteitem);
+                    (targetItem as GoogleDriveSystemItem).SetFileds(newremoteitem);
                     
                     j.ProgressStr = "Done";
                     j.Progress = 1;

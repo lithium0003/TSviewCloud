@@ -147,7 +147,7 @@ namespace TSviewCloud
                     var results = new List<TSviewCloudPlugin.IRemoteItem>();
                     foreach (var item in j2j.ResultOfDepend)
                     {
-                        if (item.TryGetTarget(out var result))
+                        if (item != null && item.TryGetTarget(out var result))
                         {
                             results.Add(result);
                         }
@@ -1028,7 +1028,7 @@ namespace TSviewCloud
                     j.ProgressStr = "Loading...";
 
                     var result = j.ResultOfDepend[0];
-                    if (!result.TryGetTarget(out var item))
+                    if (result == null || !result.TryGetTarget(out var item))
                     {
                         j.ProgressStr = "done.";
                         j.Progress = 1;
@@ -1103,13 +1103,16 @@ namespace TSviewCloud
 
             Cursor.Current = Cursors.WaitCursor;
             var item = TSviewCloudPlugin.RemoteServerFactory.PathToItem(path);
-            if (item.ItemType == TSviewCloudPlugin.RemoteItemType.File)
+            if (item != null)
             {
-                GotoAddress(item.Parents.FirstOrDefault().FullPath);
-            }
-            else
-            { 
-                GotoAddress(item.FullPath);
+                if (item.ItemType == TSviewCloudPlugin.RemoteItemType.File)
+                {
+                    GotoAddress(item.Parents.FirstOrDefault().FullPath);
+                }
+                else
+                {
+                    GotoAddress(item.FullPath);
+                }
             }
         }
 
@@ -2568,6 +2571,12 @@ namespace TSviewCloud
                 j.Progress = -1;
                 j.ProgressStr = "Loading...";
 
+                while (!TSviewCloudPlugin.RemoteServerFactory.ServerList.Values.All(x => x.IsReady))
+                {
+                    j.Ct.ThrowIfCancellationRequested();
+                    Task.Delay(500).Wait(j.Ct);
+                }
+
                 synchronizationContext.Send((o) =>
                 {
                     foreach (var server in TSviewCloudPlugin.RemoteServerFactory.ServerList.Values)
@@ -2611,7 +2620,7 @@ namespace TSviewCloud
                     var results = new List<TSviewCloudPlugin.IRemoteItem>();
                     foreach (var item in j2j.ResultOfDepend)
                     {
-                        if (item.TryGetTarget(out var result))
+                        if (item != null && item.TryGetTarget(out var result))
                         {
                             results.Add(result);
                         }
@@ -2654,16 +2663,40 @@ namespace TSviewCloud
 
         private void DiffItems(object sender, EventArgs e)
         {
-            var diff = FormMatch.Instance;
-            if(diff.AddCallback == null || diff.AddCallback.GetInvocationList().Length == 0)
+            if ((ModifierKeys & Keys.Control) == Keys.Control)
             {
-                diff.AddCallback += (s, evnt) =>
+                var diff = FormDiff.Instance;
+                if (diff.AddACallback == null || diff.AddACallback.GetInvocationList().Length == 0)
                 {
-                    if (listView1.SelectedIndices.Count > 0)
-                        diff.SelectedRemoteFiles = listData.GetItems(listView1.SelectedIndices).ToArray();
-                };
+                    diff.AddACallback += (s, evnt) =>
+                    {
+                        if (listView1.SelectedIndices.Count > 0)
+                            diff.SelectedRemoteFilesA = listData.GetItems(listView1.SelectedIndices).ToArray();
+                    };
+                }
+                if (diff.AddBCallback == null || diff.AddBCallback.GetInvocationList().Length == 0)
+                {
+                    diff.AddBCallback += (s, evnt) =>
+                    {
+                        if (listView1.SelectedIndices.Count > 0)
+                            diff.SelectedRemoteFilesB = listData.GetItems(listView1.SelectedIndices).ToArray();
+                    };
+                }
+                diff.Show();
             }
-            diff.Show();
+            else
+            {
+                var diff = FormMatch.Instance;
+                if (diff.AddCallback == null || diff.AddCallback.GetInvocationList().Length == 0)
+                {
+                    diff.AddCallback += (s, evnt) =>
+                    {
+                        if (listView1.SelectedIndices.Count > 0)
+                            diff.SelectedRemoteFiles = listData.GetItems(listView1.SelectedIndices).ToArray();
+                    };
+                }
+                diff.Show();
+            }
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2790,6 +2823,8 @@ namespace TSviewCloud
                     var item = listData.GetItems(listView1.SelectedIndices, false).FirstOrDefault();
                     if (item?.ItemType == TSviewCloudPlugin.RemoteItemType.Folder)
                         current = item;
+                    else
+                        current = listData.CurrentViewItem;
                 }
                 else
                 {

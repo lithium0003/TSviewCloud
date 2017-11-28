@@ -65,13 +65,21 @@ namespace TSviewCloud
 
         public void AddResult(string remotepath, string reason)
         {
+            result.Add(new ConflictResult(remotepath, reason));
+
             synchronizationContext.Post((o) =>
             {
-                result.Add(new ConflictResult(remotepath, reason));
-                bs.ResetBindings(false);
-
-                Show();
+                timer1.Enabled = true;
             }, null);
+        }
+
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            timer1.Enabled = false;
+
+            bs.ResetBindings(false);
+
+            Show();
         }
     }
 }

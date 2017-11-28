@@ -12,64 +12,64 @@ using System.Windows.Forms;
 
 namespace TSviewCloud
 {
-    public partial class FormMatchResult : Form
+    public partial class FormDiffResult : Form
     {
-        public FormMatchResult()
+        public FormDiffResult()
         {
             InitializeComponent();
         }
 
-        public IEnumerable<FormMatch.MatchItem> LocalOnly
+        public IEnumerable<FormDiff.MatchItem> LocalOnly
         {
             set
             {
                 listBox_LocalOnly.DataSource = value;
             }
         }
-        public IEnumerable<FormMatch.MatchItem> RemoteOnly
+        public IEnumerable<FormDiff.MatchItem> RemoteOnly
         {
             set
             {
                 listBox_RemoteOnly.DataSource = value;
             }
         }
-        public IEnumerable<FormMatch.MatchItem> Unmatch
+        public IEnumerable<FormDiff.MatchItem> Unmatch
         {
             set
             {
                 foreach (var item in value)
                 {
                     var newitem = new ListViewItem(new string[]{
-                        item.local.path,
-                        item.local.size.ToString(),
-                        item.local.Hash,
-                        item.remote.info.Hash,
-                        item.remote.info.Size.ToString(),
-                        item.remote.path,
+                        item.remoteA.info.Hash,
+                        item.remoteA.info.Size.ToString(),
+                        item.remoteA.path,
+                        item.remoteB.info.Hash,
+                        item.remoteB.info.Size.ToString(),
+                        item.remoteB.path,
                     });
                     newitem.Tag = item;
                     listView_Unmatch.Items.Add(newitem);
                 }
             }
         }
-        public IEnumerable<FormMatch.MatchItem> Match
+        public IEnumerable<FormDiff.MatchItem> Match
         {
             set
             {
                 foreach (var item in value)
                 {
                     var newitem = new ListViewItem(new string[]{
-                        item.local.path,
-                        item.remote.path,
-                        item.local.size.ToString(),
-                        item.local.Hash,
+                        item.remoteA.path,
+                        item.remoteB.path,
+                        item.remoteA.info.Size.ToString(),
+                        item.remoteA.info.Hash,
                     });
                     newitem.Tag = item;
                     listView_Match.Items.Add(newitem);
                 }
             }
         }
-        public IDictionary<string, FormMatch.LocalItemInfo[]> LocalDup
+        public IDictionary<string, FormDiff.RemoteItemInfo[]> RemoteADup
         {
             set
             {
@@ -79,17 +79,17 @@ namespace TSviewCloud
                     foreach (var ditem in item.Value)
                     {
                         TreeNode newitem;
-                        if (ditem.Hash == null)
-                            newitem = new TreeNode(string.Format("size:{0} {1}", ditem.size, ditem.path));
+                        if (ditem.info.Hash == null)
+                            newitem = new TreeNode(string.Format("size:{0} {1}", ditem.info.Size, ditem.path));
                         else
-                            newitem = new TreeNode(string.Format("size:{0} Hash:{1} {2}", ditem.size, ditem.Hash, ditem.path));
+                            newitem = new TreeNode(string.Format("size:{0} Hash:{1} {2}", ditem.info.Size, ditem.info.Hash, ditem.path));
                         newitem.Tag = ditem;
                         node.Nodes.Add(newitem);
                     }
                 }
             }
         }
-        public IDictionary<string, FormMatch.RemoteItemInfo[]> RemoteDup
+        public IDictionary<string, FormDiff.RemoteItemInfo[]> RemoteBDup
         {
             set
             {
@@ -112,14 +112,14 @@ namespace TSviewCloud
 
         private void listBox_LocalOnly_Format(object sender, ListControlConvertEventArgs e)
         {
-            var item = e.ListItem as FormMatch.MatchItem;
-            e.Value = item.local.path;
+            var item = e.ListItem as FormDiff.MatchItem;
+            e.Value = item.remoteA.path;
         }
 
         private void listBox_RemoteOnly_Format(object sender, ListControlConvertEventArgs e)
         {
-            var item = e.ListItem as FormMatch.MatchItem;
-            e.Value = item.remote.path;
+            var item = e.ListItem as FormDiff.MatchItem;
+            e.Value = item.remoteB.path;
         }
 
         delegate void SaveDataFunc(StreamWriter sw);
@@ -144,9 +144,13 @@ namespace TSviewCloud
             {
                 if (listBox_LocalOnly.DataSource != null)
                 {
-                    foreach (var item in listBox_LocalOnly.DataSource as IEnumerable<FormMatch.MatchItem>)
+                    foreach (var item in listBox_LocalOnly.DataSource as IEnumerable<FormDiff.MatchItem>)
                     {
-                        sw.WriteLine(item.local.path);
+                        sw.WriteLine("{0},{1},{2},{3}",
+                            item.remoteA.path,
+                            item.remoteA.info.FullPath,
+                            item.remoteA.info.Size,
+                            item.remoteA.info.Hash);
                     }
                 }
             });
@@ -159,13 +163,13 @@ namespace TSviewCloud
                 if (listBox_RemoteOnly.DataSource != null)
                 {
                     sw.WriteLine("Path,id,size,MD5");
-                    foreach (var item in listBox_RemoteOnly.DataSource as IEnumerable<FormMatch.MatchItem>)
+                    foreach (var item in listBox_RemoteOnly.DataSource as IEnumerable<FormDiff.MatchItem>)
                     {
                         sw.WriteLine("{0},{1},{2},{3}",
-                            item.remote.path,
-                            item.remote.info.FullPath,
-                            item.remote.info.Size,
-                            item.remote.info.Hash);
+                            item.remoteB.path,
+                            item.remoteB.info.FullPath,
+                            item.remoteB.info.Size,
+                            item.remoteB.info.Hash);
                     }
                 }
             });
@@ -182,17 +186,18 @@ namespace TSviewCloud
                 {
                     if (item.Tag != null)
                     {
-                        var data = item.Tag as FormMatch.MatchItem;
+                        var data = item.Tag as FormDiff.MatchItem;
                         sw.WriteLine("{0},{1},{2},{3},{4},{5},{6}",
-                            data.local.path,
-                            data.local.size,
-                            data.local.Hash,
-                            data.remote.path,
-                            data.remote.info.Size,
-                            data.remote.info.Hash,
-                            data.remote.info.FullPath);
-                    }
-                }
+                            data.remoteA.path,
+                            data.remoteA.info.Size,
+                            data.remoteA.info.Hash,
+                            data.remoteA.info.FullPath,
+                            data.remoteB.path,
+                            data.remoteB.info.Size,
+                            data.remoteB.info.Hash,
+                            data.remoteB.info.FullPath);
+        }
+    }
             });
         }
 
@@ -207,11 +212,12 @@ namespace TSviewCloud
                     sw.WriteLine(node1.Text);
                     foreach (TreeNode node2 in node1.Nodes)
                     {
-                        var item = node2.Tag as FormMatch.LocalItemInfo;
-                        sw.WriteLine("\t{0},{1},{2}",
+                        var item = node2.Tag as FormDiff.RemoteItemInfo;
+                        sw.WriteLine("\t{0},{1},{2},{3}",
                             item.path,
-                            item.size,
-                            item.Hash);
+                            item.info.Size,
+                            item.info.Hash,
+                            item.info.FullPath);
                     }
                 }
             });
@@ -228,7 +234,7 @@ namespace TSviewCloud
                     sw.WriteLine(node1.Text);
                     foreach (TreeNode node2 in node1.Nodes)
                     {
-                        var item = node2.Tag as FormMatch.RemoteItemInfo;
+                        var item = node2.Tag as FormDiff.RemoteItemInfo;
                         sw.WriteLine("\t{0},{1},{2},{3}",
                             item.path,
                             item.info.Size,
@@ -250,28 +256,16 @@ namespace TSviewCloud
                 {
                     if (item.Tag != null)
                     {
-                        var data = item.Tag as FormMatch.MatchItem;
+                        var data = item.Tag as FormDiff.MatchItem;
                         sw.WriteLine("{0},{1},{2},{3},{4}",
-                            data.local.path,
-                            data.remote.path,
-                            data.remote.info.Size,
-                            data.remote.info.Hash,
-                            data.remote.info.FullPath);
+                            data.remoteA.path,
+                            data.remoteB.path,
+                            data.remoteA.info.Size,
+                            data.remoteA.info.Hash,
+                            data.remoteA.info.FullPath);
                     }
                 }
             });
-        }
-
-        private void button_Upload_Click(object sender, EventArgs e)
-        {
-            button_Upload.Enabled = false;
-            try
-            {
-            }
-            finally
-            {
-                button_Upload.Enabled = true;
-            }
         }
 
         private void button_Download_Click(object sender, EventArgs e)

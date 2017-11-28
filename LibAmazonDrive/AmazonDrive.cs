@@ -309,10 +309,10 @@ namespace LibAmazonDrive
                     error_str = ex.Message;
                     Log(LogPrefix, error_str);
 
-                    if (ex.Message.Contains("401 (Unauthorized)") ||
-                        ex.Message.Contains("429 (Too Many Requests)") ||
-                        ex.Message.Contains("500 (Internal Server Error)") ||
-                        ex.Message.Contains("503 (Service Unavailable)"))
+                    if (ex.Message.Contains("401") ||
+                        ex.Message.Contains("429") ||
+                        ex.Message.Contains("500") ||
+                        ex.Message.Contains("503"))
                     {
                         var waitsec = rnd.Next((int)Math.Pow(2, Math.Min(retry - 1, 8)));
                         Log(LogPrefix, "wait " + waitsec.ToString() + " sec");

@@ -2832,6 +2832,22 @@ namespace ffmodule {
 			set_clockduration(vp->pts);
 
 			double delay = vp->pts - frame_last_pts; /* the pts from last time */
+			if (delay >= -1.0 && delay <= 1.0) {
+				for each(auto d in frame_last_delay)
+				{
+					delay += d;
+				}
+				delay /= (frame_last_delay.size() + 1);
+			}
+			else {
+				/* if incorrect delay, use previous one */
+				delay = 0;
+				for each(auto d in frame_last_delay)
+				{
+					delay += d;
+				}
+				delay /= frame_last_delay.size();
+			}
 			/* save for next time */
 			frame_last_pts = vp->pts;
 
@@ -2842,7 +2858,6 @@ namespace ffmodule {
 
 				diff += (audio_callback_time - av_gettime() / 1000000.0);
 				video_delay_to_audio = diff;
-
 				/* Skip or repeat the frame. Take delay into account
 				FFPlay still doesn't "know if this is the best guess." */
 				double sync_threshold = (delay > AV_SYNC_THRESHOLD) ? delay : AV_SYNC_THRESHOLD;
@@ -2850,18 +2865,23 @@ namespace ffmodule {
 					if (diff <= -sync_threshold) {
 						delay = 0;
 					}
-					else if (diff >= sync_threshold ) {
-						delay = sync_threshold;
+					else if (diff >= sync_threshold * 2) {
+						delay = (diff / sync_threshold + 1) * delay;
 					}
 					else if (diff > 0) {
-						delay = diff;
+						delay = (diff / sync_threshold) * delay;
 					}
 				}
+			}
+			if (delay >= -1.0 && delay <= 1.0) {
+				frame_last_delay.push_back(delay);
+				if (frame_last_delay.size() > 100)
+					frame_last_delay.pop_front();
 			}
 
 
 			frame_timer += delay;
-			const double skepdelay = 0.001;
+			const double skepdelay = 0.002;
 			/* computer the REAL delay */
 			double actual_delay = frame_timer - av_gettime() / 1000000.0;
 
