@@ -124,7 +124,7 @@ namespace TSviewCloudPlugin
         bool Add();
         void ClearCache();
         void Disconnect();
-
+ 
         IRemoteItem this[string ID] { get; }
         IRemoteItem PeakItem(string ID);
         IRemoteItem ReloadItem(string ID);
@@ -800,13 +800,50 @@ namespace TSviewCloudPlugin
             Dictionary<string, List<IRemoteServer>> dependlist = new Dictionary<string, List<IRemoteServer>>();
 
             int servercount = 0;
-            foreach (var s in (Services == null)? ServerList.Values: ServerList.Where(x => Services.Any(y => x.Key == y)).Select(x => x.Value))
+            if (Services == null)
             {
-                var depends = s.DependsOnService ?? "";
-                if (!dependlist.ContainsKey(depends))
-                    dependlist[depends] = new List<IRemoteServer>();
-                dependlist[depends].Add(s);
-                servercount++;
+                foreach (var s in ServerList.Values)
+                {
+                    var depends = s.DependsOnService ?? "";
+                    if (!dependlist.ContainsKey(depends))
+                        dependlist[depends] = new List<IRemoteServer>();
+                    dependlist[depends].Add(s);
+                    servercount++;
+                }
+            }
+            else
+            {
+                var dependslist = new List<string>();
+                foreach (var s in ServerList.Where(x => Services.Any(y => x.Key == y)).Select(x => x.Value))
+                {
+                    var depends = s.DependsOnService ?? "";
+                    if (!dependlist.ContainsKey(depends))
+                        dependlist[depends] = new List<IRemoteServer>();
+                    dependlist[depends].Add(s);
+                    if (depends != "")
+                        dependslist.Add(depends);
+                    servercount++;
+                }
+                while (dependslist.Count() > 0)
+                {
+                    foreach (var k in itemCache.Keys.Where(x => dependslist.Any(y => x.StartsWith(y))).ToArray())
+                        itemCache.TryRemove(k, out var tmp1);
+                    foreach (var k in ItemControl.ReloadRequest.Keys.Where(x => dependslist.Any(y => x.StartsWith(y))).ToArray())
+                        ItemControl.ReloadRequest.TryRemove(k, out var tmp1);
+
+                    var dependslist2 = new List<string>();
+                    foreach (var s in ServerList.Where(x => dependslist.Any(y => x.Key == y)).Select(x => x.Value))
+                    {
+                        var depends = s.DependsOnService ?? "";
+                        if (!dependlist.ContainsKey(depends))
+                            dependlist[depends] = new List<IRemoteServer>();
+                        dependlist[depends].Add(s);
+                        if (depends != "")
+                            dependslist2.Add(depends);
+                        servercount++;
+                    }
+                    dependslist = dependslist2;
+                }
             }
 
             Queue<IRemoteServer> donelist = new Queue<IRemoteServer>();
@@ -827,7 +864,6 @@ namespace TSviewCloudPlugin
                         if (deadlist.Contains(d.Name))
                         {
                             deadlist.Add(slave.Name);
-                            Delete(slave);
                         }
                         else
                         {
@@ -835,7 +871,6 @@ namespace TSviewCloudPlugin
                             if (!slave.IsReady)
                             {
                                 deadlist.Add(slave.Name);
-                                Delete(slave);
                             }
                         }
                         donelist.Enqueue(slave);

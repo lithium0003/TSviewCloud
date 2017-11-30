@@ -40,6 +40,7 @@ namespace TSviewCloud
         int AddressLogPtr = -1;
         bool AddressSelecting = false;
         int AddressLogSelecting = 0;
+        bool ClearingCache = false;
 
         int WM_LOCAL_TSVIEWCLOUD_INIT;
         int WM_LOCAL_TSVIEWCLOUD_RELOAD;
@@ -1095,6 +1096,7 @@ namespace TSviewCloud
             if (e.Node == null) return;
             if (AddressSelecting) return;
             if (supressListviewRefresh) return;
+            if (ClearingCache) return;
 
             var path = (e.Node.Tag as TSviewCloudPlugin.IRemoteItem)?.FullPath;
             if (path == null) return;
@@ -1181,6 +1183,8 @@ namespace TSviewCloud
 
         private void GotoAddress(string path, TSviewCloudPlugin.ReloadType reload = TSviewCloudPlugin.ReloadType.Cache)
         {
+            if (ClearingCache) return;
+
             var m = Regex.Match(path, @"^(?<server>[^:]+)(://)(?<path>.*)$");
             TSviewCloudPlugin.Job loadjob;
             if (m.Success)
@@ -2559,70 +2563,22 @@ namespace TSviewCloud
 
             TSviewCloudPlugin.RemoteServerFactory.ClearCache(new[] { server });
 
-            listData.Clear();
-            treeView1.Nodes.Find(server, false).First().Nodes.Clear();
-
-
-            var displayJob = TSviewCloudPlugin.JobControler.CreateNewJob(TSviewCloudPlugin.JobClass.LoadItem);
-            displayJob.DisplayName = "Display  server";
-            TSviewCloudPlugin.JobControler.Run(displayJob, (j) =>
-            {
-                j.Progress = -1;
-                j.ProgressStr = "Loading...";
-
-                while (!TSviewCloudPlugin.RemoteServerFactory.ServerList.Values.All(x => x.IsReady))
-                {
-                    j.Ct.ThrowIfCancellationRequested();
-                    Task.Delay(500).Wait(j.Ct);
-                }
-                j.Progress = 1;
-                j.ProgressStr = "Done.";
-            });
-
-            var load2Job = TSviewCloudPlugin.JobControler.CreateNewJob(TSviewCloudPlugin.JobClass.ControlMaster);
-            TSviewCloudPlugin.JobControler.Run(load2Job, (j) =>
-            {
-                displayJob.Wait(ct: j.Ct);
-                var display2Job = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(
-                    type: TSviewCloudPlugin.JobClass.LoadItem,
-                    depends: TSviewCloudPlugin.RemoteServerFactory.PathToItemJob(server + "://")
-                );
-                display2Job.DisplayName = "Display  server";
-                display2Job.ProgressStr = "wait for load";
-                TSviewCloudPlugin.JobControler.Run<TSviewCloudPlugin.IRemoteItem>(display2Job, (j2j) =>
-                {
-                    displayJob.Wait(ct: j.Ct);
-                    j2j.Progress = -1;
-                    j2j.ProgressStr = "Loading...";
-                    var results = new List<TSviewCloudPlugin.IRemoteItem>();
-                    foreach (var item in j2j.ResultOfDepend)
-                    {
-                        if (item != null && item.TryGetTarget(out var result))
-                        {
-                            results.Add(result);
-                        }
-                    }
-
-                    synchronizationContext.Post((o) =>
-                    {
-                        Cursor.Current = Cursors.WaitCursor;
-                        foreach (var item in o as IEnumerable<TSviewCloudPlugin.IRemoteItem>)
-                        {
-                            var treenode = treeView1.Nodes.Find(item.Server, false).First();
-                            treenode.Tag = item;
-                            ExpandItem(treenode);
-                        }
-                    }, results);
-                });
-            });
+            Reload_alltree();
         }
 
         private void driveCacheclearToolStripMenuItem_Click(object sender, EventArgs e)
         {
             TSviewCloudPlugin.RemoteServerFactory.ClearCache();
 
+            Reload_alltree();
+        }
+
+        private void Reload_alltree()
+        {
+            ClearingCache = true;
             treeView1.Nodes.Clear();
             listData.Clear();
+            disconnectToolStripMenuItem.DropDownItems.Clear();
 
             while (listView1.SmallImageList.Images.Count > 2)
                 listView1.SmallImageList.Images.RemoveAt(2);
@@ -2641,6 +2597,8 @@ namespace TSviewCloud
                     j.Ct.ThrowIfCancellationRequested();
                     Task.Delay(500).Wait(j.Ct);
                 }
+
+                ClearingCache = false;
 
                 synchronizationContext.Send((o) =>
                 {
