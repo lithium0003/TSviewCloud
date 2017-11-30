@@ -269,6 +269,7 @@ namespace TSviewCloudPlugin
             foreach(var upfile in uploadFilenames)
             {
                 var job = targetItem.UploadFile(upfile, WeekDepend: WeekDepend, parentJob: parentJob);
+                if (job == null) continue;
                 job.DisplayName = string.Format("Upload File {0} to {1}", upfile, targetItem.FullPath);
                 joblist.Add(job);
             }
@@ -277,13 +278,14 @@ namespace TSviewCloudPlugin
 
         static public Job<IRemoteItem> UploadFolder(IRemoteItem targetItem, string uploadFolderName, bool WeekDepend = false, Job prevJob = null)
         {
+            var mkfolder = targetItem.MakeFolder(Path.GetFileName(uploadFolderName), WeekDepend, prevJob);
             var job = JobControler.CreateNewJob<IRemoteItem>(
                 type: JobClass.Upload,
                 info: new JobControler.SubInfo
                 {
                     type = JobControler.SubInfo.SubType.UploadDirectory,
                 },
-                depends: targetItem.MakeFolder(Path.GetFileName(uploadFolderName), WeekDepend, prevJob));
+                depends: mkfolder);
             job.DisplayName = string.Format("Upload Folder {0} to {1}", uploadFolderName, targetItem.FullPath);
             JobControler.Run<IRemoteItem>(job, (j) =>
             {

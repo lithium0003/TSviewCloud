@@ -119,6 +119,7 @@
     <Compile Include="AboutBox1.Designer.cs">
       <DependentUpon>AboutBox1.cs</DependentUpon>
     </Compile>
+    <Compile Include="ClearCookie.cs" />
     <Compile Include="Clipboard.cs" />
     <Compile Include="Config.cs" />
     <Compile Include="ConfigCarotDAV.cs" />

@@ -123,6 +123,7 @@ namespace TSviewCloudPlugin
         void Init();
         bool Add();
         void ClearCache();
+        void Disconnect();
 
         IRemoteItem this[string ID] { get; }
         IRemoteItem PeakItem(string ID);
@@ -499,6 +500,10 @@ namespace TSviewCloudPlugin
             });
             return job;
         }
+
+        public virtual void Disconnect()
+        {
+        }
     }
 
     public class RemoteServerFactory
@@ -552,12 +557,16 @@ namespace TSviewCloudPlugin
             while (!ServerList.TryRemove(target.Name, out o))
                 if(!ServerList.TryGetValue(target.Name, out o))
                     break;
+            o.Disconnect();
         }
 
         static public void Delete(string target)
         {
             IRemoteServer o;
-            while (!ServerList.TryRemove(target, out o)) ;
+            while (!ServerList.TryRemove(target, out o))
+                if (!ServerList.TryGetValue(target, out o))
+                    break;
+            o.Disconnect();
         }
 
         static public void Load()

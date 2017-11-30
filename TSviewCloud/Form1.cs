@@ -2907,6 +2907,12 @@ namespace TSviewCloud
         {
             button_next_down = false;
         }
+
+        private void clearLoginBrowserCookieToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            WinInetHelper.SupressCookiePersist();
+            WinInetHelper.EndBrowserSession();
+        }
     }
 
 

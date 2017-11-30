@@ -291,6 +291,12 @@ namespace TSviewCloudPlugin
         }
 
 
+        public override void Disconnect()
+        {
+            base.Disconnect();
+            GoogleDrive.RevokeToken(Drive.Auth).Wait();
+        }
+
         private void LoadItems(string ID, int depth = 0)
         {
             if (depth < 0) return;

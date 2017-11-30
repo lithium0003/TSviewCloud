@@ -37,6 +37,7 @@ namespace TSviewCloud
             base.OnFormClosing(e);
             if (TSviewCloudConfig.Config.ApplicationExit) return;
             e.Cancel = true;
+            result.Clear();
             Hide();
         }
 

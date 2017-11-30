@@ -150,34 +150,60 @@ namespace LibGoogleDrive
             TSviewCloudConfig.Config.Log.LogOut("\t[GoogleDrive(" + func + ")] " + str);
         }
 
+        static public async Task RevokeToken(AuthKeys key, CancellationToken ct = default(CancellationToken))
+        {
+            Log("RevokeToken");
+            using (var client = new HttpClient())
+            {
+                try
+                {
+                    var response = await client.GetAsync(
+                        "https://accounts.google.com/o/oauth2/revoke?token=" + key.access_token,
+                        ct
+                    ).ConfigureAwait(false);
+                    response.EnsureSuccessStatusCode();
+                    string responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                }
+                catch (HttpRequestException ex)
+                {
+                    Log("RevokeToken", ex.Message);
+                }
+                catch (Exception ex)
+                {
+                    Log("RevokeToken", ex.ToString());
+                }
+            }
+        }
+
         static public async Task<string> RefreshAuthorizationCode(AuthKeys key, CancellationToken ct = default(CancellationToken))
         {
-            string error_str;
+            Log("RefreshAuthorizationCode");
+            if(key.refresh_token == null)
+                throw new ArgumentNullException("refresh_token");
             using (var client = new HttpClient())
             {
                 try
                 {
                     //Log("RefreshAuthorizationCode");
                     var response = await client.PostAsync(
-                        ConfigAPI.token_uri,
+                        (string.IsNullOrEmpty(ConfigAPI.client_secret)) ? ConfigAPI.App_RefreshToken : ConfigAPI.token_uri,
                         new FormUrlEncodedContent(new Dictionary<string, string>{
                             {"grant_type","refresh_token"},
                             {"refresh_token",key.refresh_token},
-                            {"client_id", ConfigAPI.client_id},
+                            {"client_id", string.IsNullOrEmpty(ConfigAPI.client_secret) ? ConfigAPI.client_id_web: ConfigAPI.client_id},
                             {"client_secret", ConfigAPI.client_secret},
                         }),
                         ct
                     ).ConfigureAwait(false);
                     response.EnsureSuccessStatusCode();
-                    string responseBody = await response.Content.ReadAsStringAsync();
+                    string responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
 
                     var newkey = ParseAuthResponse(responseBody);
                     return newkey.access_token;
                 }
                 catch (HttpRequestException ex)
                 {
-                    error_str = ex.Message;
-                    System.Diagnostics.Debug.WriteLine(error_str);
+                    Log("RefreshAuthorizationCode", ex.Message);
                 }
                 catch (OperationCanceledException)
                 {
@@ -185,8 +211,7 @@ namespace LibGoogleDrive
                 }
                 catch (Exception ex)
                 {
-                    error_str = ex.ToString();
-                    System.Diagnostics.Debug.WriteLine(error_str);
+                    Log("RefreshAuthorizationCode", ex.ToString());
                 }
             }
             return null;
@@ -230,7 +255,7 @@ namespace LibGoogleDrive
             {
                 try
                 {
-                    return await func();
+                    return await func().ConfigureAwait(false);
                 }
                 catch (HttpRequestException ex)
                 {
@@ -282,13 +307,13 @@ namespace LibGoogleDrive
             while (retry-- > 0)
             {
                 ct.ThrowIfCancellationRequested();
-                Auth.access_token = await RefreshAuthorizationCode(Auth, ct).ConfigureAwait(false);
+                Auth.access_token = await RefreshAuthorizationCode(Auth, ct).ConfigureAwait(false) ?? throw new Exception("Authrized failed.");
                 if (await GetAccountInfo(ct).ConfigureAwait(false))
                 {
                     AuthTimer = DateTime.Now;
                     return true;
                 }
-                await Task.Delay(1000, ct);
+                await Task.Delay(1000, ct).ConfigureAwait(false);
             }
             return false;
         }
@@ -568,7 +593,7 @@ namespace LibGoogleDrive
         public async Task<FileMetadata_Info[]> ListChildren(string fileId = "root", CancellationToken ct = default(CancellationToken))
         {
             Log("ListChildren", fileId);
-            return await FilesList(string.Format("'{0}'+in+parents", fileId));
+            return await FilesList(string.Format("'{0}'+in+parents", fileId)).ConfigureAwait(false);
         }
 
 
@@ -803,14 +828,14 @@ namespace LibGoogleDrive
         public async Task<bool> TrashItem(string id, CancellationToken ct = default(CancellationToken))
         {
             Log("Trash", id);
-            var ret = await FilesUpdate(id, new FileMetadata_Info() { trashed = true }, ct);
+            var ret = await FilesUpdate(id, new FileMetadata_Info() { trashed = true }, ct).ConfigureAwait(false);
             return ret?.trashed ?? false;
         }
 
         public async Task<FileMetadata_Info> RenameItem(string id, string newname, CancellationToken ct = default(CancellationToken))
         {
             Log("rename", id + ' ' + newname);
-            return await FilesUpdate(id, new FileMetadata_Info() { name = newname }, ct);
+            return await FilesUpdate(id, new FileMetadata_Info() { name = newname }, ct).ConfigureAwait(false);
         }
 
 
@@ -913,7 +938,7 @@ namespace LibGoogleDrive
                         var data = ParseResponse<FileMetadata_Info>(responseBody);
 
                         return await FilesGet(childid, ct).ConfigureAwait(false);
-                    });
+                    }).ConfigureAwait(false);
                 }
                 catch (HttpRequestException ex)
                 {

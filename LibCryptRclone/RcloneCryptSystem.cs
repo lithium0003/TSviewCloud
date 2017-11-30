@@ -529,8 +529,8 @@ namespace TSviewCloudPlugin
             catch
             {
                 var mkjob = JobControler.CreateNewJob<IRemoteItem>(
-               type: JobClass.RemoteOperation,
-               depends: parentJob);
+                    type: JobClass.RemoteOperation,
+                    depends: parentJob);
                 mkjob.WeekDepend = WeekDepend;
                 mkjob.ForceHidden = true;
                 JobControler.Run<IRemoteItem>(mkjob, (j) =>

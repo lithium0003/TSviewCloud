@@ -124,4 +124,7 @@
     <PostBuildEvent>mkdir $(SolutionDir)TSviewCloud\$(OutDir)plugin\
 copy $(TargetDir)$(TargetFileName) $(SolutionDir)TSviewCloud\$(OutDir)plugin\</PostBuildEvent>
   </PropertyGroup>
+  <PropertyGroup>
+    <PreBuildEvent>if not exist "$(SolutionDir)SecretKeys\HiddenKey.cs" copy "$(SolutionDir)SecretKeys\HiddenKey_dummy.cs" "$(SolutionDir)SecretKeys\HiddenKey.cs"</PreBuildEvent>
+  </PropertyGroup>
 </Project>

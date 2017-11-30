@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
@@ -47,17 +48,39 @@ namespace LibGoogleDrive
             var response_type = "code";
             var scope = "https://www.googleapis.com/auth/drive";
             var code_challenge_method = "plain";
+            string url;
             code_challenge = Get_code_challenge();
 
-            LocalServer = StartHttpServer();
+            if (string.IsNullOrEmpty(ConfigAPI.client_secret))
+            {
+                // secret key is absent.
+                // redirect to web and proxy call
 
-            string url = ConfigAPI.oauth_uri
-                + "?scope=" + scope
-                + "&response_type=" + response_type
-                + "&redirect_uri=" + ConfigAPI.redirect_uri
-                + "&client_id=" + ConfigAPI.client_id
-                + "&code_challenge_method=" + code_challenge_method
-                + "&code_challenge=" + code_challenge;
+                ConfigAPI.redirect_uri = "https://lithium03.info/login/google/redirect";
+
+                url = ConfigAPI.oauth_uri
+                    + "?scope=" + Uri.EscapeUriString(scope)
+                    + "&access_type=offline"
+                    + "&include_granted_scopes=true"
+                    + "&response_type=" + response_type
+                    + "&redirect_uri=" + Uri.EscapeUriString(ConfigAPI.redirect_uri)
+                    + "&client_id=" + ConfigAPI.client_id_web;
+            }
+            else
+            {
+                // secret key exists.
+                // redirect to local
+
+                LocalServer = StartHttpServer();
+
+                url = ConfigAPI.oauth_uri
+                    + "?scope=" + Uri.EscapeUriString(scope)
+                    + "&response_type=" + response_type
+                    + "&redirect_uri=" + Uri.EscapeUriString(ConfigAPI.redirect_uri)
+                    + "&client_id=" + ConfigAPI.client_id
+                    + "&code_challenge_method=" + code_challenge_method
+                    + "&code_challenge=" + code_challenge;
+            }
             ct_soruce = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
             webBrowser1.Navigate(url);
@@ -166,18 +189,63 @@ namespace LibGoogleDrive
             var path = e.Url.AbsoluteUri;
             if (path.StartsWith(ConfigAPI.redirect_uri))
             {
-                const string code_str = "?code=";
-                var i = path.IndexOf(code_str);
-                if (i < 0) return;
-                var j = path.IndexOf('&', i);
+                if (string.IsNullOrEmpty(ConfigAPI.client_secret))
+                {
+                    // secret key exists.
+                    // get access token via remote.
 
-                var code = (j < 0) ? path.Substring(i + code_str.Length) : path.Substring(i + code_str.Length, j - (i + code_str.Length));
-                key = await GetAccessToken(code, ct_soruce.Token);
+                    return;
+                }
+                else
+                {
+                    // secret key exists.
+                    // get access token from local.
 
+                    const string code_str = "?code=";
+                    var i = path.IndexOf(code_str);
+                    if (i < 0) return;
+                    var j = path.IndexOf('&', i);
+
+                    var code = (j < 0) ? path.Substring(i + code_str.Length) : path.Substring(i + code_str.Length, j - (i + code_str.Length));
+                    key = await GetAccessToken(code, ct_soruce.Token);
+
+                    if (key != null && key.access_token != "")
+                    {
+                        server.Refresh_Token = key.refresh_token;
+
+                        webBrowser1.DocumentText = "<html><body>Login success</body></html>";
+                        timer1.Enabled = true;
+                    }
+                }
+            }
+            if (path.StartsWith(ConfigAPI.App_GetToken))
+            {
+                try
+                {
+                    var body = webBrowser1.DocumentText;
+                    var i = body.IndexOf("{");
+                    var j = body.IndexOf("}");
+                    if (i < 0 || j < 0) return;
+
+                    key = GoogleDrive.ParseAuthResponse(body.Substring(i, j - i));
+
+                    if (key.refresh_token == null)
+                    {
+                        GoogleDrive.RevokeToken(key).Wait();
+                        webBrowser1.DocumentText = "<html><body>Login failed. please retry</body></html>";
+                        key.access_token = null;
+                        return;
+                    }
+
+                    // Save refresh_token
+                    server.Refresh_Token = key.refresh_token;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(ex.ToString());
+                }
                 if (key != null && key.access_token != "")
                 {
-                    server.Refresh_Token = key.refresh_token;
-
                     webBrowser1.DocumentText = "<html><body>Login success</body></html>";
                     timer1.Enabled = true;
                 }

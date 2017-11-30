@@ -2875,7 +2875,7 @@ namespace ffmodule {
 			}
 			if (delay >= -1.0 && delay <= 1.0) {
 				frame_last_delay.push_back(delay);
-				if (frame_last_delay.size() > 100)
+				if (frame_last_delay.size() > 10)
 					frame_last_delay.pop_front();
 			}
 
@@ -2885,8 +2885,8 @@ namespace ffmodule {
 			/* computer the REAL delay */
 			double actual_delay = frame_timer - av_gettime() / 1000000.0;
 
-			if (actual_delay > AV_SYNC_THRESHOLD + 0.01) {
-				schedule_refresh((int)(actual_delay * 1000) - 20);
+			if (actual_delay > AV_SYNC_THRESHOLD) {
+				schedule_refresh((int)(actual_delay * 1000) - 10);
 			}
 			else if (actual_delay > skepdelay) {
 				schedule_refresh(1);
