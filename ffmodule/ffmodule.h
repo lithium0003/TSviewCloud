@@ -45,14 +45,14 @@ extern "C" {
 #include <stdlib.h>
 #include <inttypes.h>
 
-#define SDL_AUDIO_BUFFER_SIZE 512 * 1024
+#define SDL_AUDIO_BUFFER_SIZE 8 * 1024
 #define MAX_AUDIO_FRAME_SIZE 192000
 
 #define FF_REFRESH_EVENT (SDL_USEREVENT)
 #define FF_INTERNAL_REFRESH_EVENT (SDL_USEREVENT + 1)
 #define FF_QUIT_EVENT (SDL_USEREVENT + 2)
 
-#define VIDEO_PICTURE_QUEUE_SIZE 10
+#define VIDEO_PICTURE_QUEUE_SIZE 40
 
 #define MAX_AUDIOQ_SIZE (8 * 1024 * 1024)
 #define MAX_VIDEOQ_SIZE (64 * 1024 * 1024)
@@ -318,7 +318,7 @@ namespace ffmodule {
 		int64_t         subpictq_active_serial;
 		double          frame_timer;
 		double          frame_last_pts;
-		std::deque<double> frame_last_delay;
+		double	        frame_last_delay;
 		long            force_draw;
 		long            remove_refresh;
 		double          video_delay_to_audio;

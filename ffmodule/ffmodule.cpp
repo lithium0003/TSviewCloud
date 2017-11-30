@@ -672,7 +672,7 @@ namespace ffmodule {
 
 		frame_timer = 0;
 		frame_last_pts = 0;
-		frame_last_delay.clear();
+		frame_last_delay = 10e-3;
 
 		video_st = 0;
 		video_clock = 0;
@@ -1769,8 +1769,7 @@ namespace ffmodule {
 			video_clock_start = NAN;
 
 			frame_timer = (double)av_gettime() / 1000000.0;
-			frame_last_delay.clear();
-			frame_last_delay.push_back(40e-3);
+			frame_last_delay = 10e-3;
 			video_current_pts_time = av_gettime();
 			
 			{
@@ -2397,7 +2396,7 @@ namespace ffmodule {
 		}
 		SDL_SetRenderDrawColor(screen->renderer.get(), 32, 32, 255, 200);
 		SDL_SetRenderDrawBlendMode(screen->renderer.get(), SDL_BlendMode::SDL_BLENDMODE_BLEND);
-		SDL_Rect rect = { 0, screen->GetHight() - 50, screen->GetWidth() * pos_ratio, 50 };
+		SDL_Rect rect = { 0, screen->GetHight() - 50, (int)(screen->GetWidth() * pos_ratio), 50 };
 		SDL_RenderFillRect(screen->renderer.get(), &rect);
 		SDL_SetRenderDrawColor(screen->renderer.get(), 0, 0, 0, 255);
 		SDL_SetRenderDrawBlendMode(screen->renderer.get(), SDL_BlendMode::SDL_BLENDMODE_NONE);
@@ -2833,20 +2832,11 @@ namespace ffmodule {
 
 			double delay = vp->pts - frame_last_pts; /* the pts from last time */
 			if (delay >= -1.0 && delay <= 1.0) {
-				for each(auto d in frame_last_delay)
-				{
-					delay += d;
-				}
-				delay /= (frame_last_delay.size() + 1);
+				// use original
 			}
 			else {
 				/* if incorrect delay, use previous one */
-				delay = 0;
-				for each(auto d in frame_last_delay)
-				{
-					delay += d;
-				}
-				delay /= frame_last_delay.size();
+				delay = frame_last_delay;
 			}
 			/* save for next time */
 			frame_last_pts = vp->pts;
@@ -2874,19 +2864,17 @@ namespace ffmodule {
 				}
 			}
 			if (delay >= -1.0 && delay <= 1.0) {
-				frame_last_delay.push_back(delay);
-				if (frame_last_delay.size() > 10)
-					frame_last_delay.pop_front();
+				frame_last_delay = (frame_last_delay * 99 + delay * 1) / 100;
 			}
 
 
 			frame_timer += delay;
-			const double skepdelay = 0.001;
+			const double skepdelay = 0.002;
 			/* computer the REAL delay */
 			double actual_delay = frame_timer - av_gettime() / 1000000.0;
 
 			if (actual_delay > AV_SYNC_THRESHOLD) {
-				schedule_refresh((int)(actual_delay * 1000) - 10);
+				schedule_refresh((int)((actual_delay - AV_SYNC_THRESHOLD) * 1000));
 			}
 			else if (actual_delay > skepdelay) {
 				schedule_refresh(1);

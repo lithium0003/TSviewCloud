@@ -242,7 +242,7 @@ namespace LibAmazonDrive
                         ct
                     ).ConfigureAwait(false);
                     response.EnsureSuccessStatusCode();
-                    string responseBody = await response.Content.ReadAsStringAsync();
+                    string responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
 
                     key = ParseAuthResponse(responseBody);
                 }
@@ -316,7 +316,7 @@ namespace LibAmazonDrive
                     {
                         var waitsec = rnd.Next((int)Math.Pow(2, Math.Min(retry - 1, 8)));
                         Log(LogPrefix, "wait " + waitsec.ToString() + " sec");
-                        await Task.Delay(waitsec * 1000);
+                        await Task.Delay(waitsec * 1000).ConfigureAwait(false);
                     }
                     else
                     {
@@ -363,13 +363,13 @@ namespace LibAmazonDrive
             {
                 ct.ThrowIfCancellationRequested();
                 Auth = await RefreshAuthorizationCode(Auth, ct).ConfigureAwait(false);
-                await EnsureEndpoint(ct);
+                await EnsureEndpoint(ct).ConfigureAwait(false);
                 if (await GetAccountInfo(ct).ConfigureAwait(false))
                 {
                     AuthTimer = DateTime.Now;
                     return true;
                 }
-                await Task.Delay(1000, ct);
+                await Task.Delay(1000, ct).ConfigureAwait(false);
             }
             return false;
         }
@@ -822,15 +822,18 @@ namespace LibAmazonDrive
                     client.DefaultRequestHeaders.Range = new RangeHeaderValue(from, to);
                 }
                 string url = contentUrl + "nodes/" + id + "/content?download=false";
-                var response = await client.GetAsync(
-                    url,
-                    HttpCompletionOption.ResponseHeadersRead,
-                    ct).ConfigureAwait(false);
-                response.EnsureSuccessStatusCode();
-                if((from ?? 0) == 0 && to == null)
-                    return new HashStream(await response.Content.ReadAsStreamAsync().ConfigureAwait(false), new MD5CryptoServiceProvider(), hash, length);
-                else
-                    return await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                return await DoWithRetry(async () =>
+                {
+                    var response = await client.GetAsync(
+                        url,
+                        HttpCompletionOption.ResponseHeadersRead,
+                        ct).ConfigureAwait(false);
+                    response.EnsureSuccessStatusCode();
+                    if ((from ?? 0) == 0 && to == null)
+                        return new HashStream(await response.Content.ReadAsStreamAsync().ConfigureAwait(false), new MD5CryptoServiceProvider(), hash, length);
+                    else
+                        return await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                }, "DownloadItem").ConfigureAwait(false);
             }
             catch (HttpRequestException ex)
             {

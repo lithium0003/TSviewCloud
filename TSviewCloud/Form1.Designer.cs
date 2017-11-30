@@ -117,6 +117,7 @@
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
+            this.clearSelectedDriveCacheToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.panel1.SuspendLayout();
             this.contextMenuStrip_play.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -621,6 +622,7 @@
             this.openNewWindowToolStripMenuItem,
             this.saveDirveCacheToolStripMenuItem,
             this.toolStripMenuItem9,
+            this.clearSelectedDriveCacheToolStripMenuItem,
             this.driveCacheclearToolStripMenuItem,
             this.toolStripMenuItem1,
             this.exitToolStripMenuItem});
@@ -670,7 +672,7 @@
             // 
             this.driveCacheclearToolStripMenuItem.Name = "driveCacheclearToolStripMenuItem";
             this.driveCacheclearToolStripMenuItem.Size = new System.Drawing.Size(260, 26);
-            this.driveCacheclearToolStripMenuItem.Text = "Drive cache clear";
+            this.driveCacheclearToolStripMenuItem.Text = "Reload all drives";
             this.driveCacheclearToolStripMenuItem.Click += new System.EventHandler(this.driveCacheclearToolStripMenuItem_Click);
             // 
             // toolStripMenuItem1
@@ -891,6 +893,13 @@
             this.timer1.Interval = 500;
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
+            // clearSelectedDriveCacheToolStripMenuItem
+            // 
+            this.clearSelectedDriveCacheToolStripMenuItem.Name = "clearSelectedDriveCacheToolStripMenuItem";
+            this.clearSelectedDriveCacheToolStripMenuItem.Size = new System.Drawing.Size(260, 26);
+            this.clearSelectedDriveCacheToolStripMenuItem.Text = "Clear selected drive cache";
+            this.clearSelectedDriveCacheToolStripMenuItem.Click += new System.EventHandler(this.clearSelectedDriveCacheToolStripMenuItem_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(120F, 120F);
@@ -1014,6 +1023,7 @@
         private System.Windows.Forms.ToolStripMenuItem changeattributeToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem changeattributeItemToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem tSSendToolStripMenuItem1;
+        private System.Windows.Forms.ToolStripMenuItem clearSelectedDriveCacheToolStripMenuItem;
     }
 }
 

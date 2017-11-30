@@ -782,15 +782,25 @@ namespace TSviewCloudPlugin
                 });
         }
 
-        static public void ClearCache()
+        static public void ClearCache(string[] Services = null)
         {
-            itemCache.Clear();
-            ItemControl.ReloadRequest.Clear();
+            if (Services == null)
+            {
+                itemCache.Clear();
+                ItemControl.ReloadRequest.Clear();
+            }
+            else
+            {
+                foreach (var k in itemCache.Keys.Where(x => Services.Any(y => x.StartsWith(y))).ToArray())
+                    itemCache.TryRemove(k, out var tmp1);
+                foreach (var k in ItemControl.ReloadRequest.Keys.Where(x => Services.Any(y => x.StartsWith(y))).ToArray())
+                    ItemControl.ReloadRequest.TryRemove(k, out var tmp1);
+            }
 
             Dictionary<string, List<IRemoteServer>> dependlist = new Dictionary<string, List<IRemoteServer>>();
 
             int servercount = 0;
-            foreach (var s in ServerList.Values)
+            foreach (var s in (Services == null)? ServerList.Values: ServerList.Where(x => Services.Any(y => x.Key == y)).Select(x => x.Value))
             {
                 var depends = s.DependsOnService ?? "";
                 if (!dependlist.ContainsKey(depends))

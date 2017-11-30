@@ -2552,6 +2552,71 @@ namespace TSviewCloud
         }
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+        private void clearSelectedDriveCacheToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var server = listData.CurrentViewItem?.Server;
+            if (server == null) return;
+
+            TSviewCloudPlugin.RemoteServerFactory.ClearCache(new[] { server });
+
+            listData.Clear();
+            treeView1.Nodes.Find(server, false).First().Nodes.Clear();
+
+
+            var displayJob = TSviewCloudPlugin.JobControler.CreateNewJob(TSviewCloudPlugin.JobClass.LoadItem);
+            displayJob.DisplayName = "Display  server";
+            TSviewCloudPlugin.JobControler.Run(displayJob, (j) =>
+            {
+                j.Progress = -1;
+                j.ProgressStr = "Loading...";
+
+                while (!TSviewCloudPlugin.RemoteServerFactory.ServerList.Values.All(x => x.IsReady))
+                {
+                    j.Ct.ThrowIfCancellationRequested();
+                    Task.Delay(500).Wait(j.Ct);
+                }
+                j.Progress = 1;
+                j.ProgressStr = "Done.";
+            });
+
+            var load2Job = TSviewCloudPlugin.JobControler.CreateNewJob(TSviewCloudPlugin.JobClass.ControlMaster);
+            TSviewCloudPlugin.JobControler.Run(load2Job, (j) =>
+            {
+                displayJob.Wait(ct: j.Ct);
+                var display2Job = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(
+                    type: TSviewCloudPlugin.JobClass.LoadItem,
+                    depends: TSviewCloudPlugin.RemoteServerFactory.PathToItemJob(server + "://")
+                );
+                display2Job.DisplayName = "Display  server";
+                display2Job.ProgressStr = "wait for load";
+                TSviewCloudPlugin.JobControler.Run<TSviewCloudPlugin.IRemoteItem>(display2Job, (j2j) =>
+                {
+                    displayJob.Wait(ct: j.Ct);
+                    j2j.Progress = -1;
+                    j2j.ProgressStr = "Loading...";
+                    var results = new List<TSviewCloudPlugin.IRemoteItem>();
+                    foreach (var item in j2j.ResultOfDepend)
+                    {
+                        if (item != null && item.TryGetTarget(out var result))
+                        {
+                            results.Add(result);
+                        }
+                    }
+
+                    synchronizationContext.Post((o) =>
+                    {
+                        Cursor.Current = Cursors.WaitCursor;
+                        foreach (var item in o as IEnumerable<TSviewCloudPlugin.IRemoteItem>)
+                        {
+                            var treenode = treeView1.Nodes.Find(item.Server, false).First();
+                            treenode.Tag = item;
+                            ExpandItem(treenode);
+                        }
+                    }, results);
+                });
+            });
+        }
+
         private void driveCacheclearToolStripMenuItem_Click(object sender, EventArgs e)
         {
             TSviewCloudPlugin.RemoteServerFactory.ClearCache();
@@ -2913,6 +2978,7 @@ namespace TSviewCloud
             WinInetHelper.SupressCookiePersist();
             WinInetHelper.EndBrowserSession();
         }
+
     }
 
 

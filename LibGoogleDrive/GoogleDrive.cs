@@ -803,7 +803,7 @@ namespace LibGoogleDrive
                         return new HashStream(await response.Content.ReadAsStreamAsync().ConfigureAwait(false), new MD5CryptoServiceProvider(), hash, length);
                     else
                         return await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-                });
+                }, "DownloadItem").ConfigureAwait(false);
             }
             catch (HttpRequestException ex)
             {
@@ -938,7 +938,7 @@ namespace LibGoogleDrive
                         var data = ParseResponse<FileMetadata_Info>(responseBody);
 
                         return await FilesGet(childid, ct).ConfigureAwait(false);
-                    }).ConfigureAwait(false);
+                    }, "MoveChild").ConfigureAwait(false);
                 }
                 catch (HttpRequestException ex)
                 {
