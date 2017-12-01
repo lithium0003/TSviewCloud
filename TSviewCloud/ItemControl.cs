@@ -95,14 +95,14 @@ namespace TSviewCloudPlugin
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        static private void MakeSureItem(IRemoteItem item)
+        static public async Task MakeSureItem(IRemoteItem item)
         {
-            item = RemoteServerFactory.PathToItem(item.FullPath);
+            item = await RemoteServerFactory.PathToItem(item.FullPath);
             if (item.Children?.Count() != 0)
             {
                 foreach (var c in item.Children)
                 {
-                    MakeSureItem(c);
+                    await MakeSureItem(c);
                 }
             }
         }
@@ -248,11 +248,11 @@ namespace TSviewCloudPlugin
             var job = JobControler.CreateNewJob(JobClass.LoadItem, depends: prevJob);
             job.DisplayName = "Search Items";
             job.WeekDepend = weekdepend;
-            JobControler.Run(job, (j) =>
+            JobControler.Run(job, async (j) =>
             {
                 foreach (var item in items)
                 {
-                    MakeSureItem(item);
+                    await MakeSureItem(item);
                 }
             });
             return DoDownloadFolder(localfoldername, items, job);

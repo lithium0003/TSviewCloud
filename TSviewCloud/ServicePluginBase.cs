@@ -121,13 +121,13 @@ namespace TSviewCloudPlugin
         bool IsReady { get; }
 
         void Init();
-        bool Add();
+        Task<bool> Add();
         void ClearCache();
         void Disconnect();
  
         IRemoteItem this[string ID] { get; }
         IRemoteItem PeakItem(string ID);
-        IRemoteItem ReloadItem(string ID);
+        Task<IRemoteItem> ReloadItem(string ID);
 
         Job<IRemoteItem> MakeFolder(string foldername, IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] parentJob);
         Job<IRemoteItem> UploadFile(string filename, IRemoteItem remoteTarget, string uploadname = null, bool WeekDepend = false, params Job[] parentJob);
@@ -327,7 +327,7 @@ namespace TSviewCloudPlugin
                 {
                     if (ID == null) return null;
                     if (ID == RootID) ID = "";
-                    EnsureItem(ID);
+                    EnsureItem(ID).Wait();
                     return PeakItem(ID);
                 }
                 catch
@@ -337,11 +337,11 @@ namespace TSviewCloudPlugin
             }
         }
         public abstract IRemoteItem PeakItem(string ID);
-        protected abstract void EnsureItem(string ID, int depth = 0);
-        public abstract IRemoteItem ReloadItem(string ID);
+        protected abstract Task EnsureItem(string ID, int depth = 0);
+        public abstract Task<IRemoteItem> ReloadItem(string ID);
 
         public abstract void Init();
-        public abstract bool Add();
+        public abstract Task<bool> Add();
         public abstract void ClearCache();
 
         public abstract string GetServiceName();
@@ -373,14 +373,14 @@ namespace TSviewCloudPlugin
             }
             if(TSviewCloudConfig.Config.UploadConflictBehavior == TSviewCloudConfig.UploadBehavior.SkipAlways)
             {
-                TSviewCloud.FormConflicts.Instance.AddResult(remoteTarget.FullPath + "/" + uploadname, "Skip upload");
+                LogFailed(remoteTarget.FullPath + "/" + uploadname, "Skip upload");
                 throw new Exception("conflict and always skip");
             }
             if (TSviewCloudConfig.Config.UploadConflictBehavior == TSviewCloudConfig.UploadBehavior.SkipSameSize)
             {
                 if (streamsize == null || conflicts.Any(x => x.Size == streamsize))
                 {
-                    TSviewCloud.FormConflicts.Instance.AddResult(remoteTarget.FullPath + "/" + uploadname, "Skip upload (same size)");
+                    LogFailed(remoteTarget.FullPath + "/" + uploadname, "Skip upload (same size)");
                     throw new Exception("conflict and same size skip");
                 }
             }
@@ -398,6 +398,11 @@ namespace TSviewCloudPlugin
             });
             return job;
         }
+        protected virtual void LogFailed(string target, string reason)
+        {
+            TSviewCloud.FormConflicts.Instance.AddResult(target, reason);
+        }
+
 
         public abstract Job<IRemoteItem> MakeFolder(string foldername, IRemoteItem remoteTarget, bool WeekDepend = false, params Job[] parentJob);
 
@@ -436,15 +441,15 @@ namespace TSviewCloudPlugin
                     var checkjob = CheckUpload(moveToItem, moveItem.Name, moveItem.Size ?? 0, WeekDepend, prevJob);
                     if (checkjob != null)
                     {
-                        WeekDepend = false;
                         prevJob = new[] { checkjob };
+                        WeekDepend = false;
                     }
                 }
                 catch
                 {
                     return null;
                 }
-                var movejob = JobControler.CreateNewJob<IRemoteItem>(
+                var contjob = JobControler.CreateNewJob<IRemoteItem>(
                     type: JobClass.RemoteUpload,
                     info: new JobControler.SubInfo
                     {
@@ -452,24 +457,33 @@ namespace TSviewCloudPlugin
                         size = moveItem.Size ?? 0,
                     },
                     depends: prevJob);
-                movejob.WeekDepend = WeekDepend;
-                movejob.DisplayName = moveItem.FullPath;
-                movejob.ProgressStr = "wait for download";
-                JobControler.Run<IRemoteItem>(movejob, (j) =>
+                contjob.WeekDepend = WeekDepend;
+                contjob.DisplayName = moveItem.FullPath;
+                contjob.ProgressStr = "wait for download";
+                JobControler.Run<IRemoteItem>(contjob, async (j) =>
                 {
                     j.ProgressStr = "move progress...";
                     j.Progress = -1;
-                    var downjob = RemoteServerFactory.PathToItem(moveItem.FullPath).DownloadItemRawJob(WeekDepend: true, prevJob: j);
+                    var downjob = (await RemoteServerFactory.PathToItem(moveItem.FullPath)).DownloadItemRawJob(WeekDepend: true, prevJob: j);
                     downjob.Wait(ct: j.Ct);
                     j.JobInfo.pos = moveItem.Size ?? 0; // hand over size to upload task
-                    j.ForceHidden = true;
+                        j.ForceHidden = true;
                     var uploadjob = moveToItem.UploadStream(downjob.Result, moveItem.Name, moveItem.Size ?? 0, WeekDepend, prevJob);
-                    uploadjob.Wait(ct: j.Ct);
-                    j.Result = uploadjob.Result;
-                    j.ProgressStr = "done";
-                    j.Progress = 1;
+                    if (uploadjob != null)
+                    {
+                        uploadjob.Wait(ct: j.Ct);
+                        j.Result = uploadjob.Result;
+                        j.ProgressStr = "done";
+                        j.Progress = 1;
+                    }
+                    else
+                    {
+                        j.ProgressStr = "Upload failed.";
+                        j.Progress = double.NaN;
+                        LogFailed(moveItem.FullPath, "move(copy) error");
+                    }
                 });
-                return movejob;
+                return contjob;
             }
 
             var loadjob = RemoteServerFactory.PathToItemJob(moveItem.FullPath);
@@ -483,7 +497,7 @@ namespace TSviewCloudPlugin
                 depends: moveToItem.MakeFolder(moveItem.Name, WeekDepend, prevJob?.Concat(new[] { loadjob }).ToArray()??new[] { loadjob } ));
             job.DisplayName = string.Format("Upload Folder {0} to {1}", moveItem.FullPath, moveToItem.FullPath);
             job.ProgressStr = "wait for upload.";
-            JobControler.Run<IRemoteItem>(job, (j) =>
+            JobControler.Run<IRemoteItem>(job, async (j) =>
             {
                 var result = j.ResultOfDepend[0];
                 if (result.TryGetTarget(out var newdir))
@@ -491,7 +505,7 @@ namespace TSviewCloudPlugin
                     j.Progress = -1;
                     j.ProgressStr = "upload...";
                     var joblist = new List<Job<IRemoteItem>>();
-                    joblist.AddRange(RemoteServerFactory.PathToItem(moveItem.FullPath).Children?.Select(x => x?.MoveItem(newdir, WeekDepend: true, prevJob: j)));
+                    joblist.AddRange((await RemoteServerFactory.PathToItem(moveItem.FullPath)).Children?.Select(x => x?.MoveItem(newdir, WeekDepend: true, prevJob: j)));
                     //Parallel.ForEach(joblist, (x) => x.Wait(ct: job.Ct));
                     j.Result = newdir;
                 }
@@ -891,7 +905,7 @@ namespace TSviewCloudPlugin
         }
 
 
-        static public IRemoteItem PathToItem(string url, ReloadType reload = ReloadType.Cache)
+        static async public Task<IRemoteItem> PathToItem(string url, ReloadType reload = ReloadType.Cache)
         {
             var m = Regex.Match(url, @"^(?<server>[^:]+)(://)(?<path>.*)$");
 
@@ -911,7 +925,7 @@ namespace TSviewCloudPlugin
                     }
                     else
                     {
-                        current = server.ReloadItem(current.ID);
+                        current = await server.ReloadItem(current.ID);
                         if (current != null)
                         {
                             itemCache.AddOrUpdate(url, (server.Name, current.ID), (key, val) => (server.Name, current.ID));
@@ -922,11 +936,11 @@ namespace TSviewCloudPlugin
 
                 if (ItemControl.ReloadRequest.TryRemove(server + "://", out int tmp))
                 {
-                    current = server.ReloadItem("");
+                    current = await server.ReloadItem("");
                 }
                 else
                 {
-                    current = (reload == ReloadType.Cache) ? server.PeakItem("") : server.ReloadItem("");
+                    current = (reload == ReloadType.Cache) ? server.PeakItem("") : await server.ReloadItem("");
                 }
 
                 var fullpath = m.Groups["path"].Value;
@@ -940,7 +954,7 @@ namespace TSviewCloudPlugin
                         {
                             if (child == null)
                             {
-                                current = server.ReloadItem(current.ID);
+                                current = await server.ReloadItem(current.ID);
                                 current = current.Children.Where(x => x.PathItemName == m.Groups["current"].Value).FirstOrDefault();
                                 if (current == null)
                                 {
@@ -959,11 +973,11 @@ namespace TSviewCloudPlugin
                         }
                         if (fullpath == "" && reload == ReloadType.Reload)
                         {
-                            current = server.ReloadItem(current.ID);
+                            current = await server.ReloadItem(current.ID);
                         }
                         else if (ItemControl.ReloadRequest.TryRemove(current.FullPath, out int tmp2))
                         {
-                            current = server.ReloadItem(current.ID);
+                            current = await server.ReloadItem(current.ID);
                         }
                     }
                     fullpath = m.Groups["next"].Value;
@@ -973,7 +987,7 @@ namespace TSviewCloudPlugin
                 {
                     foreach(var child in current.Children.ToArray())
                     {
-                        server.ReloadItem(child.ID);
+                        await server.ReloadItem(child.ID);
                     }
                 }
 
@@ -992,13 +1006,13 @@ namespace TSviewCloudPlugin
         {
             var LoadJob = JobControler.CreateNewJob<IRemoteItem>(JobClass.LoadItem);
             LoadJob.DisplayName = "Loading  " + url;
-            JobControler.Run<IRemoteItem>(LoadJob, (j) =>
+            JobControler.Run<IRemoteItem>(LoadJob, async (j) =>
             {
                 j.Progress = -1;
                 j.ProgressStr = "Loading...";
                 //LoadJob.ForceHidden = true;
 
-                j.Result = PathToItem(url, reload);
+                j.Result = await PathToItem(url, reload);
 
                 j.Progress = 1;
                 j.ProgressStr = "Done.";
@@ -1010,13 +1024,13 @@ namespace TSviewCloudPlugin
         {
             var LoadJob = JobControler.CreateNewJob<IRemoteItem>(JobClass.LoadItem);
             LoadJob.DisplayName = "Loading  " + relativeurl;
-            JobControler.Run<IRemoteItem>(LoadJob, (j) =>
+            JobControler.Run<IRemoteItem>(LoadJob, async (j) =>
             {
                 j.Progress = -1;
                 j.ProgressStr = "Loading...";
                 //j.ForceHidden = true;
 
-                j.Result = PathToItem(baseurl, relativeurl, reload);
+                j.Result = await PathToItem(baseurl, relativeurl, reload);
 
                 j.Progress = 1;
                 j.ProgressStr = "Done.";
@@ -1024,9 +1038,9 @@ namespace TSviewCloudPlugin
             return LoadJob;
         }
 
-        static public IRemoteItem PathToItem(string baseurl, string relativeurl, ReloadType reload = ReloadType.Cache)
+        static async public Task<IRemoteItem> PathToItem(string baseurl, string relativeurl, ReloadType reload = ReloadType.Cache)
         {
-            var current = PathToItem(baseurl, reload);
+            var current = await PathToItem(baseurl, reload);
             if (current == null) return null;
 
             try
@@ -1066,7 +1080,7 @@ namespace TSviewCloudPlugin
                         {
                             if (child == null)
                             {
-                                current = server.ReloadItem(current.ID);
+                                current = await server.ReloadItem(current.ID);
                                 current = current.Children.Where(x => x.PathItemName == m.Groups["current"].Value).First();
                             }
                             else
@@ -1079,14 +1093,14 @@ namespace TSviewCloudPlugin
                             current = child;
                         }
                         if (reload == ReloadType.Reload || ItemControl.ReloadRequest.TryRemove(current.FullPath, out int tmp3))
-                            current = server.ReloadItem(current.ID);
+                            current = await server.ReloadItem(current.ID);
                     }
                 }
                 if (reload == ReloadType.Reload && current.Children.Count() > 0)
                 {
                     foreach (var child in current.Children.ToArray())
                     {
-                        server.ReloadItem(child.ID);
+                        await server.ReloadItem(child.ID);
                     }
                 }
                 return current;
@@ -1097,7 +1111,7 @@ namespace TSviewCloudPlugin
             }
         }
 
-        static public IRemoteItem[] PathToItemChain(string url, ReloadType reload = ReloadType.Cache)
+        static async public Task<IRemoteItem[]> PathToItemChain(string url, ReloadType reload = ReloadType.Cache)
         {
             var m = Regex.Match(url, @"^(?<server>[^:]+)(://)(?<path>.*)$");
 
@@ -1121,7 +1135,7 @@ namespace TSviewCloudPlugin
                         {
                             if (child == null)
                             {
-                                current = server.ReloadItem(current.ID);
+                                current = await server.ReloadItem(current.ID);
                                 current = current.Children.Where(x => x.PathItemName == m.Groups["current"].Value).First();
                             }
                             else
@@ -1134,7 +1148,7 @@ namespace TSviewCloudPlugin
                             current = child;
                         }
                         if (reload == ReloadType.Reload)
-                            current = server.ReloadItem(current.ID);
+                            current = await server.ReloadItem(current.ID);
                         ret.Add(current);
                     }
                     fullpath = m.Groups["next"].Value;

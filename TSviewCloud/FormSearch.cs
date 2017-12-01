@@ -77,7 +77,7 @@ namespace TSviewCloud
                 () => new List<IRemoteItem>(),
                 (x, state, local) =>
                 {
-                    var item = RemoteServerFactory.PathToItem(x.FullPath);
+                    var item = RemoteServerFactory.PathToItem(x.FullPath).Result;
                     if (item == null) return local;
                     local.Add(item);
                     local.AddRange(GetItems(item));
@@ -160,7 +160,7 @@ namespace TSviewCloud
                     }
                     if (selecttree)
                     {
-                        initselection.Add(RemoteServerFactory.PathToItem(treepath));
+                        initselection.Add(RemoteServerFactory.PathToItem(treepath).Result);
                     }
 
                     synchronizationContext.Post((o) =>
@@ -178,7 +178,7 @@ namespace TSviewCloud
                         (x, state, local) =>
                         {
                             if (x == null) return local;
-                            var item = RemoteServerFactory.PathToItem(x.FullPath);
+                            var item = RemoteServerFactory.PathToItem(x.FullPath).Result;
                             if (item == null) return local;
 
                             local.AddRange(GetItems(item));

@@ -55,7 +55,7 @@ namespace TSviewCloud
                 () => new List<IRemoteItem>(),
                 (x, state, local) =>
                 {
-                    var item = RemoteServerFactory.PathToItem(x.FullPath);
+                    var item = RemoteServerFactory.PathToItem(x.FullPath).Result;
                     if (item == null) return local;
                     local.Add(item);
                     local.AddRange(GetItems(item));
@@ -88,7 +88,7 @@ namespace TSviewCloud
                     Cursor.Current = Cursors.WaitCursor;
                     _SelectedRemoteFiles = value.ToArray()
                         .AsParallel()
-                        .Select(x => GetItems(RemoteServerFactory.PathToItem(x.FullPath)))
+                        .Select(x => GetItems(RemoteServerFactory.PathToItem(x.FullPath).Result))
                         .SelectMany(x => x.Select(y => y))
                         .Distinct()
                         .Where(x => x.ItemType == RemoteItemType.File);
@@ -572,7 +572,7 @@ namespace TSviewCloud
             var bf = new BinaryFormatter();
             ret = bf.Deserialize(st);
             ClipboardRemoteDrive.ReleaseStgMedium(ref media);
-            return (ret as string[]).Select(x => RemoteServerFactory.PathToItem(x));
+            return (ret as string[]).Select(x => RemoteServerFactory.PathToItem(x).Result);
         }
 
         private void listBox_remote_DragDrop(object sender, DragEventArgs e)

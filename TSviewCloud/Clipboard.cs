@@ -439,14 +439,14 @@ namespace TSviewCloud
             total.Add(new KeyValuePair<string, IRemoteItem>(basepath + filename, items));
             if (items.ItemType == RemoteItemType.Folder)
             {
-                var children = RemoteServerFactory.PathToItem(items.FullPath).Children;
+                var children = RemoteServerFactory.PathToItem(items.FullPath).Result.Children;
                 if (children.Count() > 0)
                 {
                     Parallel.ForEach(children,
                         new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
                         () => new Dictionary<string, IRemoteItem>(), (x, state, local) =>
                         {
-                            return local.Concat(ExpandPath(basepath + filename + "\\", RemoteServerFactory.PathToItem(x.FullPath))).ToDictionary(y => y.Key, y => y.Value);
+                            return local.Concat(ExpandPath(basepath + filename + "\\", RemoteServerFactory.PathToItem(x.FullPath).Result)).ToDictionary(y => y.Key, y => y.Value);
                         },
                         (subtotal) =>
                         {
@@ -469,7 +469,7 @@ namespace TSviewCloud
                 () => new Dictionary<string, IRemoteItem>(), 
                 (x, state, local) =>
                 {
-                    return local.Concat(ExpandPath("", RemoteServerFactory.PathToItem(x.FullPath))).ToDictionary(y => y.Key, y => y.Value);
+                    return local.Concat(ExpandPath("", RemoteServerFactory.PathToItem(x.FullPath).Result)).ToDictionary(y => y.Key, y => y.Value);
                 },
                 (subtotal) =>
                 {
@@ -531,7 +531,7 @@ namespace TSviewCloud
                 {
                     medium.tymed = TYMED.TYMED_ISTREAM;
                     dstream?.Dispose();
-                    medium.unionmember = Marshal.GetComInterfaceForObject(new StreamWrapper(dstream = RemoteServerFactory.PathToItem(selectedItemPaths[format.lindex]).DownloadItemRaw()), typeof(IStream));
+                    medium.unionmember = Marshal.GetComInterfaceForObject(new StreamWrapper(dstream = RemoteServerFactory.PathToItem(selectedItemPaths[format.lindex]).Result.DownloadItemRaw()), typeof(IStream));
                     medium.pUnkForRelease = null;
                 }
                 else

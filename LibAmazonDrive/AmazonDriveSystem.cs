@@ -216,22 +216,23 @@ namespace TSviewCloudPlugin
                 return null;
             }
         }
-        protected override void EnsureItem(string ID, int depth = 0)
+
+        protected async override Task EnsureItem(string ID, int depth = 0)
         {
             if (ID == "") ID = RootID;
             TSviewCloudConfig.Config.Log.LogOut("[EnsureItem(AmazonDriveSystem)] " + ID);
-            Reload(true);
+            await Reload(true);
         }
 
-        public override IRemoteItem ReloadItem(string ID)
+        public async override Task<IRemoteItem> ReloadItem(string ID)
         {
             if (ID == "") ID = RootID;
             TSviewCloudConfig.Config.Log.LogOut("[ReloadItem(AmazonDriveSystem)] " + ID);
-            Reload(true);
+            await Reload(true);
             return PeakItem(ID);
         }
 
-        private void Reload(bool wait = false)
+        private async Task Reload(bool wait = false)
         {
             if(DateTime.Now - LastSyncTime > TimeSpan.FromSeconds(15))
             {
@@ -245,7 +246,7 @@ namespace TSviewCloudPlugin
                     job.Progress = 1;
                     job.ProgressStr = "done.";
                 });
-                job.Wait();
+                await job.WaitTask();
             }
         }
 
@@ -265,7 +266,7 @@ namespace TSviewCloudPlugin
         }
 
 
-        private bool InitializeDrive()
+        private async Task<bool> InitializeDrive()
         {
             var formlogin = new FormLogin(this);
             var ret = false;
@@ -295,7 +296,7 @@ namespace TSviewCloudPlugin
                 job.ProgressStr = "done.";
             });
             Cursor.Current = Cursors.WaitCursor;
-            job.Wait();
+            await job.WaitTask();
             return ret;
         }
 
@@ -471,9 +472,9 @@ namespace TSviewCloudPlugin
             }
         }
 
-        public override bool Add()
+        public async override Task<bool> Add()
         {
-            if(InitializeDrive())
+            if(await InitializeDrive())
             {
                 TSviewCloudConfig.Config.Log.LogOut("[Add] AmazonDriveSystem {0}", Name);
 
@@ -773,6 +774,7 @@ namespace TSviewCloudPlugin
                         {
                             j.ProgressStr = "Upload failed.";
                             j.Progress = double.NaN;
+                            LogFailed(remoteTarget.FullPath + "/" + uploadname, "upload error");
                         }
                         else
                         {
@@ -785,6 +787,7 @@ namespace TSviewCloudPlugin
                                 j.ProgressStr = "Upload failed. Hash not match";
                                 j.Progress = double.NaN;
                                 newitem.IsBroken = true;
+                                LogFailed(newitem.FullPath, "upload error: hash failed");
                             }
 
                             j.Result = newitem;

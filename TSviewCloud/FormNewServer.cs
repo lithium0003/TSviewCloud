@@ -32,10 +32,10 @@ namespace TSviewCloud
         }
         public TSviewCloudPlugin.IRemoteServer Target { get { return _target; } }
 
-        private void button1_Click(object sender, EventArgs e)
+        private async void button1_Click(object sender, EventArgs e)
         {
             _target = TSviewCloudPlugin.RemoteServerFactory.Get(ServerName, textBox_Name.Text);
-            if (!_target.Add())
+            if (!await _target.Add())
             {
                 DialogResult = DialogResult.Abort;
                 TSviewCloudPlugin.RemoteServerFactory.Delete(_target);

@@ -548,15 +548,30 @@ namespace TSviewCloudPlugin
         static public void Run(Job target, Action<Job> JobAction)
         {
             if (target == null) return;
+            target.JobAction = async (j) => await Task.Run(()=> JobAction?.Invoke(j));
+            StartQueue.Add(new WeakReference<Job>(target));
+        }
+
+        static public void Run(Job target, Func<Job, Task> JobAction)
+        {
+            if (target == null) return;
             target.JobAction = JobAction;
             StartQueue.Add(new WeakReference<Job>(target));
         }
 
-        static public void Run<T>(Job target, Action<Job<T>> JobAction) where T: class
+        static public void Run<T>(Job target, Action<Job<T>> JobAction) where T : class
+        {
+            if (target == null) return;
+            if (JobAction != null)
+                target.JobAction = async (j) => await Task.Run(() => JobAction?.Invoke(j as Job<T>));
+            StartQueue.Add(new WeakReference<Job>(target));
+        }
+
+        static public void Run<T>(Job target, Func<Job<T>, Task> JobAction) where T: class
         {
             if (target == null) return;
             if(JobAction != null)
-                target.JobAction = (j)=> { JobAction?.Invoke(j as Job<T>); };
+                target.JobAction = (j)=> JobAction?.Invoke(j as Job<T>);
             StartQueue.Add(new WeakReference<Job>(target));
         }
 
@@ -805,9 +820,8 @@ namespace TSviewCloudPlugin
                         }
                         startjob.QueueTime = DateTime.Now;
                         startjob.JobTask = new Task((o)=> {
-                            Job j = null;
-                            if((o as WeakReference<Job>).TryGetTarget(out j) && j != null)
-                                startjob.JobAction(j);
+                            if ((o as WeakReference<Job>).TryGetTarget(out Job j) && j != null)
+                                j.JobAction(j).Wait(j.Ct);
                         }, new WeakReference<Job>(startjob), startjob.Ct);
                         EndQueue.Add(startjob.JobTask.ContinueWith((t, weaktarget) =>
                         {

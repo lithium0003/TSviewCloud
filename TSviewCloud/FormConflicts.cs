@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -17,8 +18,6 @@ namespace TSviewCloud
         {
             InitializeComponent();
             result = new List<ConflictResult>();
-            bs = new BindingSource(result, string.Empty);
-            dataGridView1.DataSource = bs;
         }
 
         private static SynchronizationContext synchronizationContext;
@@ -38,6 +37,7 @@ namespace TSviewCloud
             if (TSviewCloudConfig.Config.ApplicationExit) return;
             e.Cancel = true;
             result.Clear();
+            listView1.VirtualListSize = 0;
             Hide();
         }
 
@@ -47,8 +47,7 @@ namespace TSviewCloud
         }
 
         List<ConflictResult> result;
-        BindingSource bs;
-
+ 
         public class ConflictResult
         {
             string remotepath;
@@ -66,11 +65,21 @@ namespace TSviewCloud
 
         public void AddResult(string remotepath, string reason)
         {
-            result.Add(new ConflictResult(remotepath, reason));
+            lock (result)
+            {
+                result.Add(new ConflictResult(remotepath, reason));
+            }
 
             synchronizationContext.Post((o) =>
             {
-                timer1.Enabled = true;
+                System.Windows.Forms.Cursor.Current = Cursors.WaitCursor;
+                listView1.VirtualListSize = result.Count;
+
+                if (!Visible)
+                {
+                    timer1.Enabled = false;
+                    timer1.Enabled = true;
+                }
             }, null);
         }
 
@@ -78,9 +87,19 @@ namespace TSviewCloud
         {
             timer1.Enabled = false;
 
-            bs.ResetBindings(false);
-
             Show();
+        }
+
+        private void listView1_RetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e)
+        {
+            if (e.ItemIndex > result.Count)
+                e.Item = new ListViewItem(new string[6]);
+            else
+            {
+                e.Item = new ListViewItem(new string[] { result[e.ItemIndex].Remotepath, result[e.ItemIndex].Reason });
+                if (result[e.ItemIndex].Reason.Contains("error"))
+                    e.Item.BackColor = Color.PaleVioletRed;
+            }
         }
     }
 }

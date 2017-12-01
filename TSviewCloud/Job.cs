@@ -98,7 +98,7 @@ namespace TSviewCloudPlugin
         }
         private CancellationTokenSource cts = new CancellationTokenSource();
         internal ConcurrentQueue<WeakReference<Job>> DependsOn = new ConcurrentQueue<WeakReference<Job>>();
-        internal Action<Job> JobAction;
+        internal Func<Job, Task> JobAction;
         internal Task JobTask;
         internal bool _delete = false;
         internal bool _isdeleted = false;

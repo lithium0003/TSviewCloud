@@ -275,11 +275,11 @@ namespace TSviewCloud
 
                     var j3 = target
                     .Where(x => x.ItemType == RemoteItemType.File)
-                    .Select(x => RemoteServerFactory.PathToItem(x.FullPath, ReloadType.Reload))
+                    .Select(x => RemoteServerFactory.PathToItem(x.FullPath, ReloadType.Reload).Result)
                     .Select(x => ItemControl.DownloadFile(Path.Combine(localPath, ItemControl.GetLocalFullPath(x.FullPath, remotePathBase)), x, j, true));
                     var j4 = target
                     .Where(x => x.ItemType == RemoteItemType.Folder)
-                    .Select(x => RemoteServerFactory.PathToItem(x.FullPath, ReloadType.Reload))
+                    .Select(x => RemoteServerFactory.PathToItem(x.FullPath, ReloadType.Reload).Result)
                     .Select(x => ItemControl.DownloadFolder(Path.GetDirectoryName(Path.Combine(localPath, ItemControl.GetLocalFullPath(x.FullPath, remotePathBase))), new[] { x }, j, true));
 
                     foreach (var jx in j3.Concat(j4).ToArray())
@@ -506,7 +506,7 @@ namespace TSviewCloud
                 }
                 else
                 {
-                    root = RemoteServerFactory.PathToItem(root.FullPath, ReloadType.Reload);
+                    root = RemoteServerFactory.PathToItem(root.FullPath, ReloadType.Reload).Result;
                     if (root == null) return ret;
                     ret.Add(root);
                     var children = root.Children;
@@ -543,7 +543,7 @@ namespace TSviewCloud
                 m = Regex.Match(path_str, @"^(?<current>[^/\\]*)(/|\\)?(?<next>.*)$");
                 path_str = m.Groups["next"].Value;
 
-                root = RemoteServerFactory.PathToItem(root.FullPath, ReloadType.Reload);
+                root = RemoteServerFactory.PathToItem(root.FullPath, ReloadType.Reload).Result;
                 if (root == null) return ret;
                 var children = root.Children;
 

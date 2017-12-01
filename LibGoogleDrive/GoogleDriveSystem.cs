@@ -154,7 +154,7 @@ namespace TSviewCloudPlugin
                     rootID = root.ID;
                     pathlist[""] = pathlist[rootID] = root;
 
-                    LoadItems(rootID, 2);
+                    await LoadItems(rootID, 2);
                 }
                 else
                 {
@@ -197,7 +197,7 @@ namespace TSviewCloudPlugin
             {
                 var item = pathlist[ID];
                 if (item.ItemType == RemoteItemType.Folder && item.LastLoaded == null)
-                    LoadItems(ID, 0);
+                    LoadItems(ID, 0).Wait();
                 return pathlist[ID];
             }
             catch
@@ -205,7 +205,7 @@ namespace TSviewCloudPlugin
                 return null;
             }
         }
-        protected override void EnsureItem(string ID, int depth = 0)
+        protected async override Task EnsureItem(string ID, int depth = 0)
         {
             if (ID == "") ID = RootID;
             TSviewCloudConfig.Config.Log.LogOut("[EnsureItem(GoogleDriveSystem)] " + ID);
@@ -213,17 +213,17 @@ namespace TSviewCloudPlugin
             {
                 var item = pathlist[ID];
                 if (item.ItemType == RemoteItemType.Folder)
-                    LoadItems(ID, depth);
+                    await LoadItems(ID, depth);
                 item = pathlist[ID];
             }
             catch
             {
-                LoadItems(ID, depth);
+                await LoadItems(ID, depth);
             }
 
         }
 
-        public override IRemoteItem ReloadItem(string ID)
+        public async override Task<IRemoteItem> ReloadItem(string ID)
         {
             if (ID == "") ID = RootID;
             TSviewCloudConfig.Config.Log.LogOut("[ReloadItem(GoogleDriveSystem)] " + ID);
@@ -231,12 +231,12 @@ namespace TSviewCloudPlugin
             {
                 var item = pathlist[ID];
                 if (item.ItemType == RemoteItemType.Folder)
-                    LoadItems(ID, 2);
+                    await LoadItems(ID, 2);
                 item = pathlist[ID];
             }
             catch
             {
-                LoadItems(ID, 2);
+                await LoadItems(ID, 2);
             }
             return PeakItem(ID);
         }
@@ -258,7 +258,7 @@ namespace TSviewCloudPlugin
         }
 
 
-        private bool InitializeDrive()
+        private async Task<bool> InitializeDrive()
         {
             var formlogin = new FormLogin(this);
             var ret = false;
@@ -286,7 +286,7 @@ namespace TSviewCloudPlugin
                 job.ProgressStr = "done.";
             });
             Cursor.Current = Cursors.WaitCursor;
-            job.Wait();
+            await job.WaitTask();
             return ret;
         }
 
@@ -297,12 +297,17 @@ namespace TSviewCloudPlugin
             GoogleDrive.RevokeToken(Drive.Auth).Wait();
         }
 
-        private void LoadItems(string ID, int depth = 0)
+        private async Task LoadItems(string ID, int depth = 0)
         {
             if (depth < 0) return;
             ID = ID ?? RootID;
 
             if (pathlist[ID].ItemType == RemoteItemType.File) return;
+
+            if (DateTime.Now - pathlist[ID].LastLoaded < TimeSpan.FromSeconds(15))
+            {
+                return;
+            }
 
             bool master = true;
             loadinglist.AddOrUpdate(ID, new ManualResetEventSlim(false), (k, v) =>
@@ -318,22 +323,9 @@ namespace TSviewCloudPlugin
             {
                 while (loadinglist.TryGetValue(ID, out var tmp) && tmp != null)
                 {
-                    tmp.Wait();
+                    await Task.Run(() => tmp.Wait());
                 }
                 return;
-            }
-
-            if (pathlist.ContainsKey(ID))
-            {
-                if (DateTime.Now - pathlist[ID].LastLoaded < TimeSpan.FromSeconds(30))
-                {
-                    ManualResetEventSlim tmp2;
-                    while (!loadinglist.TryRemove(ID, out tmp2))
-                        Thread.Sleep(10);
-                    tmp2.Set();
-
-                    return;
-                }
             }
 
             TSviewCloudConfig.Config.Log.LogOut("[LoadItems(GoogleDriveSystem)] " + ID);
@@ -386,7 +378,7 @@ namespace TSviewCloudPlugin
                     job.Progress = 1;
                     job.ProgressStr = "done";
                 });
-                job.Wait();
+                await job.WaitTask();
             }
             catch
             {
@@ -396,7 +388,7 @@ namespace TSviewCloudPlugin
             {
                 ManualResetEventSlim tmp3;
                 while (!loadinglist.TryRemove(ID, out tmp3))
-                    Thread.Sleep(10);
+                    await Task.Delay(10);
                 tmp3.Set();
             }
 
@@ -404,7 +396,7 @@ namespace TSviewCloudPlugin
             {
                 Parallel.ForEach(pathlist[ID].Children.Where(x => x.ItemType == RemoteItemType.Folder),
                     new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
-                    (x) => { LoadItems(x.ID, depth - 1); });
+                    (x) => { LoadItems(x.ID, depth - 1).Wait(); });
             }
         }
 
@@ -422,36 +414,61 @@ namespace TSviewCloudPlugin
         }
 
  
-        public override bool Add()
+        public async override Task<bool> Add()
         {
-            if(InitializeDrive())
+            if(await InitializeDrive())
             {
                 TSviewCloudConfig.Config.Log.LogOut("[Add] GoogleDriveSystem {0}", Name);
 
                 var job = JobControler.CreateNewJob();
                 job.DisplayName = "Initialize GoogleDrive";
                 job.ProgressStr = "Initialize...";
-                JobControler.Run(job, (j) =>
+                JobControler.Run(job, async (j) =>
                 {
-                    job.Progress = -1;
+                    j.Progress = -1;
 
-                    job.ProgressStr = "Loading root...";
+                    j.ProgressStr = "Loading root...";
                     var rootitem = Drive.FilesGet(ct: j.Ct).Result;
 
                     var root = new GoogleDriveSystemItem(this, rootitem, null);
                     rootID = root.ID;
                     pathlist[""] = pathlist[rootID] = root;
 
-                    LoadItems(rootID, 2);
+                    await LoadItems(rootID, 2);
 
                     _IsReady = true;
 
-                    job.Progress = 1;
-                    job.ProgressStr = "done.";
+                    j.Progress = 1;
+                    j.ProgressStr = "done.";
+
+
+                    var job2 = JobControler.CreateNewJob();
+                    job2.DisplayName = "Scan GoogleDrive";
+                    job2.ProgressStr = "Scan...";
+                    JobControler.Run(job2, async (j2) =>
+                    {
+                        j2.Progress = -1;
+
+                        await ScanItems(pathlist[rootID], j2.Ct);
+
+                        j2.Progress = 1;
+                        j2.ProgressStr = "done.";
+                    });
                 });
                 return true;
             }
             return false;
+        }
+
+        private async Task ScanItems(IRemoteItem baseitem, CancellationToken ct = default(CancellationToken))
+        {
+            ct.ThrowIfCancellationRequested();
+            await LoadItems(baseitem.ID, 0);
+            foreach(var i in baseitem.Children)
+            {
+                if(i.ItemType == RemoteItemType.Folder)
+                    await ScanItems(i, ct);
+            }
         }
 
         public override void ClearCache()
@@ -462,7 +479,7 @@ namespace TSviewCloudPlugin
             var job = JobControler.CreateNewJob();
             job.DisplayName = "Initialize GoogleDrive";
             job.ProgressStr = "Initialize...";
-            JobControler.Run(job, (j) =>
+            JobControler.Run(job, async (j) =>
             {
                 job.Progress = -1;
 
@@ -472,12 +489,25 @@ namespace TSviewCloudPlugin
                 rootID = root.ID;
                 pathlist[""] = pathlist[rootID] = root;
 
-                LoadItems(rootID, 2);
+                await LoadItems(rootID, 2);
 
                 _IsReady = true;
 
                 job.Progress = 1;
                 job.ProgressStr = "done.";
+
+                var job2 = JobControler.CreateNewJob();
+                job2.DisplayName = "Scan GoogleDrive";
+                job2.ProgressStr = "Scan...";
+                JobControler.Run(job2, async (j2) =>
+                {
+                    j2.Progress = -1;
+
+                    await ScanItems(pathlist[rootID], j2.Ct);
+
+                    j2.Progress = 1;
+                    j2.ProgressStr = "done.";
+                });
             });
         }
 
@@ -649,7 +679,11 @@ namespace TSviewCloudPlugin
                 }
                 catch (Exception e)
                 {
-                    throw new RemoteServerErrorException("Upload Failed.", e);
+                    j.ProgressStr = "Upload failed.";
+                    j.Progress = double.NaN;
+                    LogFailed(remoteTarget.FullPath + "/" + uploadname, "upload error:" + e.Message);
+                    return;
+                    //throw new RemoteServerErrorException("Upload Failed.", e);
                 }
 
                 SetUpdate(remoteTarget);
@@ -766,7 +800,7 @@ namespace TSviewCloudPlugin
             job.DisplayName = "Move item : " + moveItem.Name;
             job.ProgressStr = "wait for operation.";
             var ct = job.Ct;
-            JobControler.Run<IRemoteItem>(job, (j) =>
+            JobControler.Run<IRemoteItem>(job, async (j) =>
             {
                 TSviewCloudConfig.Config.Log.LogOut("[Move] " + moveItem.Name);
 
@@ -780,8 +814,8 @@ namespace TSviewCloudPlugin
                     (moveItem as GoogleDriveSystemItem).SetFileds(newitem);
 
 
-                    LoadItems(moveToItem.ID, 2);
-                    LoadItems(oldparent.ID, 2);
+                    await LoadItems(moveToItem.ID, 2);
+                    await LoadItems(oldparent.ID, 2);
 
                     j.Result = moveToItem;
 

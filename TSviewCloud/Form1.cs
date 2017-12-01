@@ -1091,7 +1091,7 @@ namespace TSviewCloud
                 n.Collapse(true);
         }
 
-        private void treeView1_BeforeSelect(object sender, TreeViewCancelEventArgs e)
+        private async void treeView1_BeforeSelect(object sender, TreeViewCancelEventArgs e)
         {
             if (e.Node == null) return;
             if (AddressSelecting) return;
@@ -1104,7 +1104,7 @@ namespace TSviewCloud
             textBox_address.Text = path;
 
             Cursor.Current = Cursors.WaitCursor;
-            var item = TSviewCloudPlugin.RemoteServerFactory.PathToItem(path);
+            var item = await TSviewCloudPlugin.RemoteServerFactory.PathToItem(path);
             if (item != null)
             {
                 if (item.ItemType == TSviewCloudPlugin.RemoteItemType.File)
@@ -1206,13 +1206,13 @@ namespace TSviewCloud
             var DisplayJob = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(TSviewCloudPlugin.JobClass.LoadItem, depends: loadjob);
             DisplayJob.DisplayName = "Display  " + path;
             DisplayJob.ForceHidden = true;
-            TSviewCloudPlugin.JobControler.Run<TSviewCloudPlugin.IRemoteItem>(DisplayJob, (j) =>
+            TSviewCloudPlugin.JobControler.Run<TSviewCloudPlugin.IRemoteItem>(DisplayJob, async (j) =>
             {
                 j.Progress = -1;
                 j.ProgressStr = "Loading...";
 
                 var result = j.ResultOfDepend[0];
-                if (!result.TryGetTarget(out var target))
+                if (result == null || !result.TryGetTarget(out var target))
                 {
                     target = null;
                 }
@@ -1229,7 +1229,7 @@ namespace TSviewCloud
                     return;
                 }
 
-                var pathlist = TSviewCloudPlugin.RemoteServerFactory.PathToItemChain(target.FullPath);
+                var pathlist = await TSviewCloudPlugin.RemoteServerFactory.PathToItemChain(target.FullPath);
                 var server = target.Server;
 
                 synchronizationContext.Send(async (o) =>
@@ -2268,7 +2268,7 @@ namespace TSviewCloud
             var bf = new BinaryFormatter();
             ret = bf.Deserialize(st);
             ClipboardRemoteDrive.ReleaseStgMedium(ref media);
-            return (ret as string[]).Select(x => TSviewCloudPlugin.RemoteServerFactory.PathToItem(x));
+            return (ret as string[]).Select(x => TSviewCloudPlugin.RemoteServerFactory.PathToItem(x).Result);
         }
 
         private void listView1_DragOver(object sender, DragEventArgs e)
@@ -2322,39 +2322,54 @@ namespace TSviewCloud
             var selects = GetSelectedItemsFromDataObject(data);
             var prev_current = listData.CurrentViewItem;
 
-            var joblist = new List<TSviewCloudPlugin.Job>();
-            foreach (var aItem in selects)
+            var movejob = TSviewCloudPlugin.JobControler.CreateNewJob();
+            movejob.DisplayName = "Move Items";
+            movejob.ProgressStr = "move...";
+            TSviewCloudPlugin.JobControler.Run(movejob, async (j) =>
             {
-                joblist.Add(aItem.MoveItem(toParent));
-            }
+                j.Progress = -1;
 
-            var dispjob = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(
-                type: TSviewCloudPlugin.JobClass.Display,
-                depends: joblist.ToArray()
-                );
-            TSviewCloudPlugin.JobControler.Run(dispjob, (j) =>
-            {
-                if (listData.CurrentViewItem?.FullPath == toParent.FullPath)
+                movejob.ProgressStr = "make sure target dir...";
+                await TSviewCloudPlugin.ItemControl.MakeSureItem(toParent);
+
+                var joblist = new List<TSviewCloudPlugin.Job>();
+
+                foreach (var aItem in selects)
                 {
-                    synchronizationContext.Post((o) =>
-                    {
-                        GotoAddress(toParent.FullPath, TSviewCloudPlugin.ReloadType.Reload);
-                    }, null);
+                    joblist.Add(aItem.MoveItem(toParent));
                 }
-                else if (prev_current?.FullPath == listData.CurrentViewItem?.FullPath)
-                {
-                    if (prev_current == null)
-                    {
 
-                    }
-                    else
+                var dispjob = TSviewCloudPlugin.JobControler.CreateNewJob<TSviewCloudPlugin.IRemoteItem>(
+                    type: TSviewCloudPlugin.JobClass.Display,
+                    depends: joblist.ToArray()
+                    );
+                TSviewCloudPlugin.JobControler.Run(dispjob, (j2) =>
+                {
+                    if (listData.CurrentViewItem?.FullPath == toParent.FullPath)
                     {
                         synchronizationContext.Post((o) =>
                         {
-                            GotoAddress(prev_current.FullPath, TSviewCloudPlugin.ReloadType.Reload);
+                            GotoAddress(toParent.FullPath, TSviewCloudPlugin.ReloadType.Reload);
                         }, null);
                     }
-                }
+                    else if (prev_current?.FullPath == listData.CurrentViewItem?.FullPath)
+                    {
+                        if (prev_current == null)
+                        {
+
+                        }
+                        else
+                        {
+                            synchronizationContext.Post((o) =>
+                            {
+                                GotoAddress(prev_current.FullPath, TSviewCloudPlugin.ReloadType.Reload);
+                            }, null);
+                        }
+                    }
+                });
+
+                j.ProgressStr = "done.";
+                j.Progress = 1;
             });
         }
 
