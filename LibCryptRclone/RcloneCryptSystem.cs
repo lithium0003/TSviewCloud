@@ -80,6 +80,7 @@ namespace TSviewCloudPlugin
             size = ((orgItem.Size == null) ? orgItem.Size : CryptRclone.CalcDecryptedSize(orgItem.Size.Value));
             modifiedDate = orgItem.ModifiedDate;
             createdDate = orgItem.CreatedDate;
+            accessDate = orgItem.AccessDate;
 
             var encryptor = (_server as RcloneCryptSystem).Encrypter;
             if (encryptor.IsEncryptedName)
@@ -101,15 +102,17 @@ namespace TSviewCloudPlugin
                         throw new FileNotFoundException("filename dedoce error");
                 }
             }
-            decryptedPath = OrgPathToPath(orgpath);
+            decryptedPath = OrgPathToPath(orgItem as RemoteItemBase);
 
             if (isRoot) SetParent(this);
         }
 
         public override string ID => orgpath;
 
-        private string OrgPathToPath(string path)
+        private string OrgPathToPath(RemoteItemBase orgItem)
         {
+            string path = orgItem.FullPath;
+
             if (string.IsNullOrEmpty(path) || (_server as RcloneCryptSystem).cryptRootPath == path)
                 return "";
                 
@@ -130,7 +133,7 @@ namespace TSviewCloudPlugin
                 }
                 else
                 {
-                    ret.Add((_server as RcloneCryptSystem).Encrypter.DecryptName(m.Groups["current"].Value));
+                    ret.Add((_server as RcloneCryptSystem).Encrypter.DecryptName(orgItem.PathDecode(m.Groups["current"].Value)));
                 }
             }
             return string.Join("/", ret);
@@ -151,7 +154,7 @@ namespace TSviewCloudPlugin
                     (_server as RcloneCryptSystem)?.RemoveItem(ID);
                     return;
                 }
-                decryptedPath = OrgPathToPath(orgpath);
+                decryptedPath = OrgPathToPath(orgItem as RemoteItemBase);
                 decryptedName = (_server as RcloneCryptSystem).Encrypter.DecryptName(orgItem.Name) ?? "";
             }
             catch
@@ -721,7 +724,7 @@ namespace TSviewCloudPlugin
                 if (job.IsCanceled) return;
 
                 var result = clean.ResultOfDepend[0];
-                if (result.TryGetTarget(out var item) && item != null)
+                if (result != null && result.TryGetTarget(out var item) && item != null)
                 {
                     var newitem = new RcloneCryptSystemItem(this, item, remoteTarget);
                     pathlist.AddOrUpdate(newitem.ID, (k) => newitem, (k, v) => newitem);
@@ -731,6 +734,10 @@ namespace TSviewCloudPlugin
                     j.Result = newitem;
 
                     SetUpdate(remoteTarget);
+                }
+                else
+                {
+                    LogFailed(remoteTarget.FullPath + "/" + uploadname, "upload error: base file upload failed");
                 }
             });
             return clean;

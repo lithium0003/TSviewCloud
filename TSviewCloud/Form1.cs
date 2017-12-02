@@ -8,6 +8,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
@@ -2946,12 +2947,43 @@ namespace TSviewCloud
             button_next_down = false;
         }
 
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         private void clearLoginBrowserCookieToolStripMenuItem_Click(object sender, EventArgs e)
         {
             WinInetHelper.SupressCookiePersist();
             WinInetHelper.EndBrowserSession();
         }
 
+        private void checkUpdateToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            string server = null;
+            try
+            {
+                using (WebClient webClient = new WebClient())
+                {
+                    server = webClient.DownloadString("https://lithium03.info/product/TSviewCloud/lastversion");
+                }
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show("update check failed: "+ ex.Message);
+                return;
+            }
+            if (string.IsNullOrEmpty(server))
+            {
+                MessageBox.Show("update check failed.");
+            }
+            else if(version == server)
+            {
+                MessageBox.Show(string.Format("version {0} is latest version.", version));
+            }
+            else
+            {
+                MessageBox.Show(string.Format("version {0} is available.\n(local version {1})", server, version));
+            }
+        }
     }
 
 

@@ -85,6 +85,7 @@
             this.openNewWindowToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.saveDirveCacheToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem9 = new System.Windows.Forms.ToolStripSeparator();
+            this.clearSelectedDriveCacheToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.driveCacheclearToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -117,7 +118,7 @@
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
-            this.clearSelectedDriveCacheToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.checkUpdateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.panel1.SuspendLayout();
             this.contextMenuStrip_play.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -668,6 +669,13 @@
             this.toolStripMenuItem9.Name = "toolStripMenuItem9";
             this.toolStripMenuItem9.Size = new System.Drawing.Size(257, 6);
             // 
+            // clearSelectedDriveCacheToolStripMenuItem
+            // 
+            this.clearSelectedDriveCacheToolStripMenuItem.Name = "clearSelectedDriveCacheToolStripMenuItem";
+            this.clearSelectedDriveCacheToolStripMenuItem.Size = new System.Drawing.Size(260, 26);
+            this.clearSelectedDriveCacheToolStripMenuItem.Text = "Clear selected drive cache";
+            this.clearSelectedDriveCacheToolStripMenuItem.Click += new System.EventHandler(this.clearSelectedDriveCacheToolStripMenuItem_Click);
+            // 
             // driveCacheclearToolStripMenuItem
             // 
             this.driveCacheclearToolStripMenuItem.Name = "driveCacheclearToolStripMenuItem";
@@ -827,6 +835,7 @@
             this.logWindowToolStripMenuItem,
             this.outputLogTofileToolStripMenuItem,
             this.toolStripMenuItem3,
+            this.checkUpdateToolStripMenuItem,
             this.aboutToolStripMenuItem});
             this.helpToolStripMenuItem.Name = "helpToolStripMenuItem";
             this.helpToolStripMenuItem.Size = new System.Drawing.Size(53, 24);
@@ -893,12 +902,12 @@
             this.timer1.Interval = 500;
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
-            // clearSelectedDriveCacheToolStripMenuItem
+            // checkUpdateToolStripMenuItem
             // 
-            this.clearSelectedDriveCacheToolStripMenuItem.Name = "clearSelectedDriveCacheToolStripMenuItem";
-            this.clearSelectedDriveCacheToolStripMenuItem.Size = new System.Drawing.Size(260, 26);
-            this.clearSelectedDriveCacheToolStripMenuItem.Text = "Clear selected drive cache";
-            this.clearSelectedDriveCacheToolStripMenuItem.Click += new System.EventHandler(this.clearSelectedDriveCacheToolStripMenuItem_Click);
+            this.checkUpdateToolStripMenuItem.Name = "checkUpdateToolStripMenuItem";
+            this.checkUpdateToolStripMenuItem.Size = new System.Drawing.Size(199, 26);
+            this.checkUpdateToolStripMenuItem.Text = "Check &Update";
+            this.checkUpdateToolStripMenuItem.Click += new System.EventHandler(this.checkUpdateToolStripMenuItem_Click);
             // 
             // Form1
             // 
@@ -1024,6 +1033,7 @@
         private System.Windows.Forms.ToolStripMenuItem changeattributeItemToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem tSSendToolStripMenuItem1;
         private System.Windows.Forms.ToolStripMenuItem clearSelectedDriveCacheToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem checkUpdateToolStripMenuItem;
     }
 }
 

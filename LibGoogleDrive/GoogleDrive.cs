@@ -62,7 +62,7 @@ namespace LibGoogleDrive
             }
         }
         private string viewedByMeTime_str;
-        public DateTime AccessDate;
+        public DateTime? AccessDate;
 
         [DataMember(Name = "modifiedTime", EmitDefaultValue = false)]
         public string modifiedTime_prop
@@ -75,7 +75,7 @@ namespace LibGoogleDrive
             }
         }
         private string modifiedTime_str;
-        public DateTime ModifiedDate;
+        public DateTime? ModifiedDate;
 
         [DataMember(Name = "createdTime", EmitDefaultValue = false)]
         public string createdTime_prop
@@ -88,7 +88,7 @@ namespace LibGoogleDrive
             }
         }
         private string createdTime_str;
-        public DateTime CreatedDate;
+        public DateTime? CreatedDate;
 
         [DataMember(EmitDefaultValue = false)]
         public string md5Checksum;
@@ -152,6 +152,8 @@ namespace LibGoogleDrive
 
         static public async Task RevokeToken(AuthKeys key, CancellationToken ct = default(CancellationToken))
         {
+            if (key == null) return;
+
             Log("RevokeToken");
             using (var client = new HttpClient())
             {

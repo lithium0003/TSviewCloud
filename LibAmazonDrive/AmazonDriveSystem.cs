@@ -98,6 +98,8 @@ namespace TSviewCloudPlugin
         [DataMember(Name = "Cache")]
         private ConcurrentDictionary<string, AmazonDriveSystemItem> pathlist;
 
+        private ConcurrentDictionary<string, ManualResetEventSlim> loadinglist;
+
         [DataMember(Name = "RefreshToken")]
         public string _refresh_token;
 
@@ -119,17 +121,13 @@ namespace TSviewCloudPlugin
         [DataMember(Name = "EndpointDate")]
         private DateTime EndpointDate;
 
-        [DataMember(Name = "CheckPoint")]
-        private string CheckPoint;
-        [DataMember(Name = "LastSyncTime")]
-        private DateTime LastSyncTime;
-
 
         private AmazonDrive Drive;
 
         public AmazonDriveSystem()
         {
             pathlist = new ConcurrentDictionary<string, AmazonDriveSystemItem>();
+            loadinglist = new ConcurrentDictionary<string, ManualResetEventSlim>();
         }
 
         [OnDeserialized]
@@ -137,6 +135,7 @@ namespace TSviewCloudPlugin
         {
             TSviewCloudConfig.Config.Log.LogOut("[Restore] AmazonDriveSystem {0}", Name);
 
+            loadinglist = new ConcurrentDictionary<string, ManualResetEventSlim>();
             Drive = new AmazonDrive()
             {
                 Auth = new AuthKeys() { refresh_token = Refresh_Token },
@@ -165,7 +164,9 @@ namespace TSviewCloudPlugin
 
                     var root = new AmazonDriveSystemItem(this, rootitme.data[0], null);
                     rootID = root.ID;
-                    pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
+                    pathlist[""] = pathlist[rootID] = root;
+
+                    await LoadItems(rootID, 1);
                 }
                 else
                 {
@@ -174,9 +175,6 @@ namespace TSviewCloudPlugin
                         new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
                         (x) => x.FixChain(this));
                 }
-
-                job.ProgressStr = "refresh cache...";
-                ChangesLoad(j.Ct).Wait(j.Ct);
 
                 _IsReady = true;
 
@@ -209,6 +207,9 @@ namespace TSviewCloudPlugin
             if (ID == "") ID = RootID;
             try
             {
+                var item = pathlist[ID];
+                if (item.ItemType == RemoteItemType.Folder && item.LastLoaded == null)
+                    LoadItems(ID, 0).Wait();
                 return pathlist[ID];
             }
             catch
@@ -221,35 +222,38 @@ namespace TSviewCloudPlugin
         {
             if (ID == "") ID = RootID;
             TSviewCloudConfig.Config.Log.LogOut("[EnsureItem(AmazonDriveSystem)] " + ID);
-            await Reload(true);
+            try
+            {
+                var item = pathlist[ID];
+                if (item.ItemType == RemoteItemType.Folder)
+                    await LoadItems(ID, depth);
+                item = pathlist[ID];
+            }
+            catch
+            {
+                await LoadItems(ID, depth);
+            }
         }
 
         public async override Task<IRemoteItem> ReloadItem(string ID)
         {
             if (ID == "") ID = RootID;
             TSviewCloudConfig.Config.Log.LogOut("[ReloadItem(AmazonDriveSystem)] " + ID);
-            await Reload(true);
+            try
+            {
+                var item = pathlist[ID];
+                if (item.ItemType == RemoteItemType.Folder)
+                    await LoadItems(ID, 2);
+                item = pathlist[ID];
+            }
+            catch
+            {
+                await LoadItems(ID, 2);
+            }
             return PeakItem(ID);
         }
 
-        private async Task Reload(bool wait = false)
-        {
-            if(DateTime.Now - LastSyncTime > TimeSpan.FromSeconds(15))
-            {
-                var job = JobControler.CreateNewJob(JobClass.LoadItem);
-                job.DisplayName = "Reload AmazonDrive";
-                job.ProgressStr = "loading...";
-                JobControler.Run(job, (j) =>
-                {
-                    job.Progress = -1;
-                    ChangesLoad(j.Ct).Wait(j.Ct);
-                    job.Progress = 1;
-                    job.ProgressStr = "done.";
-                });
-                await job.WaitTask();
-            }
-        }
-
+ 
         public override void Init()
         {
             RemoteServerFactory.Register(GetServiceName(), typeof(AmazonDriveSystem));
@@ -300,175 +304,107 @@ namespace TSviewCloudPlugin
             return ret;
         }
 
-        private void AddNewDriveItem(FileMetadata_Info newdata)
-        {
-            AmazonDriveSystemItem value;
-            if (newdata == null) return;
-            if (newdata.status == "AVAILABLE")
-            {
-                var id = newdata.id;
-                // exist item
-                if (pathlist.TryGetValue(id, out value))
-                {
-                    value.SetFileds(newdata);
-                }
-                else
-                {
-                    if (newdata.isRoot ?? false)
-                    {
-                        pathlist[""].SetFileds(newdata);
-                        pathlist[id] = pathlist[""];
-                    }
-                    else
-                    {
-                        pathlist[id] = new AmazonDriveSystemItem(this, newdata, null);
-                    }
-                }
-            }
-            else if (newdata.status == "TRASH" || newdata.status == "PURGED")
-            {
-                // deleted item
-                pathlist.TryRemove(newdata.id, out value);
-            }
-        }
 
-        private void ChangeDriveItem(FileMetadata_Info newdata)
+        private async Task LoadItems(string ID, int depth = 0)
         {
-            AmazonDriveSystemItem value;
-            if (newdata == null) return;
-            if (newdata.status == "AVAILABLE")
+            if (depth < 0) return;
+            ID = ID ?? RootID;
+
+            if (pathlist[ID].ItemType == RemoteItemType.File) return;
+
+            if (DateTime.Now - pathlist[ID].LastLoaded < TimeSpan.FromSeconds(15))
             {
-                var id = newdata.id;
-                // exist item
-                if (pathlist.TryGetValue(id, out value))
+                return;
+            }
+
+            bool master = true;
+            loadinglist.AddOrUpdate(ID, new ManualResetEventSlim(false), (k, v) =>
+            {
+                if (v.IsSet)
+                    return new ManualResetEventSlim(false);
+
+                master = false;
+                return v;
+            });
+
+            if (!master)
+            {
+                while (loadinglist.TryGetValue(ID, out var tmp) && tmp != null)
                 {
-                    if (value.Parents.Select(x => x.ID).SequenceEqual(newdata.parents))
+                    await Task.Run(() => tmp.Wait());
+                }
+                return;
+            }
+
+            TSviewCloudConfig.Config.Log.LogOut("[LoadItems(AmazonDriveSystem)] " + ID);
+
+            try
+            {
+                var job = JobControler.CreateNewJob();
+                job.DisplayName = "Loading AmazonDrive Item:" + ID;
+                job.ProgressStr = "Initialize...";
+                JobControler.Run(job, (j) =>
+                {
+                    job.Progress = -1;
+
+                    job.ProgressStr = "Loading children...";
+
+                    var me = Drive.GetFileMetadata(ID, ct: j.Ct).Result;
+                    if (me == null || (me.status != "AVAILABLE"))
                     {
-                        value.SetFileds(newdata);
+                        RemoveItem(ID);
+                        return;
                     }
-                    else
+                    pathlist[ID].SetFileds(me);
+
+                    var children = Drive.ListChildren(ID, ct: j.Ct).Result;
+                    if (children != null)
                     {
-                        foreach(var p in value.Parents)
-                        {
-                            (p as AmazonDriveSystemItem).RemoveChild(value);
-                        }
-                        value.SetFileds(newdata);
-                        if (!value.IsRoot)
-                        {
-                            foreach (var p in value.Parents)
+                        var ret = new List<AmazonDriveSystemItem>();
+                        Parallel.ForEach(
+                            children.data,
+                            new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                            () => new List<AmazonDriveSystemItem>(),
+                            (x, state, local) =>
                             {
-                                (p as AmazonDriveSystemItem).AddChild(value);
-                            }
-                        }
+                                if (x.status != "AVAILABLE") return local;
+                                var item = new AmazonDriveSystemItem(this, x, pathlist[ID]);
+                                pathlist.AddOrUpdate(item.ID, (k) => item, (k, v) => { v.SetFileds(x); return v; });
+                                local.Add(pathlist[item.ID]);
+                                return local;
+                            },
+                             (result) =>
+                             {
+                                 lock (ret)
+                                     ret.AddRange(result);
+                             }
+                        );
+                        pathlist[ID].SetChildren(ret);
                     }
-                }
-                else
-                {
-                    if (newdata.isRoot ?? false)
-                    {
-                        pathlist[""].SetFileds(newdata);
-                        value = pathlist[id] = pathlist[""];
-                    }
-                    else
-                    {
-                        value = pathlist[id] = new AmazonDriveSystemItem(this, newdata, null);
-                    }
+                    pathlist[ID].LastLoaded = DateTime.Now;
 
-                    if (!value.IsRoot)
-                    {
-                        foreach (var p in value.Parents)
-                        {
-                            (p as AmazonDriveSystemItem).AddChild(value);
-                        }
-                    }
-                }
+                    job.Progress = 1;
+                    job.ProgressStr = "done";
+                });
+                await job.WaitTask();
             }
-            else if (newdata.status == "TRASH" || newdata.status == "PURGED")
+            catch
             {
-                // deleted item
-                if(pathlist.TryRemove(newdata.id, out value))
-                {
-                    RemoveItemChain(value);
-                }
+                RemoveItem(ID);
             }
-        }
+            finally
+            {
+                ManualResetEventSlim tmp3;
+                while (!loadinglist.TryRemove(ID, out tmp3))
+                    await Task.Delay(10);
+                tmp3.Set();
+            }
 
-        private void RemoveItemChain(AmazonDriveSystemItem item)
-        {
-            foreach (var p in item.Parents)
+            if (depth > 0)
             {
-                (p as AmazonDriveSystemItem).RemoveChild(item);
-            }
-            foreach (var c in item.Children)
-            {
-                RemoveItemChain(c as AmazonDriveSystemItem);
-            }
-        }
-
- 
-        private async Task ChangesLoad(CancellationToken ct = default(CancellationToken))
-        {
-            TSviewCloudConfig.Config.Log.LogOut("[ChangesLoad(AmazonDriveSystem)] ");
-            bool init = (CheckPoint == null);
-            while (!ct.IsCancellationRequested)
-            {
-                Changes_Info[] history = null;
-                int retry = 6;
-                while (--retry > 0)
-                {
-                    try
-                    {
-                        history = await Drive.Changes(checkpoint: CheckPoint, ct: ct);
-                        LastSyncTime = DateTime.Now;
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        TSviewCloudConfig.Config.Log.LogOut("[ChangesLoad(AmazonDriveSystem)] ", ex.Message);
-                    }
-                }
-                if (history == null) break;
-                foreach (var h in history)
-                {
-                    if (!(h.end ?? false))
-                    {
-                        if (h.nodes.Count() > 0)
-                        {
-                            if (init)
-                            {
-                                Parallel.ForEach(h.nodes, (item) =>
-                                {
-                                    ct.ThrowIfCancellationRequested();
-                                    AddNewDriveItem(item);
-                                });
-                            }
-                            else
-                            {
-                                foreach(var item in h.nodes)
-                                {
-                                    ChangeDriveItem(item);
-                                }
-                            }
-                        }
-                        CheckPoint = h.checkpoint;
-                    }
-                }
-                if ((history.LastOrDefault()?.end ?? false))
-                {
-                    break;
-                }
-            }
-            if (init)
-            {
-                foreach (var item in pathlist.Values.ToArray())
-                {
-                    if (item.IsRoot) continue;
-                    ct.ThrowIfCancellationRequested();
-                    foreach (var p in item.Parents.ToArray())
-                    {
-                        (p as AmazonDriveSystemItem).AddChild(item);
-                    }
-                }
+                Parallel.ForEach(pathlist[ID].Children.Where(x => x.ItemType == RemoteItemType.Folder),
+                    new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
+                    (x) => { LoadItems(x.ID, depth - 1).Wait(); });
             }
         }
 
@@ -481,7 +417,7 @@ namespace TSviewCloudPlugin
                 var job = JobControler.CreateNewJob();
                 job.DisplayName = "Initialize AmazonDrive";
                 job.ProgressStr = "Initialize...";
-                JobControler.Run(job, (j) =>
+                JobControler.Run(job, async (j) =>
                 {
                     job.Progress = -1;
 
@@ -489,32 +425,55 @@ namespace TSviewCloudPlugin
 
                     var root = new AmazonDriveSystemItem(this, rootitme.data[0], null);
                     rootID = root.ID;
-                    pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
-                    
-                    job.ProgressStr = "Loading tree...";
-                    ChangesLoad(j.Ct).Wait(j.Ct);
+                    pathlist[""] = pathlist[rootID] = root;
+
+                    await LoadItems(rootID, 1);
 
                     _IsReady = true;
 
-                    job.Progress = 1;
-                    job.ProgressStr = "done.";
+                    j.Progress = 1;
+                    j.ProgressStr = "done.";
+
+
+                    var job2 = JobControler.CreateNewJob();
+                    job2.DisplayName = "Scan AmazonDrive";
+                    job2.ProgressStr = "Scan...";
+                    JobControler.Run(job2, async (j2) =>
+                    {
+                        j2.Progress = -1;
+
+                        await ScanItems(pathlist[rootID], j2.Ct);
+
+                        j2.Progress = 1;
+                        j2.ProgressStr = "done.";
+                    });
                 });
                 return true;
             }
             return false;
         }
 
+        private async Task ScanItems(IRemoteItem baseitem, CancellationToken ct = default(CancellationToken))
+        {
+            ct.ThrowIfCancellationRequested();
+            await LoadItems(baseitem.ID, 0);
+            foreach (var i in baseitem.Children)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (i.ItemType == RemoteItemType.Folder)
+                    await ScanItems(i, ct);
+            }
+        }
+
         public override void ClearCache()
         {
             _IsReady = false;
             pathlist.Clear();
-            CheckPoint = null;
-            LastSyncTime = default(DateTime);
-
+            
             var job = JobControler.CreateNewJob();
             job.DisplayName = "Initialize AmazonDrive";
             job.ProgressStr = "Initialize...";
-            JobControler.Run(job, (j) =>
+            JobControler.Run(job, async (j) =>
             {
                 job.Progress = -1;
 
@@ -522,15 +481,27 @@ namespace TSviewCloudPlugin
 
                 var root = new AmazonDriveSystemItem(this, rootitme.data[0], null);
                 rootID = root.ID;
-                pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
+                pathlist[""] = pathlist[rootID] = root;
 
-                job.ProgressStr = "Loading tree...";
-                ChangesLoad(j.Ct).Wait(j.Ct);
+                await LoadItems(rootID, 1);
 
                 _IsReady = true;
 
                 job.Progress = 1;
                 job.ProgressStr = "done.";
+
+                var job2 = JobControler.CreateNewJob();
+                job2.DisplayName = "Scan AmazonDrive";
+                job2.ProgressStr = "Scan...";
+                JobControler.Run(job2, async (j2) =>
+                {
+                    j2.Progress = -1;
+
+                    await ScanItems(pathlist[rootID], j2.Ct);
+
+                    j2.Progress = 1;
+                    j2.ProgressStr = "done.";
+                });
             });
         }
 
@@ -602,6 +573,7 @@ namespace TSviewCloudPlugin
                     var newitem = pathlist[newremoteitem.id] = new AmazonDriveSystemItem(this, newremoteitem, null);
 
                     (remoteTarget as AmazonDriveSystemItem).AddChild(newitem);
+                    j.Result = newitem;
 
                     j.ProgressStr = "Done";
                     j.Progress = 1;
@@ -632,17 +604,28 @@ namespace TSviewCloudPlugin
                     job.Progress = -1;
                     Task.Delay(TimeSpan.FromSeconds(10), job.Ct).Wait(job.Ct);
 
-                    Drive.Changes(checkpoint: CheckPoint, ct: job.Ct).ContinueWith((t) =>
+                    Drive.ListChildren(parentID, ct: job.Ct).ContinueWith((t) =>
                     {
-                        var children = t.Result.Where(x => (x?.nodes != null) && (!x.end ?? true)).Select(x => x.nodes).SelectMany(x => x);
-                        if (children.Where(x => x.name == uploadfilename).Where(x => x.parents.First() == parentID).LastOrDefault()?.status == "AVAILABLE")
+                        var children = t.Result.data;
+                        if (children.Where(x => x.name == uploadfilename).LastOrDefault()?.status == "AVAILABLE")
                         {
                             TSviewCloudConfig.Config.Log.LogOut("[CheckNewfile(AmazonDriveSystem)] : child found");
                             job.ProgressStr = "Upload : child found.";
-                            result = children.Where(x => x.name == uploadfilename).Where(x => x.parents.First() == parentID).LastOrDefault();
+                            result = children.Where(x => x.name == uploadfilename).LastOrDefault();
                             throw new Exception("break");
                         }
                     }).Wait(job.Ct);
+                    //Drive.Changes(checkpoint: CheckPoint, ct: job.Ct).ContinueWith((t) =>
+                    //{
+                    //    var children = t.Result.Where(x => (x?.nodes != null) && (!x.end ?? true)).Select(x => x.nodes).SelectMany(x => x);
+                    //    if (children.Where(x => x.name == uploadfilename).Where(x => x.parents.First() == parentID).LastOrDefault()?.status == "AVAILABLE")
+                    //    {
+                    //        TSviewCloudConfig.Config.Log.LogOut("[CheckNewfile(AmazonDriveSystem)] : child found");
+                    //        job.ProgressStr = "Upload : child found.";
+                    //        result = children.Where(x => x.name == uploadfilename).Where(x => x.parents.First() == parentID).LastOrDefault();
+                    //        throw new Exception("break");
+                    //    }
+                    //}).Wait(job.Ct);
                 }
                 catch (OperationCanceledException)
                 {
@@ -919,7 +902,7 @@ namespace TSviewCloudPlugin
             job.DisplayName = "Move item : " + moveItem.Name;
             job.ProgressStr = "wait for operation.";
             var ct = job.Ct;
-            JobControler.Run<IRemoteItem>(job, (j) =>
+            JobControler.Run<IRemoteItem>(job, async (j) =>
             {
                 TSviewCloudConfig.Config.Log.LogOut("[Move] " + moveItem.Name);
 
@@ -929,10 +912,13 @@ namespace TSviewCloudPlugin
                 var oldparent = moveItem.Parents.First();
                 try
                 {
-                    if(Drive.MoveChild(moveItem.ID, oldparent.ID, moveToItem.ID, j.Ct).Result)
-                    {
-                        ChangesLoad(j.Ct).Wait(j.Ct);
-                    }
+                    var newitem = Drive.MoveChild(moveItem.ID, oldparent.ID, moveToItem.ID, j.Ct).Result;
+                    (moveItem as AmazonDriveSystemItem).SetFileds(newitem);
+
+                    await LoadItems(moveToItem.ID, 2);
+                    await LoadItems(oldparent.ID, 2);
+
+                    j.Result = moveToItem;
 
                     j.ProgressStr = "Done";
                     j.Progress = 1;

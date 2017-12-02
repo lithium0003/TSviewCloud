@@ -847,6 +847,9 @@ namespace TSviewCloudPlugin
                                     case SubInfo.SubType.UploadDirectory:
                                         Interlocked.Increment(ref UploadFolderDone);
                                         break;
+                                    case SubInfo.SubType.UploadFilePre:
+                                        Interlocked.Increment(ref UploadFileDone);
+                                        break;
                                     case SubInfo.SubType.DownloadFile:
                                         while (!DownloadProgress.TryRemove(s.Index, out val))
                                             if (!DownloadProgress.TryGetValue(s.Index, out val))

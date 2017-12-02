@@ -45,6 +45,7 @@ namespace TSviewCloudPlugin
             size = info.size;
             modifiedDate = info.ModifiedDate;
             createdDate = info.CreatedDate;
+            accessDate = info.AccessDate;
             hash = info.md5Checksum;
             if (hash != null) hash = "MD5:" + hash;
             parentIDs = info.parents;
@@ -83,6 +84,10 @@ namespace TSviewCloudPlugin
         public override string Path => (isRoot) ? "" : Parents.First().Path + ((Parents.First().Path == "") ? "" : "/") + PathItemName;
         public override string Name => name;
         public override string PathItemName => Uri.EscapeDataString(Name);
+        public override string PathDecode(string encoded)
+        {
+            return Uri.UnescapeDataString(encoded);
+        }
 
         public string[] RawParents => parentIDs;
 
@@ -154,7 +159,7 @@ namespace TSviewCloudPlugin
                     rootID = root.ID;
                     pathlist[""] = pathlist[rootID] = root;
 
-                    await LoadItems(rootID, 2);
+                    await LoadItems(rootID, 1);
                 }
                 else
                 {
@@ -220,7 +225,6 @@ namespace TSviewCloudPlugin
             {
                 await LoadItems(ID, depth);
             }
-
         }
 
         public async override Task<IRemoteItem> ReloadItem(string ID)
@@ -294,7 +298,7 @@ namespace TSviewCloudPlugin
         public override void Disconnect()
         {
             base.Disconnect();
-            GoogleDrive.RevokeToken(Drive.Auth).Wait();
+            GoogleDrive.RevokeToken(Drive?.Auth).Wait();
         }
 
         private async Task LoadItems(string ID, int depth = 0)
@@ -434,8 +438,8 @@ namespace TSviewCloudPlugin
                     rootID = root.ID;
                     pathlist[""] = pathlist[rootID] = root;
 
-                    await LoadItems(rootID, 2);
-
+                    await LoadItems(rootID, 1);
+ 
                     _IsReady = true;
 
                     j.Progress = 1;
@@ -466,7 +470,8 @@ namespace TSviewCloudPlugin
             await LoadItems(baseitem.ID, 0);
             foreach(var i in baseitem.Children)
             {
-                if(i.ItemType == RemoteItemType.Folder)
+                ct.ThrowIfCancellationRequested();
+                if (i.ItemType == RemoteItemType.Folder)
                     await ScanItems(i, ct);
             }
         }
@@ -489,7 +494,7 @@ namespace TSviewCloudPlugin
                 rootID = root.ID;
                 pathlist[""] = pathlist[rootID] = root;
 
-                await LoadItems(rootID, 2);
+                await LoadItems(rootID, 1);
 
                 _IsReady = true;
 
@@ -812,7 +817,6 @@ namespace TSviewCloudPlugin
                 {
                     var newitem = Drive.MoveChild(moveItem.ID, oldparent.ID, moveToItem.ID, j.Ct).Result;
                     (moveItem as GoogleDriveSystemItem).SetFileds(newitem);
-
 
                     await LoadItems(moveToItem.ID, 2);
                     await LoadItems(oldparent.ID, 2);

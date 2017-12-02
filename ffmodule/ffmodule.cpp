@@ -1369,6 +1369,7 @@ namespace ffmodule {
 				is->video_eof = false;
 				serial = av_gettime();
 				is->pictq_active_serial = serial;
+				is->frame_last_pts = NAN;
 				continue;
 			}
 			if (packet.data == eof_pkt.data) {
@@ -1901,6 +1902,8 @@ namespace ffmodule {
 		is->audioStream = -1;
 		is->subtitleStream = -1;
 
+		is->start_time_org = AV_NOPTS_VALUE;
+
 		pFormatCtx->interrupt_callback.callback = decode_interrupt_cb;
 		pFormatCtx->interrupt_callback.opaque = is;
 
@@ -2009,8 +2012,8 @@ namespace ffmodule {
 			}
 			if (!isnan(is->startskip)) {
 				is->seek_pos = (int64_t)(is->startskip * AV_TIME_BASE);
-				if (pFormatCtx->start_time != AV_NOPTS_VALUE)
-					is->seek_pos += is->pFormatCtx->start_time;
+				if (is->start_time_org != AV_NOPTS_VALUE)
+					is->seek_pos += is->start_time_org;
 				is->seek_rel = 0;
 				is->seek_flags = 0;
 				is->seek_req = true;
@@ -2126,6 +2129,9 @@ namespace ffmodule {
 				continue;
 			}
 			error = false;
+			if (is->start_time_org == AV_NOPTS_VALUE && is->pFormatCtx->start_time != AV_NOPTS_VALUE) {
+				is->start_time_org = is->pFormatCtx->start_time;
+			}
 			if(isnan(is->external_clock))
 				is->external_clock = av_gettime() / 1000000.0;
 			// Is this a packet from the video stream?
@@ -2301,8 +2307,8 @@ namespace ffmodule {
 	{
 		int64_t t = (int64_t)(pos * AV_TIME_BASE);
 
-		if (pFormatCtx->start_time != AV_NOPTS_VALUE)
-			t += pFormatCtx->start_time;
+		if (start_time_org != AV_NOPTS_VALUE)
+			t += start_time_org;
 		stream_seek(t, 0);
 	}
 
@@ -2373,8 +2379,8 @@ namespace ffmodule {
 			tmm = (tns % 3600) / 60;
 			tss = (tns % 60);
 			ns = pts;
-			if (pFormatCtx->start_time != AV_NOPTS_VALUE) {
-				ns -= pFormatCtx->start_time / 1000000.0;
+			if (start_time_org != AV_NOPTS_VALUE) {
+				ns -= start_time_org / 1000000.0;
 			}
 			else if (!isnan(video_clock_start))
 				ns -= video_clock_start / 1000000.0;
@@ -2746,8 +2752,8 @@ namespace ffmodule {
 	{
 		duration = get_duration();
 		double t = pts;
-		if (pFormatCtx->start_time != AV_NOPTS_VALUE)
-			t -= pFormatCtx->start_time / 1000000.0;
+		if (start_time_org != AV_NOPTS_VALUE)
+			t -= start_time_org / 1000000.0;
 		else if (!isnan(video_clock_start))
 			t -= video_clock_start / 1000000.0;
 		else
@@ -2789,7 +2795,7 @@ namespace ffmodule {
 		VideoPicture *vp = &pictq[pictq_rindex];
 		while (vp->serial < pictq_active_serial && pictq_size > 0) {
 			vp = next_picture_queue();
-			frame_last_pts = 0;
+			frame_last_pts = NAN;
 		}
 
 		if (seek_req) {
@@ -2853,18 +2859,21 @@ namespace ffmodule {
 				double sync_threshold = (delay > AV_SYNC_THRESHOLD) ? delay : AV_SYNC_THRESHOLD;
 				if (fabs(diff) < AV_NOSYNC_THRESHOLD) {
 					if (diff <= -sync_threshold) {
-						delay = 0;
+						delay = (diff + delay < 0)? 0: diff + delay;
+					}
+					else if (diff >= sync_threshold && delay > AV_SYNC_FRAMEDUP_THRESHOLD) {
+						delay = diff + delay;
 					}
 					else if (diff >= sync_threshold * 2) {
-						delay = (diff / sync_threshold + 1) * delay;
+						delay = 2 * delay;
 					}
-					else if (diff > 0) {
+					else if (diff >= sync_threshold) {
 						delay = (diff / sync_threshold) * delay;
 					}
 				}
 			}
 			if (delay >= -1.0 && delay <= 1.0) {
-				frame_last_delay = (frame_last_delay * 99 + delay * 1) / 100;
+				frame_last_delay = (frame_last_delay * 9 + delay * 1) / 10;
 			}
 
 
@@ -2873,7 +2882,10 @@ namespace ffmodule {
 			/* computer the REAL delay */
 			double actual_delay = frame_timer - av_gettime() / 1000000.0;
 
-			if (actual_delay > AV_SYNC_THRESHOLD) {
+			if (fabs(actual_delay) > AV_NOSYNC_THRESHOLD) {
+				frame_timer += actual_delay;
+			}
+			else if (actual_delay > AV_SYNC_THRESHOLD) {
 				schedule_refresh((int)(actual_delay * 1000));
 			}
 			else if (actual_delay > skepdelay) {
@@ -3001,8 +3013,8 @@ namespace ffmodule {
 		else {
 			pos += value;
 			int64_t tmpns = (int64_t)pos;
-			if (pFormatCtx->start_time != AV_NOPTS_VALUE)
-				tmpns -= (int64_t)(pFormatCtx->start_time / 1000000.0);
+			if (start_time_org != AV_NOPTS_VALUE)
+				tmpns -= (int64_t)(start_time_org / 1000000.0);
 			else
 				tmpns -= (int64_t)(get_master_clock_start() / 1000000.0);
 			ns = (int)(tmpns);
@@ -3028,8 +3040,8 @@ namespace ffmodule {
 				av_log(NULL, AV_LOG_INFO, "Seek to %2.0f%% (%2d:%02d:%02d) of total duration(%2d:%02d:%02d)\n", value * 100,
 					hh, mm, ss, thh, tmm, tss);
 				int64_t ts = (int64_t)(value * pFormatCtx->duration);
-				if (pFormatCtx->start_time != AV_NOPTS_VALUE)
-					ts += pFormatCtx->start_time;
+				if (start_time_org != AV_NOPTS_VALUE)
+					ts += start_time_org;
 				stream_seek(ts, 0);
 			}
 			else {

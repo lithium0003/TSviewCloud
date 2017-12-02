@@ -52,13 +52,14 @@ extern "C" {
 #define FF_INTERNAL_REFRESH_EVENT (SDL_USEREVENT + 1)
 #define FF_QUIT_EVENT (SDL_USEREVENT + 2)
 
-#define VIDEO_PICTURE_QUEUE_SIZE 40
+#define VIDEO_PICTURE_QUEUE_SIZE 20
 
-#define MAX_AUDIOQ_SIZE (8 * 1024 * 1024)
-#define MAX_VIDEOQ_SIZE (64 * 1024 * 1024)
+#define MAX_AUDIOQ_SIZE (1 * 1024 * 1024)
+#define MAX_VIDEOQ_SIZE (128 * 1024 * 1024)
 
 #define AV_SYNC_THRESHOLD 0.005
-#define AV_NOSYNC_THRESHOLD 8.0
+#define AV_NOSYNC_THRESHOLD 4.0
+#define AV_SYNC_FRAMEDUP_THRESHOLD 0.1
 
 #define SAMPLE_CORRECTION_PERCENT_MAX 10
 #define AUDIO_DIFF_AVG_NB 20
@@ -254,6 +255,7 @@ namespace ffmodule {
 		double			pos_ratio;
 		bool            left_seek;
 
+		int64_t         start_time_org;
 		bool            seek_req;
 		int             seek_flags;
 		int64_t         seek_pos;

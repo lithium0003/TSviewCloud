@@ -109,7 +109,7 @@ namespace LibAmazonDrive
             }
         }
         private string modifiedDate_str;
-        public DateTime modifiedDate;
+        public DateTime? modifiedDate;
         [DataMember(Name = "createdDate")]
         public string createdDate_prop
         {
@@ -121,7 +121,7 @@ namespace LibAmazonDrive
             }
         }
         private string createdDate_str;
-        public DateTime createdDate;
+        public DateTime? createdDate;
         [DataMember]
         public ClientProperties clientProperties;
         [DataMember]
@@ -1017,7 +1017,7 @@ namespace LibAmazonDrive
             public string childId;
         }
 
-        public async Task<bool> MoveChild(string childid, string fromParentId, string toParentId, CancellationToken ct = default(CancellationToken))
+        public async Task<FileMetadata_Info> MoveChild(string childid, string fromParentId, string toParentId, CancellationToken ct = default(CancellationToken))
         {
             Log("MoveChild");
             string error_str;
@@ -1050,7 +1050,7 @@ namespace LibAmazonDrive
                     response.EnsureSuccessStatusCode();
                     string responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
 
-                    return true;
+                    return ParseResponse<FileMetadata_Info>(responseBody);
                 }
                 catch (HttpRequestException ex)
                 {

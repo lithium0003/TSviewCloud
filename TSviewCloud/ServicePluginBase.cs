@@ -216,6 +216,10 @@ namespace TSviewCloudPlugin
         public bool IsBroken { get => _isBroken; set => _isBroken = value; }
 
         public virtual string PathItemName => Name;
+        public virtual string PathDecode(string encoded)
+        {
+            return encoded;
+        }
 
         public void SetParents(IEnumerable<IRemoteItem> newparents)
         {
@@ -571,7 +575,7 @@ namespace TSviewCloudPlugin
             while (!ServerList.TryRemove(target.Name, out o))
                 if(!ServerList.TryGetValue(target.Name, out o))
                     break;
-            o.Disconnect();
+            o?.Disconnect();
         }
 
         static public void Delete(string target)
@@ -580,7 +584,7 @@ namespace TSviewCloudPlugin
             while (!ServerList.TryRemove(target, out o))
                 if (!ServerList.TryGetValue(target, out o))
                     break;
-            o.Disconnect();
+            o?.Disconnect();
         }
 
         static public void Load()

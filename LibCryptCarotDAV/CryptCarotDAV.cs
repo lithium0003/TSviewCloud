@@ -194,6 +194,7 @@ namespace LibCryptCarotDAV
             byte[] hash = new byte[CryptFooterByte];
 
             HashStream innerStream;
+            long innerStreamLength;
             CryptoStream cryptStream;
             long _position = 0;
             AesCryptoServiceProvider aes;
@@ -202,9 +203,10 @@ namespace LibCryptCarotDAV
             long cryptlen;
             bool disposed;
 
-            public CryptCarotDAV_CryptStream(CryptCarotDAV crypter, Stream baseStream) : base()
+            public CryptCarotDAV_CryptStream(CryptCarotDAV crypter, Stream baseStream, long? streamLength = null) : base()
             {
                 innerStream = new HashStream(baseStream, new SHA256CryptoServiceProvider());
+                innerStreamLength = streamLength ?? innerStream.Length;
 
                 Array.Copy(_salt, header, 24);
 
@@ -219,11 +221,11 @@ namespace LibCryptCarotDAV
                 encryptor = aes.CreateEncryptor();
 
                 cryptStream = new CryptoStream(innerStream, encryptor, CryptoStreamMode.Read);
-                if (innerStream.Length > 0)
-                    patlen = (int)((innerStream.Length - 1) % BlockSizeByte + 1);
+                if (innerStreamLength > 0)
+                    patlen = (int)((innerStreamLength - 1) % BlockSizeByte + 1);
                 else
                     patlen = BlockSizeByte;
-                cryptlen = innerStream.Length + BlockSizeByte - patlen;
+                cryptlen = innerStreamLength + BlockSizeByte - patlen;
             }
 
             protected override void Dispose(bool isDisposing)
@@ -244,7 +246,7 @@ namespace LibCryptCarotDAV
                 }
             }
 
-            public override long Length { get { return innerStream.Length + BlockSizeByte + CryptHeaderByte + CryptFooterByte; } }
+            public override long Length { get { return innerStreamLength + BlockSizeByte + CryptHeaderByte + CryptFooterByte; } }
             public override bool CanRead { get { return true; } }
             public override bool CanWrite { get { return false; } }
             public override bool CanSeek { get { return true; } }
@@ -358,7 +360,11 @@ namespace LibCryptCarotDAV
                     if (isDisposing)
                     {
                         hash?.Dispose();
-                        decryptStream?.Dispose();
+                        try
+                        {
+                            decryptStream?.Dispose();
+                        }
+                        catch { }
                         innerStream?.Dispose();
                     }
                     hash = null;
@@ -372,7 +378,7 @@ namespace LibCryptCarotDAV
 
             public CryptCarotDAV_DecryptStream(CryptCarotDAV crypter, Stream baseStream, long orignalOffset = 0, long cryptedOffset = 0, long cryptedLength = -1) : base()
             {
-                innerStream = baseStream;
+                innerStream = new NotFlushStream(baseStream);
                 if (cryptedLength < 0) CryptLength = innerStream.Length;
                 else CryptLength = cryptedLength;
                 CryptOffset = cryptedOffset;
@@ -532,6 +538,69 @@ namespace LibCryptCarotDAV
             public override void SetLength(long value)
             {
                 throw new NotImplementedException();
+            }
+        }
+
+        public class NotFlushStream : Stream
+        {
+            Stream innerStream;
+            bool disposed;
+
+            public NotFlushStream(Stream innerStream)
+            {
+                this.innerStream = innerStream ?? throw new ArgumentNullException(nameof(innerStream));
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                if (!disposed)
+                {
+                    if (disposing)
+                    {
+                        innerStream?.Dispose();
+                    }
+                    innerStream = null;
+                    disposed = true;
+                }
+                base.Dispose(disposing);
+            }
+
+            public override long Length { get { return innerStream.Length; } }
+            public override bool CanRead { get { return innerStream.CanRead; } }
+            public override bool CanWrite { get { return innerStream.CanWrite; } }
+            public override bool CanSeek { get { return innerStream.CanSeek; } }
+            public override void Flush() { /* do nothing */ }
+
+            public override long Position
+            {
+                get
+                {
+                    return innerStream.Position;
+                }
+                set
+                {
+                    innerStream.Position = value;
+                }
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                return innerStream.Read(buffer, offset, count);
+            }
+
+            public override long Seek(long offset, SeekOrigin origin)
+            {
+                return innerStream.Seek(offset, origin);
+            }
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                innerStream.Write(buffer, offset, count);
+            }
+
+            public override void SetLength(long value)
+            {
+                innerStream.SetLength(value);
             }
         }
     }
