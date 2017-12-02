@@ -46,7 +46,7 @@ namespace LibGoogleDrive
         public AuthKeys Login(CancellationToken ct = default(CancellationToken))
         {
             var response_type = "code";
-            var scope = "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata";
+            var scope = "https://www.googleapis.com/auth/drive";
             var code_challenge_method = "plain";
             string url;
             code_challenge = Get_code_challenge();

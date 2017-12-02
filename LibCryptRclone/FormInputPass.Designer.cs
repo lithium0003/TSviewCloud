@@ -37,8 +37,8 @@
             this.label1 = new System.Windows.Forms.Label();
             this.textBox2 = new System.Windows.Forms.TextBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.radioButton_Standard = new System.Windows.Forms.RadioButton();
             this.radioButton_off = new System.Windows.Forms.RadioButton();
+            this.radioButton_Standard = new System.Windows.Forms.RadioButton();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -46,7 +46,7 @@
             // 
             this.textBox1.Location = new System.Drawing.Point(9, 28);
             this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(237, 22);
+            this.textBox1.Size = new System.Drawing.Size(301, 22);
             this.textBox1.TabIndex = 1;
             // 
             // label2
@@ -82,7 +82,7 @@
             // button2
             // 
             this.button2.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.button2.Location = new System.Drawing.Point(154, 267);
+            this.button2.Location = new System.Drawing.Point(209, 267);
             this.button2.Name = "button2";
             this.button2.Size = new System.Drawing.Size(75, 23);
             this.button2.TabIndex = 6;
@@ -113,7 +113,7 @@
             // 
             this.textBox2.Location = new System.Drawing.Point(9, 112);
             this.textBox2.Name = "textBox2";
-            this.textBox2.Size = new System.Drawing.Size(237, 22);
+            this.textBox2.Size = new System.Drawing.Size(301, 22);
             this.textBox2.TabIndex = 7;
             // 
             // groupBox1
@@ -122,10 +122,20 @@
             this.groupBox1.Controls.Add(this.radioButton_Standard);
             this.groupBox1.Location = new System.Drawing.Point(12, 191);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(234, 50);
+            this.groupBox1.Size = new System.Drawing.Size(298, 50);
             this.groupBox1.TabIndex = 10;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "File name encryption modes";
+            // 
+            // radioButton_off
+            // 
+            this.radioButton_off.AutoSize = true;
+            this.radioButton_off.Location = new System.Drawing.Point(134, 25);
+            this.radioButton_off.Name = "radioButton_off";
+            this.radioButton_off.Size = new System.Drawing.Size(49, 19);
+            this.radioButton_off.TabIndex = 1;
+            this.radioButton_off.Text = "Off";
+            this.radioButton_off.UseVisualStyleBackColor = true;
             // 
             // radioButton_Standard
             // 
@@ -139,21 +149,11 @@
             this.radioButton_Standard.Text = "Standard";
             this.radioButton_Standard.UseVisualStyleBackColor = true;
             // 
-            // radioButton_off
-            // 
-            this.radioButton_off.AutoSize = true;
-            this.radioButton_off.Location = new System.Drawing.Point(134, 25);
-            this.radioButton_off.Name = "radioButton_off";
-            this.radioButton_off.Size = new System.Drawing.Size(49, 19);
-            this.radioButton_off.TabIndex = 1;
-            this.radioButton_off.Text = "Off";
-            this.radioButton_off.UseVisualStyleBackColor = true;
-            // 
             // FormInputPass
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(282, 323);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(120F, 120F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
+            this.ClientSize = new System.Drawing.Size(322, 317);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.checkBox2);
             this.Controls.Add(this.label1);

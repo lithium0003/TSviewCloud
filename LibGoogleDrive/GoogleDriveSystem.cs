@@ -463,7 +463,8 @@ namespace TSviewCloudPlugin
         {
             ct.ThrowIfCancellationRequested();
             await LoadItems(baseitem.ID, 0);
-            foreach(var i in baseitem.Children)
+            ct.ThrowIfCancellationRequested();
+            foreach (var i in baseitem.Children)
             {
                 ct.ThrowIfCancellationRequested();
                 if (i.ItemType == RemoteItemType.Folder)

@@ -2949,12 +2949,7 @@ namespace TSviewCloud
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        private void clearLoginBrowserCookieToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            WinInetHelper.SupressCookiePersist();
-            WinInetHelper.EndBrowserSession();
-        }
-
+ 
         private void checkUpdateToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
