@@ -12,6 +12,11 @@ A streaming media player for Cloud drive with availability of play encrypted fil
 * This player can encrypt your files with [CarotDAV](http://www.rei.to/carotdav.html "CarotDAV") and [rclone](https://rclone.org/ "rclone") compatible methods.
 * Play encrypted media files transparently.
 
+## ScreenShots
+![Main window](https://raw.githubusercontent.com/lithium0003/TSviewCloud/images/images/main.png)
+![Player window](https://raw.githubusercontent.com/lithium0003/TSviewCloud/images/images/player.png)
+![Command Line](https://raw.githubusercontent.com/lithium0003/TSviewCloud/images/images/cmd.png)
+
 ## Requirement
 This program is compiled with Visual Studio 2017 C++.
 You need Microsoft Visual C++ Redistributable for Visual Studio 2017. 
