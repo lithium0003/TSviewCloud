@@ -215,10 +215,10 @@ namespace TSviewCloudPlugin
 
         public bool IsBroken { get => _isBroken; set => _isBroken = value; }
 
-        public virtual string PathItemName => Name;
+        public virtual string PathItemName => Uri.EscapeDataString(Name);
         public virtual string PathDecode(string encoded)
         {
-            return encoded;
+            return Uri.UnescapeDataString(encoded);
         }
 
         public void SetParents(IEnumerable<IRemoteItem> newparents)

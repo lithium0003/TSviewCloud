@@ -287,11 +287,11 @@ namespace TSviewCloud
                 var remotebasepath = GetBasePathRemote(remote.Select(x => x.path));
 
                 if (TreeFlag)
-                    remote = remote.Select(x => new RemoteItemInfo(x.info, x.path, x.path.Substring(remotebasepath.Length))).ToArray();
+                    remote = remote.Select(x => new RemoteItemInfo(x.info, Uri.UnescapeDataString(x.path), x.path.Substring(remotebasepath.Length))).ToArray();
                 if (FilenameFlag)
-                    remote = remote.Select(x => new RemoteItemInfo(x.info, x.path, x.info.Name)).ToArray();
+                    remote = remote.Select(x => new RemoteItemInfo(x.info, Uri.UnescapeDataString(x.path), x.info.Name)).ToArray();
                 if (HashFlag)
-                    remote = remote.Select(x => new RemoteItemInfo(x.info, x.path, x.info.Hash ?? "")).ToArray();
+                    remote = remote.Select(x => new RemoteItemInfo(x.info, Uri.UnescapeDataString(x.path), x.info.Hash ?? "")).ToArray();
 
                 var localpath = listBox_local.Items.Cast<string>();
                 var localbasepath = GetBasePath(localpath);
@@ -338,7 +338,7 @@ namespace TSviewCloud
                         if (HashFlag)
                             return new LocalItemInfo(x, HASH, hfile.Length, HASH);
                         if (TreeFlag)
-                            return new LocalItemInfo(x, x.Substring(localbasepath.Length).Replace('\\', '/'), hfile.Length, HASH);
+                            return new LocalItemInfo(x, string.Join("/", x.Substring(localbasepath.Length).Split('\\').Select(y => Uri.EscapeDataString(y))), hfile.Length, HASH);
                         else
                             return new LocalItemInfo(x, Path.GetFileName(x), hfile.Length, HASH);
                     }

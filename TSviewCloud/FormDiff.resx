@@ -156,9 +156,6 @@
   <data name="radioButton_Hash.AutoSize" type="System.Boolean, mscorlib">
     <value>True</value>
   </data>
-  <data name="radioButton_Hash.Enabled" type="System.Boolean, mscorlib">
-    <value>False</value>
-  </data>
   <data name="radioButton_Hash.Location" type="System.Drawing.Point, System.Drawing">
     <value>327, 119</value>
   </data>

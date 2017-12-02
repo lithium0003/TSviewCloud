@@ -675,7 +675,7 @@
             {
             "AssemblyRegister" = "3:1"
             "AssemblyIsInGAC" = "11:FALSE"
-            "AssemblyAsmDisplayName" = "8:TSviewCloud, Version=1.0.10.1201, Culture=neutral, processorArchitecture=AMD64"
+            "AssemblyAsmDisplayName" = "8:TSviewCloud, Version=1.0.11.1202, Culture=neutral, processorArchitecture=AMD64"
                 "ScatterAssemblies"
                 {
                     "_8489AF467479396B74B9A43B33A134A7"
@@ -908,7 +908,7 @@
             {
             "AssemblyRegister" = "3:1"
             "AssemblyIsInGAC" = "11:FALSE"
-            "AssemblyAsmDisplayName" = "8:Secretbox, Version=1.0.6542.5935, Culture=neutral, processorArchitecture=AMD64"
+            "AssemblyAsmDisplayName" = "8:Secretbox, Version=1.0.6545.22176, Culture=neutral, processorArchitecture=AMD64"
                 "ScatterAssemblies"
                 {
                     "_C75793D80740ED86FC44BAF92B1AEE23"
@@ -1135,15 +1135,15 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:TSviewCloud"
-        "ProductCode" = "8:{85772FBB-3E8F-4F21-A531-C86D9D17BBD4}"
-        "PackageCode" = "8:{1F768F3D-123D-4105-8FF7-E3AD6F39BE0A}"
+        "ProductCode" = "8:{2C34D3F2-6DDD-4B8E-83C7-1DC7E62FA544}"
+        "PackageCode" = "8:{B5C42799-2E6F-481E-B8D5-8F643554AE6E}"
         "UpgradeCode" = "8:{C3D9582A-5BAA-46B6-9F48-3988F7DBC71B}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:FALSE"
-        "ProductVersion" = "8:1.0.11"
+        "ProductVersion" = "8:1.0.12"
         "Manufacturer" = "8:lithium03"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"

@@ -230,21 +230,21 @@ namespace TSviewCloud
                 var remotebasepathA = GetBasePathRemote(remoteA.Select(x => x.path));
 
                 if (TreeFlag)
-                    remoteA = remoteA.Select(x => new RemoteItemInfo(x.info, x.path, x.path.Substring(remotebasepathA.Length))).ToArray();
+                    remoteA = remoteA.Select(x => new RemoteItemInfo(x.info, Uri.UnescapeDataString(x.path), x.path.Substring(remotebasepathA.Length))).ToArray();
                 if (FilenameFlag)
-                    remoteA = remoteA.Select(x => new RemoteItemInfo(x.info, x.path, x.info.Name)).ToArray();
+                    remoteA = remoteA.Select(x => new RemoteItemInfo(x.info, Uri.UnescapeDataString(x.path), x.info.Name)).ToArray();
                 if (HashFlag)
-                    remoteA = remoteA.Select(x => new RemoteItemInfo(x.info, x.path, x.info.Hash ?? "")).ToArray();
+                    remoteA = remoteA.Select(x => new RemoteItemInfo(x.info, Uri.UnescapeDataString(x.path), x.info.Hash ?? "")).ToArray();
 
                 var remoteB = SelectedRemoteFilesB.Select(x => new RemoteItemInfo(x, x.FullPath, null)).ToArray();
                 var remotebasepathB = GetBasePathRemote(remoteB.Select(x => x.path));
 
                 if (TreeFlag)
-                    remoteB = remoteB.Select(x => new RemoteItemInfo(x.info, x.path, x.path.Substring(remotebasepathB.Length))).ToArray();
+                    remoteB = remoteB.Select(x => new RemoteItemInfo(x.info, Uri.UnescapeDataString(x.path), x.path.Substring(remotebasepathB.Length))).ToArray();
                 if (FilenameFlag)
-                    remoteB = remoteB.Select(x => new RemoteItemInfo(x.info, x.path, x.info.Name)).ToArray();
+                    remoteB = remoteB.Select(x => new RemoteItemInfo(x.info, Uri.UnescapeDataString(x.path), x.info.Name)).ToArray();
                 if (HashFlag)
-                    remoteB = remoteB.Select(x => new RemoteItemInfo(x.info, x.path, x.info.Hash ?? "")).ToArray();
+                    remoteB = remoteB.Select(x => new RemoteItemInfo(x.info, Uri.UnescapeDataString(x.path), x.info.Hash ?? "")).ToArray();
 
                 var len = remoteA.Count();
                 int i = 0;

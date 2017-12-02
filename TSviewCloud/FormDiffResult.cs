@@ -144,6 +144,7 @@ namespace TSviewCloud
             {
                 if (listBox_LocalOnly.DataSource != null)
                 {
+                    sw.WriteLine("Path,id,size,Hash");
                     foreach (var item in listBox_LocalOnly.DataSource as IEnumerable<FormDiff.MatchItem>)
                     {
                         sw.WriteLine("{0},{1},{2},{3}",
@@ -162,7 +163,7 @@ namespace TSviewCloud
             {
                 if (listBox_RemoteOnly.DataSource != null)
                 {
-                    sw.WriteLine("Path,id,size,MD5");
+                    sw.WriteLine("Path,id,size,Hash");
                     foreach (var item in listBox_RemoteOnly.DataSource as IEnumerable<FormDiff.MatchItem>)
                     {
                         sw.WriteLine("{0},{1},{2},{3}",
@@ -181,13 +182,13 @@ namespace TSviewCloud
                 return;
             SaveList(sw =>
             {
-                sw.WriteLine("LocalPath,LocalSize,LocalMD5,RemotePath,RemoteSize,RemoteMD5,RemoteID");
+                sw.WriteLine("APath,ASize,AHash,AID,BPath,BSize,BHash,BID");
                 foreach (ListViewItem item in listView_Unmatch.Items)
                 {
                     if (item.Tag != null)
                     {
                         var data = item.Tag as FormDiff.MatchItem;
-                        sw.WriteLine("{0},{1},{2},{3},{4},{5},{6}",
+                        sw.WriteLine("{0},{1},{2},{3},{4},{5},{6},{7}",
                             data.remoteA.path,
                             data.remoteA.info.Size,
                             data.remoteA.info.Hash,
@@ -251,50 +252,91 @@ namespace TSviewCloud
                 return;
             SaveList(sw =>
             {
-                sw.WriteLine("LocalPath,RemotePath,Size,MD5,RemoteID");
+                sw.WriteLine("APath,BPath,Size,Hash,AID,BID");
                 foreach (ListViewItem item in listView_Match.Items)
                 {
                     if (item.Tag != null)
                     {
                         var data = item.Tag as FormDiff.MatchItem;
-                        sw.WriteLine("{0},{1},{2},{3},{4}",
+                        sw.WriteLine("{0},{1},{2},{3},{4},{5}",
                             data.remoteA.path,
                             data.remoteB.path,
                             data.remoteA.info.Size,
                             data.remoteA.info.Hash,
-                            data.remoteA.info.FullPath);
+                            data.remoteA.info.FullPath,
+                            data.remoteB.info.FullPath);
                     }
                 }
             });
         }
 
-        private void button_Download_Click(object sender, EventArgs e)
+        private void button_trashA_Click(object sender, EventArgs e)
         {
-            button_Download.Enabled = false;
+            button_trashA.Enabled = false;
             try
             {
                 var items = listBox_RemoteOnly.SelectedItems;
                 if (items.Count == 0) return;
 
+                if (MessageBox.Show(string.Format("Do you want trash {0} items?", items.Count), "Delete item", MessageBoxButtons.OKCancel) != DialogResult.OK) return;
+
+                foreach (var item in items.Cast<FormDiff.MatchItem>().Select(x => x.remoteA.info))
+                    item.DeleteItem();
             }
             finally
             {
-                button_Download.Enabled = true;
+                button_trashA.Enabled = true;
             }
         }
 
-        private void button_trash_Click(object sender, EventArgs e)
+        private void button_trashB_Click(object sender, EventArgs e)
         {
-            button_trash.Enabled = false;
+            button_trashB.Enabled = false;
             try
             {
                 var items = listBox_RemoteOnly.SelectedItems;
                 if (items.Count == 0) return;
 
+                if (MessageBox.Show(string.Format("Do you want trash {0} items?", items.Count), "Delete item", MessageBoxButtons.OKCancel) != DialogResult.OK) return;
+
+                foreach (var item in items.Cast<FormDiff.MatchItem>().Select(x => x.remoteB.info))
+                    item.DeleteItem();
             }
             finally
             {
-                button_trash.Enabled = true;
+                button_trashB.Enabled = true;
+            }
+        }
+
+        private void button_DownloadA_Click(object sender, EventArgs e)
+        {
+            button_DownloadA.Enabled = false;
+            try
+            {
+                var items = listBox_LocalOnly.SelectedItems;
+                if (items.Count == 0) return;
+
+                TSviewCloudPlugin.ItemControl.DownloadItems(items.Cast<FormDiff.MatchItem>().Select(x => x.remoteA.info));
+            }
+            finally
+            {
+                button_DownloadA.Enabled = true;
+            }
+        }
+
+        private void button_DownloadB_Click(object sender, EventArgs e)
+        {
+            button_DownloadA.Enabled = false;
+            try
+            {
+                var items = listBox_RemoteOnly.SelectedItems;
+                if (items.Count == 0) return;
+
+                TSviewCloudPlugin.ItemControl.DownloadItems(items.Cast<FormDiff.MatchItem>().Select(x => x.remoteB.info));
+            }
+            finally
+            {
+                button_DownloadA.Enabled = true;
             }
         }
     }

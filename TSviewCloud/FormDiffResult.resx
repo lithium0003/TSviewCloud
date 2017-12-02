@@ -150,64 +150,64 @@
   <data name="&gt;&gt;listBox_LocalOnly.ZOrder" xml:space="preserve">
     <value>0</value>
   </data>
-  <data name="button1.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
+  <data name="button_trashA.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
     <value>NoControl</value>
   </data>
-  <data name="button1.Location" type="System.Drawing.Point, System.Drawing">
-    <value>11, 95</value>
+  <data name="button_trashA.Location" type="System.Drawing.Point, System.Drawing">
+    <value>8, 98</value>
   </data>
-  <data name="button1.Margin" type="System.Windows.Forms.Padding, System.Windows.Forms">
+  <data name="button_trashA.Margin" type="System.Windows.Forms.Padding, System.Windows.Forms">
     <value>4, 4, 4, 4</value>
   </data>
-  <data name="button1.Size" type="System.Drawing.Size, System.Drawing">
+  <data name="button_trashA.Size" type="System.Drawing.Size, System.Drawing">
     <value>100, 29</value>
   </data>
-  <data name="button1.TabIndex" type="System.Int32, mscorlib">
+  <data name="button_trashA.TabIndex" type="System.Int32, mscorlib">
     <value>5</value>
   </data>
-  <data name="button1.Text" xml:space="preserve">
+  <data name="button_trashA.Text" xml:space="preserve">
     <value>Trash</value>
   </data>
-  <data name="&gt;&gt;button1.Name" xml:space="preserve">
-    <value>button1</value>
+  <data name="&gt;&gt;button_trashA.Name" xml:space="preserve">
+    <value>button_trashA</value>
   </data>
-  <data name="&gt;&gt;button1.Type" xml:space="preserve">
+  <data name="&gt;&gt;button_trashA.Type" xml:space="preserve">
     <value>System.Windows.Forms.Button, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="&gt;&gt;button1.Parent" xml:space="preserve">
+  <data name="&gt;&gt;button_trashA.Parent" xml:space="preserve">
     <value>panel1</value>
   </data>
-  <data name="&gt;&gt;button1.ZOrder" xml:space="preserve">
+  <data name="&gt;&gt;button_trashA.ZOrder" xml:space="preserve">
     <value>0</value>
   </data>
-  <data name="button2.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
+  <data name="button_DownloadA.ImeMode" type="System.Windows.Forms.ImeMode, System.Windows.Forms">
     <value>NoControl</value>
   </data>
-  <data name="button2.Location" type="System.Drawing.Point, System.Drawing">
-    <value>11, 41</value>
+  <data name="button_DownloadA.Location" type="System.Drawing.Point, System.Drawing">
+    <value>8, 41</value>
   </data>
-  <data name="button2.Margin" type="System.Windows.Forms.Padding, System.Windows.Forms">
+  <data name="button_DownloadA.Margin" type="System.Windows.Forms.Padding, System.Windows.Forms">
     <value>4, 4, 4, 4</value>
   </data>
-  <data name="button2.Size" type="System.Drawing.Size, System.Drawing">
+  <data name="button_DownloadA.Size" type="System.Drawing.Size, System.Drawing">
     <value>100, 29</value>
   </data>
-  <data name="button2.TabIndex" type="System.Int32, mscorlib">
+  <data name="button_DownloadA.TabIndex" type="System.Int32, mscorlib">
     <value>4</value>
   </data>
-  <data name="button2.Text" xml:space="preserve">
+  <data name="button_DownloadA.Text" xml:space="preserve">
     <value>Download</value>
   </data>
-  <data name="&gt;&gt;button2.Name" xml:space="preserve">
-    <value>button2</value>
+  <data name="&gt;&gt;button_DownloadA.Name" xml:space="preserve">
+    <value>button_DownloadA</value>
   </data>
-  <data name="&gt;&gt;button2.Type" xml:space="preserve">
+  <data name="&gt;&gt;button_DownloadA.Type" xml:space="preserve">
     <value>System.Windows.Forms.Button, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="&gt;&gt;button2.Parent" xml:space="preserve">
+  <data name="&gt;&gt;button_DownloadA.Parent" xml:space="preserve">
     <value>panel1</value>
   </data>
-  <data name="&gt;&gt;button2.ZOrder" xml:space="preserve">
+  <data name="&gt;&gt;button_DownloadA.ZOrder" xml:space="preserve">
     <value>1</value>
   </data>
   <data name="button_SaveLocalList.Location" type="System.Drawing.Point, System.Drawing">
@@ -283,7 +283,7 @@
     <value>0</value>
   </data>
   <data name="groupBox1.Text" xml:space="preserve">
-    <value>Local Only Files</value>
+    <value>A Only Files</value>
   </data>
   <data name="&gt;&gt;groupBox1.Name" xml:space="preserve">
     <value>groupBox1</value>
@@ -354,58 +354,58 @@
   <data name="&gt;&gt;listBox_RemoteOnly.ZOrder" xml:space="preserve">
     <value>0</value>
   </data>
-  <data name="button_trash.Location" type="System.Drawing.Point, System.Drawing">
+  <data name="button_trashB.Location" type="System.Drawing.Point, System.Drawing">
     <value>9, 94</value>
   </data>
-  <data name="button_trash.Margin" type="System.Windows.Forms.Padding, System.Windows.Forms">
+  <data name="button_trashB.Margin" type="System.Windows.Forms.Padding, System.Windows.Forms">
     <value>4, 4, 4, 4</value>
   </data>
-  <data name="button_trash.Size" type="System.Drawing.Size, System.Drawing">
+  <data name="button_trashB.Size" type="System.Drawing.Size, System.Drawing">
     <value>100, 29</value>
   </data>
-  <data name="button_trash.TabIndex" type="System.Int32, mscorlib">
+  <data name="button_trashB.TabIndex" type="System.Int32, mscorlib">
     <value>3</value>
   </data>
-  <data name="button_trash.Text" xml:space="preserve">
+  <data name="button_trashB.Text" xml:space="preserve">
     <value>Trash</value>
   </data>
-  <data name="&gt;&gt;button_trash.Name" xml:space="preserve">
-    <value>button_trash</value>
+  <data name="&gt;&gt;button_trashB.Name" xml:space="preserve">
+    <value>button_trashB</value>
   </data>
-  <data name="&gt;&gt;button_trash.Type" xml:space="preserve">
+  <data name="&gt;&gt;button_trashB.Type" xml:space="preserve">
     <value>System.Windows.Forms.Button, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="&gt;&gt;button_trash.Parent" xml:space="preserve">
+  <data name="&gt;&gt;button_trashB.Parent" xml:space="preserve">
     <value>panel2</value>
   </data>
-  <data name="&gt;&gt;button_trash.ZOrder" xml:space="preserve">
+  <data name="&gt;&gt;button_trashB.ZOrder" xml:space="preserve">
     <value>0</value>
   </data>
-  <data name="button_Download.Location" type="System.Drawing.Point, System.Drawing">
+  <data name="button_DownloadB.Location" type="System.Drawing.Point, System.Drawing">
     <value>9, 40</value>
   </data>
-  <data name="button_Download.Margin" type="System.Windows.Forms.Padding, System.Windows.Forms">
+  <data name="button_DownloadB.Margin" type="System.Windows.Forms.Padding, System.Windows.Forms">
     <value>4, 4, 4, 4</value>
   </data>
-  <data name="button_Download.Size" type="System.Drawing.Size, System.Drawing">
+  <data name="button_DownloadB.Size" type="System.Drawing.Size, System.Drawing">
     <value>100, 29</value>
   </data>
-  <data name="button_Download.TabIndex" type="System.Int32, mscorlib">
+  <data name="button_DownloadB.TabIndex" type="System.Int32, mscorlib">
     <value>2</value>
   </data>
-  <data name="button_Download.Text" xml:space="preserve">
+  <data name="button_DownloadB.Text" xml:space="preserve">
     <value>Download</value>
   </data>
-  <data name="&gt;&gt;button_Download.Name" xml:space="preserve">
-    <value>button_Download</value>
+  <data name="&gt;&gt;button_DownloadB.Name" xml:space="preserve">
+    <value>button_DownloadB</value>
   </data>
-  <data name="&gt;&gt;button_Download.Type" xml:space="preserve">
+  <data name="&gt;&gt;button_DownloadB.Type" xml:space="preserve">
     <value>System.Windows.Forms.Button, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="&gt;&gt;button_Download.Parent" xml:space="preserve">
+  <data name="&gt;&gt;button_DownloadB.Parent" xml:space="preserve">
     <value>panel2</value>
   </data>
-  <data name="&gt;&gt;button_Download.ZOrder" xml:space="preserve">
+  <data name="&gt;&gt;button_DownloadB.ZOrder" xml:space="preserve">
     <value>1</value>
   </data>
   <data name="button_SaveRemoteList.Location" type="System.Drawing.Point, System.Drawing">
@@ -481,7 +481,7 @@
     <value>2</value>
   </data>
   <data name="groupBox2.Text" xml:space="preserve">
-    <value>Remote Only Files</value>
+    <value>B Only Files</value>
   </data>
   <data name="&gt;&gt;groupBox2.Name" xml:space="preserve">
     <value>groupBox2</value>
@@ -523,13 +523,13 @@
     <value>7</value>
   </data>
   <data name="columnHeader1.Text" xml:space="preserve">
-    <value>Local</value>
+    <value>A</value>
   </data>
   <data name="columnHeader1.Width" type="System.Int32, mscorlib">
     <value>200</value>
   </data>
   <data name="columnHeader7.Text" xml:space="preserve">
-    <value>LocalSize</value>
+    <value>ASize</value>
   </data>
   <data name="columnHeader7.TextAlign" type="System.Windows.Forms.HorizontalAlignment, System.Windows.Forms">
     <value>Right</value>
@@ -538,13 +538,13 @@
     <value>80</value>
   </data>
   <data name="columnHeader8.Text" xml:space="preserve">
-    <value>LocalHash</value>
+    <value>AHash</value>
   </data>
   <data name="columnHeader9.Text" xml:space="preserve">
-    <value>RemoteHash</value>
+    <value>BHash</value>
   </data>
   <data name="columnHeader10.Text" xml:space="preserve">
-    <value>RemoteSize</value>
+    <value>BSize</value>
   </data>
   <data name="columnHeader10.TextAlign" type="System.Windows.Forms.HorizontalAlignment, System.Windows.Forms">
     <value>Right</value>
@@ -553,7 +553,7 @@
     <value>80</value>
   </data>
   <data name="columnHeader11.Text" xml:space="preserve">
-    <value>Remote</value>
+    <value>B</value>
   </data>
   <data name="columnHeader11.Width" type="System.Int32, mscorlib">
     <value>200</value>
@@ -967,7 +967,7 @@
     <value>8</value>
   </data>
   <data name="groupBox5.Text" xml:space="preserve">
-    <value>Local Duplicate Files</value>
+    <value>A Duplicate Files</value>
   </data>
   <data name="&gt;&gt;groupBox5.Name" xml:space="preserve">
     <value>groupBox5</value>
@@ -1081,7 +1081,7 @@
     <value>9</value>
   </data>
   <data name="groupBox6.Text" xml:space="preserve">
-    <value>Remote Duplicate Files</value>
+    <value>B Duplicate Files</value>
   </data>
   <data name="&gt;&gt;groupBox6.Name" xml:space="preserve">
     <value>groupBox6</value>

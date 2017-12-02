@@ -688,7 +688,7 @@ namespace TSviewCloudPlugin
 
                     using (source)
                     using (var th = new ThrottleUploadStream(source, j.Ct))
-                    using (var f = new PositionStream(th))
+                    using (var f = new PositionStream(th, streamsize))
                     {
                         f.PosChangeEvent += (src, evnt) =>
                         {

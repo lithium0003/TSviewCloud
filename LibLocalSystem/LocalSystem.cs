@@ -96,7 +96,7 @@ namespace TSviewCloudPlugin
             if (!fullpath.StartsWith(basepath))
                 throw new ArgumentOutOfRangeException("fullpath", "out of location BaseBath");
             var ret = (basepath.EndsWith("\\"))? fullpath.Substring(basepath.Length): fullpath.Substring(basepath.Length+1);
-            return ret.Replace('\\', '/');
+            return string.Join("/", ret.Split('\\').Select(x => Uri.EscapeDataString(x)));
         }
 
         public override string ID => fullpath;

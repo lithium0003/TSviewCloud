@@ -32,13 +32,15 @@
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.listBox_LocalOnly = new System.Windows.Forms.ListBox();
             this.panel1 = new System.Windows.Forms.Panel();
+            this.button_trashA = new System.Windows.Forms.Button();
+            this.button_DownloadA = new System.Windows.Forms.Button();
             this.button_SaveLocalList = new System.Windows.Forms.Button();
             this.splitter1 = new System.Windows.Forms.Splitter();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.listBox_RemoteOnly = new System.Windows.Forms.ListBox();
             this.panel2 = new System.Windows.Forms.Panel();
-            this.button_trash = new System.Windows.Forms.Button();
-            this.button_Download = new System.Windows.Forms.Button();
+            this.button_trashB = new System.Windows.Forms.Button();
+            this.button_DownloadB = new System.Windows.Forms.Button();
             this.button_SaveRemoteList = new System.Windows.Forms.Button();
             this.splitter2 = new System.Windows.Forms.Splitter();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
@@ -72,8 +74,6 @@
             this.splitter5 = new System.Windows.Forms.Splitter();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
-            this.button1 = new System.Windows.Forms.Button();
-            this.button2 = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.panel1.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -106,11 +106,25 @@
             // 
             // panel1
             // 
-            this.panel1.Controls.Add(this.button1);
-            this.panel1.Controls.Add(this.button2);
+            this.panel1.Controls.Add(this.button_trashA);
+            this.panel1.Controls.Add(this.button_DownloadA);
             this.panel1.Controls.Add(this.button_SaveLocalList);
             resources.ApplyResources(this.panel1, "panel1");
             this.panel1.Name = "panel1";
+            // 
+            // button_trashA
+            // 
+            resources.ApplyResources(this.button_trashA, "button_trashA");
+            this.button_trashA.Name = "button_trashA";
+            this.button_trashA.UseVisualStyleBackColor = true;
+            this.button_trashA.Click += new System.EventHandler(this.button_trashA_Click);
+            // 
+            // button_DownloadA
+            // 
+            resources.ApplyResources(this.button_DownloadA, "button_DownloadA");
+            this.button_DownloadA.Name = "button_DownloadA";
+            this.button_DownloadA.UseVisualStyleBackColor = true;
+            this.button_DownloadA.Click += new System.EventHandler(this.button_DownloadA_Click);
             // 
             // button_SaveLocalList
             // 
@@ -143,25 +157,25 @@
             // 
             // panel2
             // 
-            this.panel2.Controls.Add(this.button_trash);
-            this.panel2.Controls.Add(this.button_Download);
+            this.panel2.Controls.Add(this.button_trashB);
+            this.panel2.Controls.Add(this.button_DownloadB);
             this.panel2.Controls.Add(this.button_SaveRemoteList);
             resources.ApplyResources(this.panel2, "panel2");
             this.panel2.Name = "panel2";
             // 
-            // button_trash
+            // button_trashB
             // 
-            resources.ApplyResources(this.button_trash, "button_trash");
-            this.button_trash.Name = "button_trash";
-            this.button_trash.UseVisualStyleBackColor = true;
-            this.button_trash.Click += new System.EventHandler(this.button_trash_Click);
+            resources.ApplyResources(this.button_trashB, "button_trashB");
+            this.button_trashB.Name = "button_trashB";
+            this.button_trashB.UseVisualStyleBackColor = true;
+            this.button_trashB.Click += new System.EventHandler(this.button_trashB_Click);
             // 
-            // button_Download
+            // button_DownloadB
             // 
-            resources.ApplyResources(this.button_Download, "button_Download");
-            this.button_Download.Name = "button_Download";
-            this.button_Download.UseVisualStyleBackColor = true;
-            this.button_Download.Click += new System.EventHandler(this.button_Download_Click);
+            resources.ApplyResources(this.button_DownloadB, "button_DownloadB");
+            this.button_DownloadB.Name = "button_DownloadB";
+            this.button_DownloadB.UseVisualStyleBackColor = true;
+            this.button_DownloadB.Click += new System.EventHandler(this.button_DownloadB_Click);
             // 
             // button_SaveRemoteList
             // 
@@ -355,18 +369,6 @@
             this.splitter5.Name = "splitter5";
             this.splitter5.TabStop = false;
             // 
-            // button1
-            // 
-            resources.ApplyResources(this.button1, "button1");
-            this.button1.Name = "button1";
-            this.button1.UseVisualStyleBackColor = true;
-            // 
-            // button2
-            // 
-            resources.ApplyResources(this.button2, "button2");
-            this.button2.Name = "button2";
-            this.button2.UseVisualStyleBackColor = true;
-            // 
             // FormDiffResult
             // 
             resources.ApplyResources(this, "$this");
@@ -441,10 +443,10 @@
         private System.Windows.Forms.Button button_SaveLocalDupList;
         private System.Windows.Forms.Button button_SaveRemoteDupList;
         private System.Windows.Forms.Button button_SaveMatchedList;
-        private System.Windows.Forms.Button button_Download;
+        private System.Windows.Forms.Button button_DownloadB;
         private System.Windows.Forms.FolderBrowserDialog folderBrowserDialog1;
-        private System.Windows.Forms.Button button_trash;
-        private System.Windows.Forms.Button button1;
-        private System.Windows.Forms.Button button2;
+        private System.Windows.Forms.Button button_trashB;
+        private System.Windows.Forms.Button button_trashA;
+        private System.Windows.Forms.Button button_DownloadA;
     }
 }

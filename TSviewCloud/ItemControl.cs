@@ -258,6 +258,33 @@ namespace TSviewCloudPlugin
             return DoDownloadFolder(localfoldername, items, job);
         }
 
+
+        static public void DownloadItems(IEnumerable<IRemoteItem> remoteItems)
+        {
+            if (remoteItems == null || remoteItems.Count() == 0) return;
+            if(remoteItems.Count() == 1)
+            {
+                var item = remoteItems.First();
+                var dialog = new SaveFileDialog();
+                dialog.FileName = item.Name;
+                if (dialog.ShowDialog() != DialogResult.OK) return;
+
+                DownloadFile(dialog.FileName, item);
+            }
+            else
+            {
+                var dialog = new FolderBrowserDialog();
+                if (dialog.ShowDialog() != DialogResult.OK) return;
+
+                var remotebasepath = TSviewCloud.FormMatch.GetBasePathRemote(remoteItems.Select(x => x.FullPath));
+                foreach(var item in remoteItems)
+                {
+                    var path = string.Join("\\", item.FullPath.Substring(remotebasepath.Length).Replace("://", "/").Split('/').Select(x => Uri.UnescapeDataString(x)));
+                    DownloadFile(Path.Combine(GetLocalFullPath(dialog.SelectedPath), path), item);
+                }
+            }
+        }
+
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -308,5 +335,85 @@ namespace TSviewCloudPlugin
             return job;
         }
 
+
+        static public string GetBasePath(IEnumerable<string> paths)
+        {
+            string prefix = null;
+            foreach (var p in paths)
+            {
+                if (prefix == null)
+                {
+                    var filename = Path.GetFileName(p);
+                    prefix = p.Substring(0, p.Length - filename.Length);
+                }
+                if (prefix == "")
+                    break;
+                while (!p.StartsWith(prefix) && prefix != "")
+                {
+                    prefix = prefix.Substring(0, prefix.Length - 1);
+                    var filename = Path.GetFileName(prefix);
+                    prefix = prefix.Substring(0, prefix.Length - filename.Length);
+                }
+            }
+            return prefix ?? "";
+        }
+
+        static private IEnumerable<string> Splitpath(string path)
+        {
+            return path.Replace(":\\", "\\").Split('\\');
+        }
+
+        static public Job UploadFilesMultiFolder(IRemoteItem targetItem, IEnumerable<string> uploadFilenames, bool WeekDepend = false, params Job[] parentJob)
+        {
+            if (uploadFilenames == null) return null;
+
+            var localbase = GetBasePath(uploadFilenames);
+            var upitems = uploadFilenames.Select(x => (path: Splitpath(x.Substring(localbase.Length)), file: x));
+            var makepaths = upitems.Select(x => string.Join("/", x.path.Reverse().Skip(1).Reverse())).GroupBy(x => x).Select(x => x.Key);
+
+            var job = JobControler.CreateNewJob(JobClass.LoadItem, depends: parentJob);
+            job.DisplayName = "Search Items";
+            job.WeekDepend = WeekDepend;
+            JobControler.Run(job, async (j) =>
+            {
+                await MakeSureItem(targetItem);
+
+                foreach (var folders in makepaths)
+                {
+                    var current = targetItem;
+                    foreach(var p in folders.Split('/'))
+                    {
+                        if (string.IsNullOrEmpty(p)) continue;
+
+                        var c = current.Children.FirstOrDefault(x => x.Name == p);
+                        if(c == null)
+                        {
+                            var mkjob = current.MakeFolder(p, true, j);
+                            mkjob.Wait(ct: j.Ct);
+                            c = mkjob.Result;
+                        }
+                        current = c;
+                    }
+                }
+
+                foreach (var item in upitems)
+                {
+                    var current = targetItem;
+                    foreach(var p in item.path.Reverse().Skip(1).Reverse())
+                    {
+                        current = current?.Children.FirstOrDefault(x => x.Name == p);
+                    }
+                    if(current == null)
+                    {
+                        TSviewCloud.FormConflicts.Instance.AddResult(item.file, "upload error: folder lost");
+                        continue;
+                    }
+                    var upjob = current.UploadFile(item.file, WeekDepend: true, parentJob: j);
+                    if (upjob == null) continue;
+                    upjob.DisplayName = string.Format("Upload File {0} to {1}", item.file, current.FullPath);
+                }
+            });
+            return job;
+        }
     }
 }

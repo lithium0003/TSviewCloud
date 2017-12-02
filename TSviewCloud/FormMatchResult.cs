@@ -158,7 +158,7 @@ namespace TSviewCloud
             {
                 if (listBox_RemoteOnly.DataSource != null)
                 {
-                    sw.WriteLine("Path,id,size,MD5");
+                    sw.WriteLine("Path,id,size,Hash");
                     foreach (var item in listBox_RemoteOnly.DataSource as IEnumerable<FormMatch.MatchItem>)
                     {
                         sw.WriteLine("{0},{1},{2},{3}",
@@ -177,7 +177,7 @@ namespace TSviewCloud
                 return;
             SaveList(sw =>
             {
-                sw.WriteLine("LocalPath,LocalSize,LocalMD5,RemotePath,RemoteSize,RemoteMD5,RemoteID");
+                sw.WriteLine("LocalPath,LocalSize,LocalHash,RemotePath,RemoteSize,RemoteHash,RemoteID");
                 foreach (ListViewItem item in listView_Unmatch.Items)
                 {
                     if (item.Tag != null)
@@ -245,7 +245,7 @@ namespace TSviewCloud
                 return;
             SaveList(sw =>
             {
-                sw.WriteLine("LocalPath,RemotePath,Size,MD5,RemoteID");
+                sw.WriteLine("LocalPath,RemotePath,Size,Hash,RemoteID");
                 foreach (ListViewItem item in listView_Match.Items)
                 {
                     if (item.Tag != null)
@@ -267,6 +267,13 @@ namespace TSviewCloud
             button_Upload.Enabled = false;
             try
             {
+                var items = listBox_LocalOnly.SelectedItems;
+                if (items.Count == 0) return;
+
+                var tree = new FormTreeSelect();
+                if (tree.ShowDialog() != DialogResult.OK) return;
+
+                TSviewCloudPlugin.ItemControl.UploadFilesMultiFolder(tree.SelectedItem, items.Cast<FormMatch.MatchItem>().Select(x => x.local.path));
             }
             finally
             {
@@ -282,6 +289,8 @@ namespace TSviewCloud
                 var items = listBox_RemoteOnly.SelectedItems;
                 if (items.Count == 0) return;
 
+
+                TSviewCloudPlugin.ItemControl.DownloadItems(items.Cast<FormMatch.MatchItem>().Select(x => x.remote.info));
             }
             finally
             {
@@ -297,6 +306,10 @@ namespace TSviewCloud
                 var items = listBox_RemoteOnly.SelectedItems;
                 if (items.Count == 0) return;
 
+                if (MessageBox.Show(string.Format("Do you want trash {0} items?", items.Count), "Delete item", MessageBoxButtons.OKCancel) != DialogResult.OK) return;
+
+                foreach (var item in items.Cast<FormMatch.MatchItem>().Select(x => x.remote.info))
+                    item.DeleteItem();
             }
             finally
             {

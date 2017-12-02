@@ -110,7 +110,9 @@ namespace TSviewCloud
                     Console.WriteLine("\tlist (REMOTE_PATH)                        : list item");
                     Console.WriteLine("\t\t--recursive: recursive mode");
                     Console.WriteLine("\t\t--hash: show hash");
+                    Console.WriteLine("\t\t--cache: no reload, list on cache");
                     Console.WriteLine("\tdownload (remotepath) (localpath)         : download item(s)");
+                    Console.WriteLine("\tupload (localpath) (remotepath)           : upload local file or folder");
                     break;
                 case "list":
                     return RunList(targetArgs, paramArgs);
@@ -137,6 +139,7 @@ namespace TSviewCloud
 
             bool recursive = false;
             bool showhash = false;
+            ReloadType reload = ReloadType.Reload;
             foreach (var p in paramArgs)
             {
                 switch (p)
@@ -148,6 +151,10 @@ namespace TSviewCloud
                     case "hash":
                         Console.Error.WriteLine("(--hash: show hash)");
                         showhash = true;
+                        break;
+                    case "cache":
+                        Console.Error.WriteLine("(--cache: no reload)");
+                        reload = ReloadType.Cache;
                         break;
                 }
             }
@@ -161,7 +168,7 @@ namespace TSviewCloud
                     var j2 = InitServer(j);
                     j2.Wait(ct: j.Ct);
 
-                    target = FindItems(remotepath, recursive: recursive, ct: j.Ct);
+                    target = FindItems(remotepath, recursive: recursive, ct: j.Ct, reload: reload);
 
                     if (target.Count() < 1)
                     {
@@ -179,11 +186,11 @@ namespace TSviewCloud
                         if (showhash) detail = "\t" + item.Hash;
 
                         if (recursive)
-                            Console.WriteLine(item.FullPath + detail);
+                            Console.WriteLine(item.FullPath + "\t" + item.Name + detail);
                         else
                         {
                             if (item.IsRoot)
-                                Console.WriteLine(item.FullPath + detail);
+                                Console.WriteLine(item.FullPath + "\t" + item.Name + detail);
                             else
                                 Console.WriteLine(item.Name + ((item.ItemType == RemoteItemType.Folder) ? "/" : "") + detail);
                         }
@@ -383,6 +390,21 @@ namespace TSviewCloud
                         JobControler.JobList().Where(x => x.JobType == JobClass.Upload).FirstOrDefault()?.Wait(ct: j.Ct);
                     }
 
+                    var SaveConfigJob = JobControler.CreateNewJob(TSviewCloudPlugin.JobClass.Save);
+                    SaveConfigJob.DisplayName = "Save server list";
+                    JobControler.Run(SaveConfigJob, (j3) =>
+                    {
+                        j3.Progress = -1;
+                        j3.ProgressStr = "Save...";
+
+                        TSviewCloudConfig.Config.Save();
+                        RemoteServerFactory.Save();
+
+                        j3.Progress = 1;
+                        j3.ProgressStr = "Done.";
+                    });
+                    SaveConfigJob.Wait();
+
                     job.ResultAsObject = 0;
                 }
                 catch (OperationCanceledException)
@@ -485,7 +507,7 @@ namespace TSviewCloud
               => p.FullPath.GetHashCode();
         }
 
-        static IEnumerable<IRemoteItem> FindItems(string path_str, bool recursive = false, IRemoteItem root = null, CancellationToken ct = default(CancellationToken))
+        static IEnumerable<IRemoteItem> FindItems(string path_str, bool recursive = false, IRemoteItem root = null, CancellationToken ct = default(CancellationToken), ReloadType reload = ReloadType.Reload)
         {
             ct.ThrowIfCancellationRequested();
             List<IRemoteItem> ret = new List<IRemoteItem>();
@@ -495,7 +517,7 @@ namespace TSviewCloud
                 {
                     if (recursive)
                     {
-                        ret.AddRange(RemoteServerFactory.ServerList.Values.Select(x => x[""]).Select(x => FindItems("", true, x, ct)).SelectMany(x => x));
+                        ret.AddRange(RemoteServerFactory.ServerList.Values.Select(x => x[""]).Select(x => FindItems("", true, x, ct, reload)).SelectMany(x => x));
                         return ret;
                     }
                     else
@@ -506,14 +528,14 @@ namespace TSviewCloud
                 }
                 else
                 {
-                    root = RemoteServerFactory.PathToItem(root.FullPath, ReloadType.Reload).Result;
+                    root = RemoteServerFactory.PathToItem(root.FullPath, reload).Result;
                     if (root == null) return ret;
                     ret.Add(root);
                     var children = root.Children;
                     if (recursive)
                     {
                         ret.AddRange(children.Where(x => x.ItemType == RemoteItemType.File));
-                        ret.AddRange(children.Where(x => x.ItemType == RemoteItemType.Folder).Select(x => FindItems("", true, x, ct)).SelectMany(x => x));
+                        ret.AddRange(children.Where(x => x.ItemType == RemoteItemType.Folder).Select(x => FindItems("", true, x, ct, reload)).SelectMany(x => x));
                     }
                     return ret;
                 }
@@ -526,13 +548,13 @@ namespace TSviewCloud
                 if (servername.IndexOfAny(new[] { '?', '*' }) < 0)
                 {
                     var server = RemoteServerFactory.ServerList[servername];
-                    return FindItems(m.Groups["path"].Value, recursive, server[""], ct);
+                    return FindItems(m.Groups["path"].Value, recursive, server[""], ct, reload);
                 }
                 else
                 {
                     var servers = RemoteServerFactory.ServerList.Keys;
                     return servers.Where(x => Regex.IsMatch(x, "^" + Regex.Escape(servername).Replace("\\*", ".*").Replace("\\?", ".") + "$"))
-                        .Select(x => FindItems(m.Groups["path"].Value, recursive, RemoteServerFactory.ServerList[x][""], ct))
+                        .Select(x => FindItems(m.Groups["path"].Value, recursive, RemoteServerFactory.ServerList[x][""], ct, reload))
                         .SelectMany(x => x);
                 }
             }
@@ -543,32 +565,32 @@ namespace TSviewCloud
                 m = Regex.Match(path_str, @"^(?<current>[^/\\]*)(/|\\)?(?<next>.*)$");
                 path_str = m.Groups["next"].Value;
 
-                root = RemoteServerFactory.PathToItem(root.FullPath, ReloadType.Reload).Result;
+                root = RemoteServerFactory.PathToItem(root.FullPath, reload).Result;
                 if (root == null) return ret;
                 var children = root.Children;
 
                 var itemname = m.Groups["current"].Value;
                 if(itemname == "**")
                 {
-                    ret.AddRange(FindItems(path_str, true, root, ct));
+                    ret.AddRange(FindItems(path_str, true, root, ct, reload));
                     ret.AddRange(children
-                        .Select(x => FindItems(path_str, true, x, ct))
+                        .Select(x => FindItems(path_str, true, x, ct, reload))
                         .SelectMany(x => x));
                     ret.AddRange(children
-                        .Select(x => FindItems("**/"+path_str, true, x, ct))
+                        .Select(x => FindItems("**/"+path_str, true, x, ct, reload))
                         .SelectMany(x => x));
                     return ret.Distinct(new RemoteItemEqualityComparer());
                 }
                 else if(itemname.IndexOfAny(new[] { '?', '*' }) < 0)
                 {
-                    return children.Where(x => x.Name == itemname)
-                        .Select(x => FindItems(path_str, recursive, x, ct))
+                    return children.Where(x => x.Name == itemname || x.PathItemName == itemname)
+                        .Select(x => FindItems(path_str, recursive, x, ct, reload))
                         .SelectMany(x => x);
                 }
                 else
                 {
                     return children.Where(x => Regex.IsMatch(x.Name, "^"+Regex.Escape(itemname).Replace("\\*", ".*").Replace("\\?", ".")+"$"))
-                        .Select(x => FindItems(path_str, recursive, x, ct))
+                        .Select(x => FindItems(path_str, recursive, x, ct, reload))
                         .SelectMany(x => x);
                 }
             }

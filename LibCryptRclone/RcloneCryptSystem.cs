@@ -136,7 +136,7 @@ namespace TSviewCloudPlugin
                     ret.Add((_server as RcloneCryptSystem).Encrypter.DecryptName(orgItem.PathDecode(m.Groups["current"].Value)));
                 }
             }
-            return string.Join("/", ret);
+            return string.Join("/", ret.Select(x => Uri.EscapeDataString(x)));
         }
 
         public override string Path => decryptedPath;

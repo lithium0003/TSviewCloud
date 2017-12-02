@@ -83,12 +83,7 @@ namespace TSviewCloudPlugin
         public override string ID => id;
         public override string Path => (isRoot) ? "" : Parents.First().Path + ((Parents.First().Path == "") ? "" : "/") + PathItemName;
         public override string Name => name;
-        public override string PathItemName => Uri.EscapeDataString(Name);
-        public override string PathDecode(string encoded)
-        {
-            return Uri.UnescapeDataString(encoded);
-        }
-
+ 
         public string[] RawParents => parentIDs;
 
         public DateTime? LastLoaded { get => lastLoaded; set => lastLoaded = value; }
@@ -648,7 +643,7 @@ namespace TSviewCloudPlugin
 
                     using (source)
                     using (var th = new ThrottleUploadStream(source, j.Ct))
-                    using (var f = new PositionStream(th))
+                    using (var f = new PositionStream(th, streamsize))
                     {
                         f.PosChangeEvent += (src, evnt) =>
                         {
