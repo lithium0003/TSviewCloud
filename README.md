@@ -16,11 +16,9 @@ A streaming media player for Cloud drive with availability of play encrypted fil
 This program is compiled with Visual Studio 2017 C++.
 You need Microsoft Visual C++ Redistributable for Visual Studio 2017. 
 Choose one which you want to install version.
-
-64bit(x64)
+* 64bit(x64)
 <https://go.microsoft.com/fwlink/?LinkId=746572>
-
-32bit(x86)
+* 32bit(x86)
 <https://go.microsoft.com/fwlink/?LinkId=746571>
 
 This program is compiled with c# .NET 4.7.
