@@ -15,7 +15,6 @@ A streaming media player for Cloud drive with availability of play encrypted fil
 ## Requirement
 This program is compiled with Visual Studio 2017 C++.
 You need Microsoft Visual C++ Redistributable for Visual Studio 2017. 
-
 Choose one which you want to install version.
 
 64bit(x64)
@@ -29,6 +28,7 @@ If your system dosen't have runtime, please download Microsoft .NET Framework 4.
 <http://go.microsoft.com/fwlink/?LinkId=852095>
 
 ## License
+### TSviewCloud
 These codes are licensed under CC0.
 
 [![CC0](http://i.creativecommons.org/p/zero/1.0/88x31.png "CC0")](http://creativecommons.org/publicdomain/zero/1.0/deed.en)
