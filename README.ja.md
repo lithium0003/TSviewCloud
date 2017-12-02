@@ -13,6 +13,8 @@ TS viewer for Cloud Drive
 * [CarotDAV](http://www.rei.to/carotdav.html "CarotDAV") と [rclone](https://rclone.org/ "rclone") の暗号化方式に対応しています。
 * 暗号化されたファイルも、クラウドから直接ストリーミング再生できます。
 
+## ScreenShots
+
 ## Requirement
 このプログラムは Visual Studio 2017 C++ でコンパイルされています。
 Visual Studio 2017 の Microsoft Visual C++ 再頒布可能パッケージが必要です。
