@@ -656,7 +656,7 @@ namespace TSviewCloudPlugin
 
                         newremoteitem = Drive.UploadStream(f, remoteTarget.ID, uploadname, streamsize, j.Ct).Result;
 
-                        if(newremoteitem == null)
+                        if (newremoteitem == null)
                         {
                             j.ProgressStr = "Upload failed.";
                             j.Progress = double.NaN;
@@ -677,13 +677,25 @@ namespace TSviewCloudPlugin
                 {
 
                 }
+                catch (AggregateException ae)
+                {
+                    j.ProgressStr = "Upload failed.";
+                    j.Progress = double.NaN;
+                    ae.Flatten().Handle((x) =>
+                    {
+                        TSviewCloudConfig.Config.Log.LogOut("[UploadStream(GoogleDriveSystem)] " + uploadname + x.Message);
+                        LogFailed(remoteTarget.FullPath + "/" + uploadname, "upload error:" + x.Message);
+                        return true;
+                    });
+                    return;
+                }
                 catch (Exception e)
                 {
                     j.ProgressStr = "Upload failed.";
                     j.Progress = double.NaN;
+                    TSviewCloudConfig.Config.Log.LogOut("[UploadStream(GoogleDriveSystem)] " + uploadname + e.Message);
                     LogFailed(remoteTarget.FullPath + "/" + uploadname, "upload error:" + e.Message);
                     return;
-                    //throw new RemoteServerErrorException("Upload Failed.", e);
                 }
 
                 SetUpdate(remoteTarget);
