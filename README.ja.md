@@ -14,6 +14,9 @@ TS viewer for Cloud Drive
 * 暗号化されたファイルも、クラウドから直接ストリーミング再生できます。
 
 ## ScreenShots
+![Main window](https://raw.githubusercontent.com/lithium0003/TSviewCloud/images/images/main.png)
+![Player window](https://raw.githubusercontent.com/lithium0003/TSviewCloud/images/images/player.png)
+![Command Line](https://raw.githubusercontent.com/lithium0003/TSviewCloud/images/images/cmd.png)
 
 ## Requirement
 このプログラムは Visual Studio 2017 C++ でコンパイルされています。
