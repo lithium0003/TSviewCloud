@@ -168,12 +168,12 @@ namespace TSviewCloudPlugin
                 TSviewCloudConfig.Config.Log.LogOut("[EnsureItem(LocalSystem)] " + ID);
                 var item = pathlist[ID];
                 if (item.ItemType == RemoteItemType.Folder)
-                    await LoadItems(ID, depth);
+                    await LoadItems(ID, depth).ConfigureAwait(false);
                 item = pathlist[ID];
             }
             catch
             {
-                await LoadItems(ID, depth);
+                await LoadItems(ID, depth).ConfigureAwait(false);
             }
         }
 
@@ -185,12 +185,12 @@ namespace TSviewCloudPlugin
                 TSviewCloudConfig.Config.Log.LogOut("[ReloadItem(LocalSystem)] " + ID);
                 var item = pathlist[ID];
                 if (item.ItemType == RemoteItemType.Folder)
-                    await LoadItems(ID, 1);
+                    await LoadItems(ID, 1).ConfigureAwait(false);
                 item = pathlist[ID];
             }
             catch
             {
-                await LoadItems(ID, 1);
+                await LoadItems(ID, 1).ConfigureAwait(false);
             }
             return PeakItem(ID);
         }
@@ -219,7 +219,7 @@ namespace TSviewCloudPlugin
                 localPathBase = picker.SelectedPath;
                 var root = new LocalSystemItem(this, new DirectoryInfo(ItemControl.GetLongFilename(localPathBase)), null);
                 pathlist.AddOrUpdate("", (k)=>root, (k,v)=>root);
-                await EnsureItem("", 1);
+                await EnsureItem("", 1).ConfigureAwait(false);
                 _IsReady = true;
                 TSviewCloudConfig.Config.Log.LogOut("[Add] LocalSystem {0} as {1}", localPathBase, Name);
                 return true;
@@ -257,7 +257,7 @@ namespace TSviewCloudPlugin
             {
                 while (loadinglist.TryGetValue(ID, out var tmp) && tmp != null)
                 {
-                    await Task.Run(() => tmp.Wait());
+                    await Task.Run(() => tmp.Wait()).ConfigureAwait(false);
                 }
                 return;
             }
@@ -316,7 +316,7 @@ namespace TSviewCloudPlugin
             {
                 ManualResetEventSlim tmp2;
                 while (!loadinglist.TryRemove(ID, out tmp2))
-                    await Task.Delay(10);
+                    await Task.Delay(10).ConfigureAwait(false);
                 tmp2.Set();
             }
             if (depth > 0)

@@ -293,13 +293,14 @@ namespace LibAmazonDrive
         }
 
         delegate Task<T> DoConnection<T>();
-        static private async Task<T> DoWithRetry<T>(DoConnection<T> func, string LogPrefix = "DoWithRetry")
+        private async Task<T> DoWithRetry<T>(DoConnection<T> func, CancellationToken ct = default(CancellationToken), string LogPrefix = "DoWithRetry")
         {
             Random rnd = new Random();
             var retry = 0;
             string error_str = "";
             while (++retry < 30)
             {
+                ct.ThrowIfCancellationRequested();
                 try
                 {
                     return await func();
@@ -309,14 +310,34 @@ namespace LibAmazonDrive
                     error_str = ex.Message;
                     Log(LogPrefix, error_str);
 
-                    if (ex.Message.Contains("401") ||
-                        ex.Message.Contains("429") ||
+                    if (ex.Message.Contains("429") ||
                         ex.Message.Contains("500") ||
                         ex.Message.Contains("503"))
                     {
                         var waitsec = rnd.Next((int)Math.Pow(2, Math.Min(retry - 1, 8)));
                         Log(LogPrefix, "wait " + waitsec.ToString() + " sec");
                         await Task.Delay(waitsec * 1000).ConfigureAwait(false);
+                    }
+                    else if (ex.Message.Contains("401"))
+                    {
+                        Log(LogPrefix, "auth failed.");
+                        var retry_auth = 5;
+                        while (retry_auth-- > 0)
+                        {
+                            ct.ThrowIfCancellationRequested();
+                            Auth = await RefreshAuthorizationCode(Auth, ct).ConfigureAwait(false);
+                            await EnsureEndpoint(ct).ConfigureAwait(false);
+                            if (await GetAccountInfo(ct).ConfigureAwait(false))
+                            {
+                                Log(LogPrefix, "Refresh sucess.");
+                                AuthTimer = DateTime.Now;
+                                break;
+                            }
+                            await Task.Delay(1000, ct).ConfigureAwait(false);
+                        }
+                        if (retry_auth > 0) continue;
+                        Log(LogPrefix, "Refresh failed.");
+                        break;
                     }
                     else
                     {
@@ -413,7 +434,7 @@ namespace LibAmazonDrive
                         metadataUrl = data.metadataUrl;
                         endpoint_Age = DateTime.Now;
                         return data;
-                    }, "GetEndpoint");
+                    }, ct, "GetEndpoint");
                 }
             }
             catch (OperationCanceledException)
@@ -446,7 +467,7 @@ namespace LibAmazonDrive
 
                         var data = ParseResponse<GetAccountInfo_Info>(responseBody);
                         return true;
-                    }, "GetAccountInfo");
+                    }, ct, "GetAccountInfo");
                 }
             }
             catch (OperationCanceledException)
@@ -479,7 +500,7 @@ namespace LibAmazonDrive
                     string responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
 
                     return ParseResponse<FileMetadata_Info>(responseBody);
-                }, "GetFileMetadata");
+                }, ct, "GetFileMetadata");
             }
         }
 
@@ -511,7 +532,7 @@ namespace LibAmazonDrive
                     string responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
 
                     return ParseResponse<FileMetadata_Info>(responseBody);
-                }, "SetFileMetadata");
+                }, ct, "SetFileMetadata");
             }
         }
 
@@ -543,7 +564,7 @@ namespace LibAmazonDrive
                         info.data = info.data.Concat(next_info.data).ToArray();
                     }
                     return info;
-                }, "ListMetadata");
+                }, ct, "ListMetadata");
             }
         }
 
@@ -572,7 +593,7 @@ namespace LibAmazonDrive
                         info.data = info.data.Concat(next_info.data).ToArray();
                     }
                     return info;
-                }, "ListChildren");
+                }, ct, "ListChildren");
             }
         }
 
@@ -700,7 +721,7 @@ namespace LibAmazonDrive
                             }
                         }
                         return res.ToArray();
-                    }, "changes").ConfigureAwait(false);
+                    }, ct, "changes").ConfigureAwait(false);
                 }
             }
 
@@ -833,7 +854,7 @@ namespace LibAmazonDrive
                         return new HashStream(await response.Content.ReadAsStreamAsync().ConfigureAwait(false), new MD5CryptoServiceProvider(), hash, length);
                     else
                         return await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-                }, "DownloadItem").ConfigureAwait(false);
+                }, ct, "DownloadItem").ConfigureAwait(false);
             }
             catch (HttpRequestException ex)
             {

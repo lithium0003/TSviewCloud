@@ -487,6 +487,7 @@ namespace TSviewCloud
             {
                 Clear();
                 remoteItemList.Clear();
+                owner.ClearCacheListview();
                 remoteItemList.AddRange(results.OrderByDescending(x => x.ItemType).ThenBy(x => x.Name));
                 CurrentViewItem = null;
             }
@@ -503,6 +504,7 @@ namespace TSviewCloud
                     {
                         IsSearchResult = false;
                         remoteItemList.Clear();
+                        owner.ClearCacheListview();
                         if (_currentViewItem.Children != null)
                             remoteItemList.AddRange(_currentViewItem.Children.OrderByDescending(x => x.ItemType).ThenBy(x => x.Name));
                     }
@@ -564,6 +566,7 @@ namespace TSviewCloud
                 set
                 {
                     remoteItemList.Clear();
+                    owner.ClearCacheListview();
                     remoteItemList.AddRange(value);
                     CurrentViewItem = null;
                     owner.listView1.VirtualListSize = Count;
@@ -714,6 +717,7 @@ namespace TSviewCloud
             {
                 CurrentViewItem = null;
                 remoteItemList.Clear();
+                owner.ClearCacheListview();
                 owner.listView1.VirtualListSize = Count;
             }
 
@@ -723,29 +727,32 @@ namespace TSviewCloud
             }
 
 
-            private ListViewItem ConvertNormalItem(TSviewCloudPlugin.IRemoteItem item)
+            private async Task<ListViewItem> ConvertNormalItem(TSviewCloudPlugin.IRemoteItem item)
             {
                 var listitem = new ListViewItem();
-                listitem.Text = item.Name;
-                listitem.ImageIndex = (item.ItemType == TSviewCloudPlugin.RemoteItemType.Folder) ? 1 : 0;
-                listitem.SubItems.Add(item.Size?.ToString("N0"));
-                listitem.SubItems.Add(item.ModifiedDate.ToString());
-                listitem.SubItems.Add(item.CreatedDate.ToString());
-                listitem.SubItems.Add(item.FullPath);
-                listitem.SubItems.Add(item.Hash);
-                listitem.Tag = item;
-                listitem.ToolTipText = item.Name;
+                await Task.Run(() =>
+                {
+                    listitem.Text = item.Name;
+                    listitem.ImageIndex = (item.ItemType == TSviewCloudPlugin.RemoteItemType.Folder) ? 1 : 0;
+                    listitem.SubItems.Add(item.Size?.ToString("N0"));
+                    listitem.SubItems.Add(item.ModifiedDate.ToString());
+                    listitem.SubItems.Add(item.CreatedDate.ToString());
+                    listitem.SubItems.Add(item.FullPath);
+                    listitem.SubItems.Add(item.Hash);
+                    listitem.Tag = item;
+                    listitem.ToolTipText = item.Name;
+                });
                 return listitem;
             }
 
-            public ListViewItem GetListViewItem(int index)
+            public async Task<ListViewItem> GetListViewItem(int index)
             {
                 var listitem = new ListViewItem(new string[6]);
                 TSviewCloudPlugin.IRemoteItem item;
                 if (IsSearchResult)
                 {
                     if (index < remoteItemList.Count)
-                        return ConvertNormalItem(remoteItemList[index]);
+                        return await ConvertNormalItem(remoteItemList[index]);
                     else
                         return new ListViewItem(new string[6]);
                 }
@@ -764,16 +771,19 @@ namespace TSviewCloud
                         listitem.ImageIndex = 1;
                     }
                     else if (index > 1 && index - 2 < remoteItemList.Count)
-                        return ConvertNormalItem(remoteItemList[index - 2]);
+                        return await ConvertNormalItem(remoteItemList[index - 2]);
                     else
                         return new ListViewItem(new string[6]);
                 }
-                listitem.SubItems.Add(item?.Size?.ToString("N0"));
-                listitem.SubItems.Add(item?.ModifiedDate.ToString());
-                listitem.SubItems.Add(item?.CreatedDate.ToString());
-                listitem.SubItems.Add(item?.FullPath);
-                listitem.SubItems.Add(item?.Hash);
-                listitem.Tag = item;
+                await Task.Run(() =>
+                {
+                    listitem.SubItems.Add(item?.Size?.ToString("N0"));
+                    listitem.SubItems.Add(item?.ModifiedDate.ToString());
+                    listitem.SubItems.Add(item?.CreatedDate.ToString());
+                    listitem.SubItems.Add(item?.FullPath);
+                    listitem.SubItems.Add(item?.Hash);
+                    listitem.Tag = item;
+                });
                 return listitem;
             }
             public bool Contains(string path)
@@ -1139,9 +1149,45 @@ namespace TSviewCloud
             AddressLogPtr++;
         }
 
+        ConcurrentDictionary<int, ListViewItem> cacheListview = new ConcurrentDictionary<int, ListViewItem>();
+        CancellationTokenSource cacheListviewCTS = new CancellationTokenSource();
+
+        private void ClearCacheListview()
+        {
+            cacheListviewCTS.Cancel();
+            cacheListview.Clear();
+            cacheListviewCTS = new CancellationTokenSource();
+        }
+
         private void listView1_RetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e)
         {
-            e.Item = listData.GetListViewItem(e.ItemIndex);
+            if (cacheListview.TryGetValue(e.ItemIndex, out var value))
+                e.Item = value;
+            else
+            {
+                e.Item = new ListViewItem(new string[6]);
+                listData.GetListViewItem(e.ItemIndex).ContinueWith((t) =>
+                {
+                    cacheListview.AddOrUpdate(e.ItemIndex, t.Result, (k, v) => t.Result);
+                    synchronizationContext.Post((o) =>
+                    {
+                        listView1.RedrawItems((int)o, (int)o, true);
+                    }, e.ItemIndex);
+                }, cacheListviewCTS.Token);
+            }
+        }
+
+        private void listView1_CacheVirtualItems(object sender, CacheVirtualItemsEventArgs e)
+        {
+            for(int i = e.StartIndex; i <= e.EndIndex; i++)
+            {
+                if (cacheListview.ContainsKey(i))
+                    continue;
+                listData.GetListViewItem(i).ContinueWith((t) =>
+                {
+                    cacheListview.AddOrUpdate(i, t.Result, (k, v) => t.Result);
+                }, cacheListviewCTS.Token);
+            }
         }
 
         private void largeToolStripMenuItem_Click(object sender, EventArgs e)

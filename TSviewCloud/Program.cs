@@ -24,6 +24,7 @@ namespace TSviewCloud
 
             TaskScheduler.UnobservedTaskException += (sender, e) =>
             {
+                Trace.WriteLine(DateTime.Now);
                 Trace.WriteLine(e.Exception);
             };
 

@@ -204,7 +204,7 @@ namespace TSviewCloudPlugin
             _dependService = picker.SelectedItem.Server;
             var root = new CarotCryptSystemItem(this, picker.SelectedItem, null);
             pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
-            await EnsureItem("", 2);
+            await EnsureItem("", 1).ConfigureAwait(false);
 
             _IsReady = true;
             TSviewCloudConfig.Config.Log.LogOut("[Add] CarotCryptSystem {0} as {1}", cryptRootPath, Name);
@@ -225,14 +225,14 @@ namespace TSviewCloudPlugin
 
                 job.ProgressStr = "waiting for base system...";
                 while (!RemoteServerFactory.ServerList[_dependService].IsReady)
-                    Task.Delay(1000, j.Ct).Wait(j.Ct);
+                    await Task.Delay(1000, j.Ct).ConfigureAwait(false);
 
                 job.ProgressStr = "loading...";
-                var host = await RemoteServerFactory.PathToItem(cryptRootPath, ReloadType.Reload);
+                var host = await RemoteServerFactory.PathToItem(cryptRootPath, ReloadType.Reload).ConfigureAwait(false);
                 if (host == null) return;
                 var root = new CarotCryptSystemItem(this, host, null);
                 pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
-                await EnsureItem("", 2);
+                await EnsureItem("", 1).ConfigureAwait(false);
                 _IsReady = true;
 
                 job.Progress = 1;
@@ -266,9 +266,9 @@ namespace TSviewCloudPlugin
                     while (!(RemoteServerFactory.ServerList.Keys.Contains(_dependService) && RemoteServerFactory.ServerList[_dependService].IsReady))
                     {
                         if(RemoteServerFactory.ServerList.Keys.Contains(_dependService))
-                            await Task.Delay(1, job.Ct);
+                            await Task.Delay(1, job.Ct).ConfigureAwait(false);
                         else
-                            await Task.Delay(1000, job.Ct);
+                            await Task.Delay(1000, job.Ct).ConfigureAwait(false);
 
                         if (waitcount-- == 0) throw new FileNotFoundException("Depend Service is not ready.", _dependService);
                     }
@@ -282,9 +282,9 @@ namespace TSviewCloudPlugin
                 if (pathlist == null)
                 {
                     pathlist = new ConcurrentDictionary<string, CarotCryptSystemItem>();
-                    var root = new CarotCryptSystemItem(this, await RemoteServerFactory.PathToItem(cryptRootPath), null);
+                    var root = new CarotCryptSystemItem(this, await RemoteServerFactory.PathToItem(cryptRootPath).ConfigureAwait(false), null);
                     pathlist.AddOrUpdate("", (k) => root, (k, v) => root);
-                    await EnsureItem("", 2);
+                    await EnsureItem("", 1).ConfigureAwait(false);
                 }
                 else
                 {
@@ -323,12 +323,12 @@ namespace TSviewCloudPlugin
                 TSviewCloudConfig.Config.Log.LogOut("[EnsureItem(CarotCryptSystem)] " + ID);
                 var item = pathlist[ID];
                 if (item.ItemType == RemoteItemType.Folder)
-                    await LoadItems(ID, depth);
+                    await LoadItems(ID, depth).ConfigureAwait(false);
                 item = pathlist[ID];
             }
             catch
             {
-                await LoadItems(ID, depth);
+                await LoadItems(ID, depth).ConfigureAwait(false);
             }
         }
         public async override Task<IRemoteItem> ReloadItem(string ID)
@@ -339,12 +339,12 @@ namespace TSviewCloudPlugin
                 TSviewCloudConfig.Config.Log.LogOut("[ReloadItem(CarotCryptSystem)] " + ID);
                 var item = pathlist[ID];
                 if (item.ItemType == RemoteItemType.Folder)
-                    await LoadItems(ID, 2, true);
+                    await LoadItems(ID, 1, true).ConfigureAwait(false);
                 item = pathlist[ID];
             }
             catch
             {
-                await LoadItems(ID, 2, true);
+                await LoadItems(ID, 1, true).ConfigureAwait(false);
             }
             return PeakItem(ID);
         }
@@ -391,7 +391,7 @@ namespace TSviewCloudPlugin
             {
                 while (loadinglist.TryGetValue(ID, out var tmp) && tmp != null)
                 {
-                    await Task.Run(() => tmp.Wait());
+                    await Task.Run(() => tmp.Wait()).ConfigureAwait(false);
                 }
                 return;
             }
@@ -404,7 +404,7 @@ namespace TSviewCloudPlugin
                 {
                     throw new ArgumentException("ID is not in root path", "ID");
                 }
-                var orgitem = await RemoteServerFactory.PathToItem(orgID, (deep) ? ReloadType.Reload : ReloadType.Cache);
+                var orgitem = await RemoteServerFactory.PathToItem(orgID, (deep) ? ReloadType.Reload : ReloadType.Cache).ConfigureAwait(false);
                 if (orgitem?.Children != null && orgitem.Children?.Count() != 0)
                 {
                     var ret = new List<CarotCryptSystemItem>();
@@ -442,13 +442,13 @@ namespace TSviewCloudPlugin
             {
                 ManualResetEventSlim tmp2;
                 while (!loadinglist.TryRemove(ID, out tmp2))
-                    await Task.Delay(10);
+                    await Task.Delay(10).ConfigureAwait(false);
                 tmp2.Set();
             }
             if (depth > 0)
                 Parallel.ForEach(pathlist[ID].Children,
                     new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
-                    (x) => { LoadItems(x.ID, depth - 1).Wait(); });
+                    (x) => { LoadItems(x.ID, depth - 1).ConfigureAwait(false); });
         }
 
         public override Icon GetIcon()

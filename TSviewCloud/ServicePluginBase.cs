@@ -468,7 +468,7 @@ namespace TSviewCloudPlugin
                 {
                     j.ProgressStr = "move progress...";
                     j.Progress = -1;
-                    var downjob = (await RemoteServerFactory.PathToItem(moveItem.FullPath)).DownloadItemRawJob(WeekDepend: true, prevJob: j);
+                    var downjob = (await RemoteServerFactory.PathToItem(moveItem.FullPath).ConfigureAwait(false)).DownloadItemRawJob(WeekDepend: true, prevJob: j);
                     downjob.Wait(ct: j.Ct);
                     j.JobInfo.pos = moveItem.Size ?? 0; // hand over size to upload task
                         j.ForceHidden = true;
@@ -509,7 +509,7 @@ namespace TSviewCloudPlugin
                     j.Progress = -1;
                     j.ProgressStr = "upload...";
                     var joblist = new List<Job<IRemoteItem>>();
-                    joblist.AddRange((await RemoteServerFactory.PathToItem(moveItem.FullPath)).Children?.Select(x => x?.MoveItem(newdir, WeekDepend: true, prevJob: j)));
+                    joblist.AddRange((await RemoteServerFactory.PathToItem(moveItem.FullPath).ConfigureAwait(false)).Children?.Select(x => x?.MoveItem(newdir, WeekDepend: true, prevJob: j)));
                     //Parallel.ForEach(joblist, (x) => x.Wait(ct: job.Ct));
                     j.Result = newdir;
                 }
@@ -927,9 +927,9 @@ namespace TSviewCloudPlugin
                         itemCache.AddOrUpdate(url, (server.Name, current.ID), (key, val) => (server.Name, current.ID));
                         return current;
                     }
-                    else
+                    else if(current != null)
                     {
-                        current = await server.ReloadItem(current.ID);
+                        current = await server.ReloadItem(current.ID).ConfigureAwait(false);
                         if (current != null)
                         {
                             itemCache.AddOrUpdate(url, (server.Name, current.ID), (key, val) => (server.Name, current.ID));
@@ -940,11 +940,11 @@ namespace TSviewCloudPlugin
 
                 if (ItemControl.ReloadRequest.TryRemove(server + "://", out int tmp))
                 {
-                    current = await server.ReloadItem("");
+                    current = await server.ReloadItem("").ConfigureAwait(false);
                 }
                 else
                 {
-                    current = (reload == ReloadType.Cache) ? server.PeakItem("") : await server.ReloadItem("");
+                    current = (reload == ReloadType.Cache) ? server.PeakItem("") : await server.ReloadItem("").ConfigureAwait(false);
                 }
 
                 var fullpath = m.Groups["path"].Value;
@@ -958,7 +958,7 @@ namespace TSviewCloudPlugin
                         {
                             if (child == null)
                             {
-                                current = await server.ReloadItem(current.ID);
+                                current = await server.ReloadItem(current.ID).ConfigureAwait(false);
                                 current = current.Children.Where(x => x.PathItemName == m.Groups["current"].Value).FirstOrDefault();
                                 if (current == null)
                                 {
@@ -977,11 +977,11 @@ namespace TSviewCloudPlugin
                         }
                         if (fullpath == "" && reload == ReloadType.Reload)
                         {
-                            current = await server.ReloadItem(current.ID);
+                            current = await server.ReloadItem(current.ID).ConfigureAwait(false);
                         }
                         else if (ItemControl.ReloadRequest.TryRemove(current.FullPath, out int tmp2))
                         {
-                            current = await server.ReloadItem(current.ID);
+                            current = await server.ReloadItem(current.ID).ConfigureAwait(false);
                         }
                     }
                     fullpath = m.Groups["next"].Value;
@@ -991,16 +991,17 @@ namespace TSviewCloudPlugin
                 {
                     foreach(var child in current.Children.ToArray())
                     {
-                        await server.ReloadItem(child.ID);
+                        await server.ReloadItem(child.ID).ConfigureAwait(false);
                     }
                 }
 
                 itemCache.AddOrUpdate(url, (server.Name, current.ID), (key, val) => (server.Name, current.ID));
                 return current;
             }
-            catch
+            catch(Exception e)
             {
-                System.Diagnostics.Debug.WriteLine(url);
+                System.Diagnostics.Debug.WriteLine(DateTime.Now.ToString() + " " + url);
+                System.Diagnostics.Debug.WriteLine(e);
                 itemCache.TryRemove(url, out var tmp);
                 return null;
             }
@@ -1016,7 +1017,7 @@ namespace TSviewCloudPlugin
                 j.ProgressStr = "Loading...";
                 //LoadJob.ForceHidden = true;
 
-                j.Result = await PathToItem(url, reload);
+                j.Result = await PathToItem(url, reload).ConfigureAwait(false);
 
                 j.Progress = 1;
                 j.ProgressStr = "Done.";
@@ -1034,7 +1035,7 @@ namespace TSviewCloudPlugin
                 j.ProgressStr = "Loading...";
                 //j.ForceHidden = true;
 
-                j.Result = await PathToItem(baseurl, relativeurl, reload);
+                j.Result = await PathToItem(baseurl, relativeurl, reload).ConfigureAwait(false);
 
                 j.Progress = 1;
                 j.ProgressStr = "Done.";
@@ -1044,7 +1045,7 @@ namespace TSviewCloudPlugin
 
         static async public Task<IRemoteItem> PathToItem(string baseurl, string relativeurl, ReloadType reload = ReloadType.Cache)
         {
-            var current = await PathToItem(baseurl, reload);
+            var current = await PathToItem(baseurl, reload).ConfigureAwait(false);
             if (current == null) return null;
 
             try
@@ -1084,7 +1085,7 @@ namespace TSviewCloudPlugin
                         {
                             if (child == null)
                             {
-                                current = await server.ReloadItem(current.ID);
+                                current = await server.ReloadItem(current.ID).ConfigureAwait(false);
                                 current = current.Children.Where(x => x.PathItemName == m.Groups["current"].Value).First();
                             }
                             else
@@ -1097,14 +1098,14 @@ namespace TSviewCloudPlugin
                             current = child;
                         }
                         if (reload == ReloadType.Reload || ItemControl.ReloadRequest.TryRemove(current.FullPath, out int tmp3))
-                            current = await server.ReloadItem(current.ID);
+                            current = await server.ReloadItem(current.ID).ConfigureAwait(false);
                     }
                 }
                 if (reload == ReloadType.Reload && current.Children.Count() > 0)
                 {
                     foreach (var child in current.Children.ToArray())
                     {
-                        await server.ReloadItem(child.ID);
+                        await server.ReloadItem(child.ID).ConfigureAwait(false);
                     }
                 }
                 return current;
@@ -1139,7 +1140,7 @@ namespace TSviewCloudPlugin
                         {
                             if (child == null)
                             {
-                                current = await server.ReloadItem(current.ID);
+                                current = await server.ReloadItem(current.ID).ConfigureAwait(false);
                                 current = current.Children.Where(x => x.PathItemName == m.Groups["current"].Value).First();
                             }
                             else
@@ -1152,7 +1153,7 @@ namespace TSviewCloudPlugin
                             current = child;
                         }
                         if (reload == ReloadType.Reload)
-                            current = await server.ReloadItem(current.ID);
+                            current = await server.ReloadItem(current.ID).ConfigureAwait(false);
                         ret.Add(current);
                     }
                     fullpath = m.Groups["next"].Value;

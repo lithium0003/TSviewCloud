@@ -141,7 +141,7 @@ namespace TSviewCloudPlugin
             {
                 job.Progress = -1;
 
-                await Drive.EnsureToken(j.Ct);
+                await Drive.EnsureToken(j.Ct).ConfigureAwait(false);
 
                 job.ProgressStr = "loading cache...";
                 if (pathlist == null)
@@ -154,7 +154,7 @@ namespace TSviewCloudPlugin
                     rootID = root.ID;
                     pathlist[""] = pathlist[rootID] = root;
 
-                    await LoadItems(rootID, 1);
+                    await LoadItems(rootID, 1).ConfigureAwait(false);
                 }
                 else
                 {
@@ -213,12 +213,12 @@ namespace TSviewCloudPlugin
             {
                 var item = pathlist[ID];
                 if (item.ItemType == RemoteItemType.Folder)
-                    await LoadItems(ID, depth);
+                    await LoadItems(ID, depth).ConfigureAwait(false);
                 item = pathlist[ID];
             }
             catch
             {
-                await LoadItems(ID, depth);
+                await LoadItems(ID, depth).ConfigureAwait(false);
             }
         }
 
@@ -230,12 +230,12 @@ namespace TSviewCloudPlugin
             {
                 var item = pathlist[ID];
                 if (item.ItemType == RemoteItemType.Folder)
-                    await LoadItems(ID, 2);
+                    await LoadItems(ID, 1).ConfigureAwait(false);
                 item = pathlist[ID];
             }
             catch
             {
-                await LoadItems(ID, 2);
+                await LoadItems(ID, 1).ConfigureAwait(false);
             }
             return PeakItem(ID);
         }
@@ -285,7 +285,7 @@ namespace TSviewCloudPlugin
                 job.ProgressStr = "done.";
             });
             Cursor.Current = Cursors.WaitCursor;
-            await job.WaitTask();
+            await job.WaitTask().ConfigureAwait(false);
             return ret;
         }
 
@@ -303,7 +303,7 @@ namespace TSviewCloudPlugin
 
             if (pathlist[ID].ItemType == RemoteItemType.File) return;
 
-            if (DateTime.Now - pathlist[ID].LastLoaded < TimeSpan.FromSeconds(15))
+            if (DateTime.Now - pathlist[ID].LastLoaded < TimeSpan.FromSeconds(60))
             {
                 return;
             }
@@ -322,7 +322,7 @@ namespace TSviewCloudPlugin
             {
                 while (loadinglist.TryGetValue(ID, out var tmp) && tmp != null)
                 {
-                    await Task.Run(() => tmp.Wait());
+                    await Task.Run(() => tmp.Wait()).ConfigureAwait(false);
                 }
                 return;
             }
@@ -377,7 +377,7 @@ namespace TSviewCloudPlugin
                     job.Progress = 1;
                     job.ProgressStr = "done";
                 });
-                await job.WaitTask();
+                await job.WaitTask().ConfigureAwait(false);
             }
             catch
             {
@@ -387,7 +387,7 @@ namespace TSviewCloudPlugin
             {
                 ManualResetEventSlim tmp3;
                 while (!loadinglist.TryRemove(ID, out tmp3))
-                    await Task.Delay(10);
+                    await Task.Delay(10).ConfigureAwait(false);
                 tmp3.Set();
             }
 
@@ -395,7 +395,7 @@ namespace TSviewCloudPlugin
             {
                 Parallel.ForEach(pathlist[ID].Children.Where(x => x.ItemType == RemoteItemType.Folder),
                     new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
-                    (x) => { LoadItems(x.ID, depth - 1).Wait(); });
+                    (x) => { LoadItems(x.ID, depth - 1).ConfigureAwait(false); });
             }
         }
 
@@ -415,7 +415,7 @@ namespace TSviewCloudPlugin
  
         public async override Task<bool> Add()
         {
-            if(await InitializeDrive())
+            if(await InitializeDrive().ConfigureAwait(false))
             {
                 TSviewCloudConfig.Config.Log.LogOut("[Add] GoogleDriveSystem {0}", Name);
 
@@ -433,7 +433,7 @@ namespace TSviewCloudPlugin
                     rootID = root.ID;
                     pathlist[""] = pathlist[rootID] = root;
 
-                    await LoadItems(rootID, 1);
+                    await LoadItems(rootID, 1).ConfigureAwait(false);
  
                     _IsReady = true;
 
@@ -462,13 +462,13 @@ namespace TSviewCloudPlugin
         private async Task ScanItems(IRemoteItem baseitem, CancellationToken ct = default(CancellationToken))
         {
             ct.ThrowIfCancellationRequested();
-            await LoadItems(baseitem.ID, 0);
+            await LoadItems(baseitem.ID, 0).ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();
             foreach (var i in baseitem.Children)
             {
                 ct.ThrowIfCancellationRequested();
                 if (i.ItemType == RemoteItemType.Folder)
-                    await ScanItems(i, ct);
+                    await ScanItems(i, ct).ConfigureAwait(false);
             }
         }
 
@@ -490,7 +490,7 @@ namespace TSviewCloudPlugin
                 rootID = root.ID;
                 pathlist[""] = pathlist[rootID] = root;
 
-                await LoadItems(rootID, 1);
+                await LoadItems(rootID, 1).ConfigureAwait(false);
 
                 _IsReady = true;
 
@@ -504,7 +504,7 @@ namespace TSviewCloudPlugin
                 {
                     j2.Progress = -1;
 
-                    await ScanItems(pathlist[rootID], j2.Ct);
+                    await ScanItems(pathlist[rootID], j2.Ct).ConfigureAwait(false);
 
                     j2.Progress = 1;
                     j2.ProgressStr = "done.";
@@ -826,8 +826,8 @@ namespace TSviewCloudPlugin
                     var newitem = Drive.MoveChild(moveItem.ID, oldparent.ID, moveToItem.ID, j.Ct).Result;
                     (moveItem as GoogleDriveSystemItem).SetFileds(newitem);
 
-                    await LoadItems(moveToItem.ID, 2);
-                    await LoadItems(oldparent.ID, 2);
+                    await LoadItems(moveToItem.ID, 2).ConfigureAwait(false);
+                    await LoadItems(oldparent.ID, 2).ConfigureAwait(false);
 
                     j.Result = moveToItem;
 
