@@ -27,12 +27,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_1279080E7EFB4CDDB01F2F82B5AC33CD"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_2F8483C4BF664BC5B2356362FBBB8854"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -51,7 +45,7 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_51310247A337482CB6ECD5999A7E8E68"
+        "MsmKey" = "8:_55E553FCC6034BF5B04D0824189CD360"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -70,6 +64,12 @@
         "Entry"
         {
         "MsmKey" = "8:_65124772565A4D93B0B10B826B845A6C"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_703625EA637343CC8E9F5010168E010F"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -226,6 +226,12 @@
         "Entry"
         {
         "MsmKey" = "8:_BF6186F16E5E355B8C253BCC89C5539E"
+        "OwnerKey" = "8:_55E553FCC6034BF5B04D0824189CD360"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_BF6186F16E5E355B8C253BCC89C5539E"
         "OwnerKey" = "8:_FCB6613F86784FFD8460E1C90184CE30"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -317,6 +323,18 @@
         {
         "MsmKey" = "8:_UNDEFINED"
         "OwnerKey" = "8:_FCB6613F86784FFD8460E1C90184CE30"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_UNDEFINED"
+        "OwnerKey" = "8:_55E553FCC6034BF5B04D0824189CD360"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_UNDEFINED"
+        "OwnerKey" = "8:_703625EA637343CC8E9F5010168E010F"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
@@ -571,6 +589,37 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_55E553FCC6034BF5B04D0824189CD360"
+            {
+            "AssemblyRegister" = "3:1"
+            "AssemblyIsInGAC" = "11:FALSE"
+            "AssemblyAsmDisplayName" = "8:ffmodule, Version=0.0.0.0, Culture=neutral, processorArchitecture=AMD64"
+                "ScatterAssemblies"
+                {
+                    "_55E553FCC6034BF5B04D0824189CD360"
+                    {
+                    "Name" = "8:ffmodule.dll"
+                    "Attributes" = "3:512"
+                    }
+                }
+            "SourcePath" = "8:..\\x64\\Release\\ffmodule.dll"
+            "TargetName" = "8:"
+            "Tag" = "8:"
+            "Folder" = "8:_84D289BF933C473884D06ABFCD5E0115"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_578AF23B84B84FF0B0F1DE5A6C7BB89C"
             {
             "SourcePath" = "8:..\\external\\bin\\avcodec-57.dll"
@@ -615,6 +664,37 @@
             {
             "SourcePath" = "8:..\\external\\bin\\SDL2.dll"
             "TargetName" = "8:SDL2.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_84D289BF933C473884D06ABFCD5E0115"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_703625EA637343CC8E9F5010168E010F"
+            {
+            "AssemblyRegister" = "3:1"
+            "AssemblyIsInGAC" = "11:FALSE"
+            "AssemblyAsmDisplayName" = "8:Secretbox, Version=1.0.6547.34323, Culture=neutral, processorArchitecture=AMD64"
+                "ScatterAssemblies"
+                {
+                    "_703625EA637343CC8E9F5010168E010F"
+                    {
+                    "Name" = "8:Secretbox.dll"
+                    "Attributes" = "3:512"
+                    }
+                }
+            "SourcePath" = "8:..\\x64\\Release\\Secretbox.dll"
+            "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_84D289BF933C473884D06ABFCD5E0115"
             "Condition" = "8:"
@@ -678,6 +758,11 @@
             "AssemblyAsmDisplayName" = "8:TSviewCloud, Version=1.1.1.1204, Culture=neutral, processorArchitecture=AMD64"
                 "ScatterAssemblies"
                 {
+                    "_8489AF467479396B74B9A43B33A134A7"
+                    {
+                    "Name" = "8:TSviewCloud.exe"
+                    "Attributes" = "3:512"
+                    }
                 }
             "SourcePath" = "8:TSviewCloud.exe"
             "TargetName" = "8:"
@@ -855,6 +940,11 @@
             "AssemblyAsmDisplayName" = "8:ffmodule_conf, Version=1.0.0.1129, Culture=neutral, processorArchitecture=AMD64"
                 "ScatterAssemblies"
                 {
+                    "_BF6186F16E5E355B8C253BCC89C5539E"
+                    {
+                    "Name" = "8:ffmodule_conf.dll"
+                    "Attributes" = "3:512"
+                    }
                 }
             "SourcePath" = "8:ffmodule_conf.dll"
             "TargetName" = "8:"
@@ -898,7 +988,7 @@
             {
             "AssemblyRegister" = "3:1"
             "AssemblyIsInGAC" = "11:FALSE"
-            "AssemblyAsmDisplayName" = "8:Secretbox, Version=1.0.6547.34101, Culture=neutral, processorArchitecture=AMD64"
+            "AssemblyAsmDisplayName" = "8:Secretbox, Version=1.0.6547.34323, Culture=neutral, processorArchitecture=AMD64"
                 "ScatterAssemblies"
                 {
                     "_C75793D80740ED86FC44BAF92B1AEE23"
@@ -1659,34 +1749,6 @@
         }
         "ProjectOutput"
         {
-            "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_1279080E7EFB4CDDB01F2F82B5AC33CD"
-            {
-            "SourcePath" = "8:..\\x64\\Release\\ffmodule.dll"
-            "TargetName" = "8:"
-            "Tag" = "8:"
-            "Folder" = "8:_84D289BF933C473884D06ABFCD5E0115"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            "ProjectOutputGroupRegister" = "3:1"
-            "OutputConfiguration" = "8:Release|x64"
-            "OutputGroupCanonicalName" = "8:Built"
-            "OutputProjectGuid" = "8:{9AFFB411-07D7-4E7C-8B6E-60BAE66DC530}"
-            "ShowKeyOutput" = "11:TRUE"
-                "ExcludeFilters"
-                {
-                }
-            }
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_2F8483C4BF664BC5B2356362FBBB8854"
             {
             "SourcePath" = "8:..\\LibGoogleDrive\\obj\\x64\\Release\\LibGoogleDrive.dll"
@@ -1710,34 +1772,6 @@
             "OutputConfiguration" = "8:Release|x64"
             "OutputGroupCanonicalName" = "8:Built"
             "OutputProjectGuid" = "8:{1EA14841-C3C7-4D6C-A17D-F6108A5E76E4}"
-            "ShowKeyOutput" = "11:TRUE"
-                "ExcludeFilters"
-                {
-                }
-            }
-            "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_51310247A337482CB6ECD5999A7E8E68"
-            {
-            "SourcePath" = "8:..\\x64\\Release\\Secretbox.dll"
-            "TargetName" = "8:"
-            "Tag" = "8:"
-            "Folder" = "8:_84D289BF933C473884D06ABFCD5E0115"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            "ProjectOutputGroupRegister" = "3:1"
-            "OutputConfiguration" = "8:Release|x64"
-            "OutputGroupCanonicalName" = "8:Built"
-            "OutputProjectGuid" = "8:{CCFCE44A-D6AB-4D60-919A-924B8BB166B5}"
             "ShowKeyOutput" = "11:TRUE"
                 "ExcludeFilters"
                 {
