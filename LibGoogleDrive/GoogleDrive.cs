@@ -248,7 +248,7 @@ namespace LibGoogleDrive
         }
 
         delegate Task<T> DoConnection<T>();
-        static private async Task<T> DoWithRetry<T>(DoConnection<T> func, string LogPrefix = "DoWithRetry")
+        private async Task<T> DoWithRetry<T>(DoConnection<T> func, CancellationToken ct = default(CancellationToken), string LogPrefix = "DoWithRetry")
         {
             Random rnd = new Random();
             var retry = 0;
@@ -264,8 +264,7 @@ namespace LibGoogleDrive
                     error_str = ex.Message;
                     Log(LogPrefix, error_str);
 
-                    if (ex.Message.Contains("401") ||
-                        ex.Message.Contains("403") ||
+                    if (ex.Message.Contains("403") ||
                         ex.Message.Contains("429") ||
                         ex.Message.Contains("500") ||
                         ex.Message.Contains("503"))
@@ -274,10 +273,38 @@ namespace LibGoogleDrive
                         Log(LogPrefix, "wait " + waitsec.ToString() + " sec");
                         await Task.Delay(waitsec * 1000);
                     }
+                    else if (ex.Message.Contains("401"))
+                    {
+                        Log(LogPrefix, "auth failed.");
+                        var retry_auth = 5;
+                        while (retry_auth-- > 0)
+                        {
+                            ct.ThrowIfCancellationRequested();
+                            Auth.access_token = await RefreshAuthorizationCode(Auth, ct).ConfigureAwait(false);
+                            if (await GetAccountInfo(ct).ConfigureAwait(false))
+                            {
+                                Log(LogPrefix, "Refresh sucess.");
+                                AuthTimer = DateTime.Now;
+                                break;
+                            }
+                            await Task.Delay(1000, ct).ConfigureAwait(false);
+                        }
+                        if (retry_auth > 0) continue;
+                        Log(LogPrefix, "Refresh failed.");
+                        break;
+                    }
                     else
                     {
                         break;
                     }
+                }
+                catch (WebException ex)
+                {
+                    Log(LogPrefix, ex.ToString());
+                    Log(LogPrefix, ex.Status.ToString());
+                    var waitsec = rnd.Next((int)Math.Pow(2, Math.Min(retry - 1, 8)));
+                    Log(LogPrefix, "wait " + waitsec.ToString() + " sec");
+                    await Task.Delay(waitsec * 1000).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
@@ -338,7 +365,7 @@ namespace LibGoogleDrive
                         string responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
 
                         return true;
-                    }, "GetAccountInfo").ConfigureAwait(false);
+                    }, ct, "GetAccountInfo").ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException)
@@ -388,7 +415,7 @@ namespace LibGoogleDrive
                                 var data = ParseResponse<FileListdata_Info>(responseBody);
                                 pageToken = data.nextPageToken;
                                 return data.files;
-                            }, "GetFilesList").ConfigureAwait(false));
+                            }, ct, "GetFilesList").ConfigureAwait(false));
                         } while (!string.IsNullOrEmpty(pageToken));
                         return result.ToArray();
                     }
@@ -430,7 +457,7 @@ namespace LibGoogleDrive
 
                         var data = ParseResponse<ChangesStartPageToken_Info>(responseBody);
                         return data.startPageToken;
-                    }, "GetChangesGetStartPageToken").ConfigureAwait(false);
+                    }, ct, "GetChangesGetStartPageToken").ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException)
@@ -478,7 +505,7 @@ namespace LibGoogleDrive
                                 pageToken = data.nextPageToken;
                                 newStartPageToken = data.newStartPageToken;
                                 return data.changes;
-                            }, "ChangesList").ConfigureAwait(false));
+                            }, ct, "ChangesList").ConfigureAwait(false));
                         } while (string.IsNullOrEmpty(newStartPageToken));
                         return (result.ToArray(), newStartPageToken);
                     }
@@ -524,7 +551,7 @@ namespace LibGoogleDrive
 
                             var data = ParseResponse<FileMetadata_Info>(responseBody);
                             return data;
-                        }, "FilesGet").ConfigureAwait(false);
+                        }, ct, "FilesGet").ConfigureAwait(false);
                     }
                 }
             }
@@ -578,7 +605,7 @@ namespace LibGoogleDrive
 
                             var data = ParseResponse<FileMetadata_Info>(responseBody);
                             return await FilesGet(fileId, ct).ConfigureAwait(false);
-                        }, "FilesUpdate").ConfigureAwait(false);
+                        }, ct, "FilesUpdate").ConfigureAwait(false);
                     }
                 }
             }
@@ -805,7 +832,7 @@ namespace LibGoogleDrive
                         return new HashStream(await response.Content.ReadAsStreamAsync().ConfigureAwait(false), new MD5CryptoServiceProvider(), hash, length);
                     else
                         return await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-                }, "DownloadItem").ConfigureAwait(false);
+                }, ct, "DownloadItem").ConfigureAwait(false);
             }
             catch (HttpRequestException ex)
             {
@@ -882,7 +909,7 @@ namespace LibGoogleDrive
                             var ret = ParseResponse<FileMetadata_Info>(responseBody);
                             return await FilesGet(ret.id, ct).ConfigureAwait(false);
 
-                        }, "CreateFolder").ConfigureAwait(false);
+                        }, ct, "CreateFolder").ConfigureAwait(false);
                     }
                 }
             }
@@ -940,7 +967,7 @@ namespace LibGoogleDrive
                         var data = ParseResponse<FileMetadata_Info>(responseBody);
 
                         return await FilesGet(childid, ct).ConfigureAwait(false);
-                    }, "MoveChild").ConfigureAwait(false);
+                    }, ct,"MoveChild").ConfigureAwait(false);
                 }
                 catch (HttpRequestException ex)
                 {

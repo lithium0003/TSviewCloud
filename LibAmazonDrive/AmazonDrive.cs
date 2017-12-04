@@ -344,6 +344,14 @@ namespace LibAmazonDrive
                         break;
                     }
                 }
+                catch (WebException ex)
+                {
+                    Log(LogPrefix, ex.ToString());
+                    Log(LogPrefix, ex.Status.ToString());
+                    var waitsec = rnd.Next((int)Math.Pow(2, Math.Min(retry - 1, 8)));
+                    Log(LogPrefix, "wait " + waitsec.ToString() + " sec");
+                    await Task.Delay(waitsec * 1000).ConfigureAwait(false);
+                }
                 catch (OperationCanceledException)
                 {
                     throw;
