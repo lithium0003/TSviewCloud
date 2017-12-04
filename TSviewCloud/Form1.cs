@@ -1166,28 +1166,39 @@ namespace TSviewCloud
             else
             {
                 e.Item = new ListViewItem(new string[6]);
-                listData.GetListViewItem(e.ItemIndex).ContinueWith((t) =>
+                var index = e.ItemIndex;
+                var ct = cacheListviewCTS.Token;
+                listData.GetListViewItem(index).ContinueWith((t) =>
                 {
-                    cacheListview.AddOrUpdate(e.ItemIndex, t.Result, (k, v) => t.Result);
+                    ct.ThrowIfCancellationRequested();
+                    cacheListview.AddOrUpdate(index, t.Result, (k, v) => t.Result);
                     synchronizationContext.Post((o) =>
                     {
                         listView1.RedrawItems((int)o, (int)o, true);
-                    }, e.ItemIndex);
-                }, cacheListviewCTS.Token);
+                    }, index);
+                }, ct);
             }
         }
 
         private void listView1_CacheVirtualItems(object sender, CacheVirtualItemsEventArgs e)
         {
-            for(int i = e.StartIndex; i <= e.EndIndex; i++)
-            {
-                if (cacheListview.ContainsKey(i))
-                    continue;
-                listData.GetListViewItem(i).ContinueWith((t) =>
+            var ct = cacheListviewCTS.Token;
+            Parallel.ForEach(
+                Enumerable.Range(e.StartIndex, e.EndIndex - e.StartIndex + 1)
+                    .Where(i => !cacheListview.ContainsKey(i)),
+                new ParallelOptions {
+                    CancellationToken = ct,
+                    MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0))
+                },
+                (i) =>
                 {
-                    cacheListview.AddOrUpdate(i, t.Result, (k, v) => t.Result);
-                }, cacheListviewCTS.Token);
-            }
+                    ct.ThrowIfCancellationRequested();
+                    listData.GetListViewItem(i).ContinueWith((t) =>
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        cacheListview.AddOrUpdate(i, t.Result, (k, v) => t.Result);
+                    }, ct);
+                });
         }
 
         private void largeToolStripMenuItem_Click(object sender, EventArgs e)
