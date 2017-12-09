@@ -2910,6 +2910,7 @@ namespace ffmodule {
 				SDL_PauseAudioDevice(audio_deviceID, 1);
 		}
 		else {
+			frame_timer = (double)av_gettime() / 1000000.0;
 			Redraw();
 			schedule_refresh(1);
 			if (audio_deviceID != 0)
