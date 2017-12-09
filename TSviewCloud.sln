@@ -30,6 +30,8 @@ Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Setup64bit", "Setup64bit\Se
 EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Setup32bit", "Setup32bit\Setup32bit.vdproj", "{BBD26ED8-A190-4C15-AA1D-F450447E9283}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibDivide", "LibDivide\LibDivide.csproj", "{B5FA9483-94BF-4A7C-967C-538F6E92819C}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		SecretKeys\SecretKeys.projitems*{fcd37600-3501-4eed-9b7f-8bf3ef3b696f}*SharedItemsImports = 13
@@ -148,6 +150,16 @@ Global
 		{BBD26ED8-A190-4C15-AA1D-F450447E9283}.Release|x64.ActiveCfg = Release
 		{BBD26ED8-A190-4C15-AA1D-F450447E9283}.Release|x86.ActiveCfg = Release
 		{BBD26ED8-A190-4C15-AA1D-F450447E9283}.Release|x86.Build.0 = Release
+		{B5FA9483-94BF-4A7C-967C-538F6E92819C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B5FA9483-94BF-4A7C-967C-538F6E92819C}.Debug|x64.ActiveCfg = Debug|x64
+		{B5FA9483-94BF-4A7C-967C-538F6E92819C}.Debug|x64.Build.0 = Debug|x64
+		{B5FA9483-94BF-4A7C-967C-538F6E92819C}.Debug|x86.ActiveCfg = Debug|x86
+		{B5FA9483-94BF-4A7C-967C-538F6E92819C}.Debug|x86.Build.0 = Debug|x86
+		{B5FA9483-94BF-4A7C-967C-538F6E92819C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B5FA9483-94BF-4A7C-967C-538F6E92819C}.Release|x64.ActiveCfg = Release|x64
+		{B5FA9483-94BF-4A7C-967C-538F6E92819C}.Release|x64.Build.0 = Release|x64
+		{B5FA9483-94BF-4A7C-967C-538F6E92819C}.Release|x86.ActiveCfg = Release|x86
+		{B5FA9483-94BF-4A7C-967C-538F6E92819C}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
