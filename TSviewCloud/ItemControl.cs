@@ -86,7 +86,7 @@ namespace TSviewCloudPlugin
                 m = Regex.Match(fullpath, @"^(?<current>[^/\\]*)(/|\\)?(?<next>.*)$");
                 fullpath = m.Groups["next"].Value;
 
-                var itemname = m.Groups["current"].Value;
+                var itemname = Uri.UnescapeDataString(m.Groups["current"].Value);
                 ret.Add(itemname);
             }
             return string.Join("\\", ret);

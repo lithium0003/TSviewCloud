@@ -112,7 +112,9 @@ namespace TSviewCloud
                     Console.WriteLine("\t\t--hash: show hash");
                     Console.WriteLine("\t\t--cache: no reload, list on cache");
                     Console.WriteLine("\tdownload (remotepath) (localpath)         : download item(s)");
+                    Console.WriteLine("\t\t--cache: no reload, use cache");
                     Console.WriteLine("\tupload (localpath) (remotepath)           : upload local file or folder");
+                    Console.WriteLine("\t\t--createfolder: create not exists folders");
                     break;
                 case "list":
                     return RunList(targetArgs, paramArgs);
@@ -249,6 +251,18 @@ namespace TSviewCloud
             Console.Error.WriteLine("remote: "+ remotePath);
             Console.Error.WriteLine("local: "+  ItemControl.GetOrgFilename(localPath));
 
+            ReloadType reload = ReloadType.Reload;
+            foreach (var p in paramArgs)
+            {
+                switch (p)
+                {
+                    case "cache":
+                        Console.Error.WriteLine("(--cache: no reload)");
+                        reload = ReloadType.Cache;
+                        break;
+                }
+            }
+
             var job = JobControler.CreateNewJob(JobClass.ControlMaster);
             job.DisplayName = "Download";
             JobControler.Run(job, (j) =>
@@ -258,7 +272,7 @@ namespace TSviewCloud
                     var j2 = InitServer(j);
                     j2.Wait(ct: j.Ct);
 
-                    var target = FindItems(remotePath, ct: j.Ct);
+                    var target = FindItems(remotePath, ct: j.Ct, reload: reload);
 
                     if (target.Count() < 1)
                     {
@@ -348,6 +362,18 @@ namespace TSviewCloud
             Console.Error.WriteLine("remote: " + remotePath);
             Console.Error.WriteLine("local: " + ItemControl.GetOrgFilename(localPath));
 
+            bool createFolder = false;
+            foreach (var p in paramArgs)
+            {
+                switch (p)
+                {
+                    case "createfolder":
+                        Console.Error.WriteLine("(--createfolder: create folders)");
+                        createFolder = true;
+                        break;
+                }
+            }
+
             var job = JobControler.CreateNewJob(JobClass.ControlMaster);
             job.DisplayName = "Upload";
             JobControler.Run(job, (j) =>
@@ -358,15 +384,29 @@ namespace TSviewCloud
                     j2.Wait(ct: j.Ct);
 
                     var target = FindItems(remotePath, ct: j.Ct);
+                    IRemoteItem remote = null;
 
-                    if (target.Count() != 1)
+                    if (target.Count() != 1 && !createFolder)
                     {
                         Console.Error.WriteLine("upload needs 1 remote target item.");
                         j.ResultAsObject = 2;
                         return;
                     }
-                    var remote = target.First();
-
+                    if (target.Count() == 0 && createFolder)
+                    {
+                        Console.Error.WriteLine("Create new folders.");
+                        remote = CreateFolders(remotePath, j);
+                        if(remote == null)
+                        {
+                            Console.Error.WriteLine("make folder failed.");
+                            j.ResultAsObject = 3;
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        remote = target.First();
+                    }
 
                     ConsoleJobDisp.Run();
 
@@ -376,6 +416,8 @@ namespace TSviewCloud
                     }
                     else if (Directory.Exists(localPath))
                     {
+                        if (!localPath.EndsWith(":\\") && localPath.EndsWith("\\"))
+                            localPath = localPath.TrimEnd('\\');
                         ItemControl.UploadFolder(remote, localPath, true, j);
                     }
                     else
@@ -593,6 +635,55 @@ namespace TSviewCloud
                         .Select(x => FindItems(path_str, recursive, x, ct, reload))
                         .SelectMany(x => x);
                 }
+            }
+        }
+
+        static IRemoteItem CreateFolders(string path_str, Job controlJob)
+        {
+            var m = Regex.Match(path_str, @"^(?<server>[^:]+)(://)(?<path>.*)$");
+            if (m.Success)
+            {
+                var servername = m.Groups["server"].Value;
+                var server = RemoteServerFactory.ServerList[servername];
+
+                var paths = m.Groups["path"].Value;
+                var current = server[""];
+                m = Regex.Match(paths, @"^(?<current>[^/\\]*)(/|\\)?(?<next>.*)$");
+                while (!string.IsNullOrEmpty(m.Groups["current"].Value))
+                {
+                    controlJob.Ct.ThrowIfCancellationRequested();
+                    current = RemoteServerFactory.PathToItem(current.FullPath).Result;
+
+                    var child = current.Children.Where(x => x.PathItemName == m.Groups["current"].Value || x.Name == m.Groups["current"].Value).FirstOrDefault();
+                    if (child == null)
+                    {
+                        current = server.ReloadItem(current.ID).Result;
+                        child = current.Children.Where(x => x.PathItemName == m.Groups["current"].Value || x.Name == m.Groups["current"].Value).FirstOrDefault();
+                        if (child == null)
+                        {
+                            break;
+                        }
+                    }
+                    current = child;
+                    paths = m.Groups["next"].Value;
+                    m = Regex.Match(paths, @"^(?<current>[^/\\]*)(/|\\)?(?<next>.*)$");
+                }
+                m = Regex.Match(paths, @"^(?<current>[^/\\]*)(/|\\)?(?<next>.*)$");
+                while (!string.IsNullOrEmpty(m.Groups["current"].Value))
+                {
+                    controlJob.Ct.ThrowIfCancellationRequested();
+                    var folderjob = current.MakeFolder(Uri.UnescapeDataString(m.Groups["current"].Value), WeekDepend: true, parentJob: controlJob);
+                    folderjob.Wait(ct: controlJob.Ct);
+                    current = folderjob.Result;
+                    if (current == null) return null;
+                    paths = m.Groups["next"].Value;
+                    m = Regex.Match(paths, @"^(?<current>[^/\\]*)(/|\\)?(?<next>.*)$");
+                }
+                return current;
+            }
+            else
+            {
+                return null;
             }
         }
 
