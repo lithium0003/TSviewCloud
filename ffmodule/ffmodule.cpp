@@ -2872,8 +2872,8 @@ namespace ffmodule {
 					}
 				}
 			}
-			if (delay >= -1.0 && delay <= 1.0) {
-				frame_last_delay = (frame_last_delay * 9 + delay * 1) / 10;
+			if (delay >= -AV_NOSYNC_THRESHOLD && delay <= AV_NOSYNC_THRESHOLD) {
+				frame_last_delay = (frame_last_delay * 3 + delay * 1) / 4;
 			}
 
 
