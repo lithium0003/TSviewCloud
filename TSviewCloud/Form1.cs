@@ -638,6 +638,7 @@ namespace TSviewCloud
             private void Sort()
             {
                 remoteItemList = SortFunction(remoteItemList).ToList();
+                owner.ClearCacheListview();
                 owner.listView1.Invalidate();
                 foreach (ToolStripMenuItem mitem in owner.sortToolStripMenuItem.DropDownItems)
                 {
@@ -1398,7 +1399,9 @@ namespace TSviewCloud
                         {
                             treeView1.EndUpdate();
                             treeView1.SelectedNode = node;
+                            treeView1.SelectedNode?.Expand();
                             treeView1.SelectedNode?.EnsureVisible();
+
                             AddressSelecting = false;
                         }
                     }

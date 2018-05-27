@@ -55,26 +55,21 @@ namespace TSviewCloudPlugin
 
             isRoot = info.isRoot ?? isRoot;
             if (isRoot) SetParent(this);
-
-            Age = DateTime.Now;
         }
 
         public void AddChild(IRemoteItem newchild)
         {
             ChildrenIDs = ChildrenIDs?.Concat(new[] { newchild.ID }).ToArray() ?? new[] { newchild.ID };
             ChildrenIDs = ChildrenIDs.Distinct().ToArray();
-            Age = DateTime.Now;
         }
 
         public void RemoveChild(IRemoteItem child)
         {
             ChildrenIDs = ChildrenIDs?.Except(new[] { child.ID }).ToArray() ?? new[] { child.ID };
-            Age = DateTime.Now;
         }
         public void RemoveChild(string child)
         {
             ChildrenIDs = ChildrenIDs?.Except(new[] { child }).ToArray() ?? new[] { child };
-            Age = DateTime.Now;
         }
 
         public override void FixChain(IRemoteServer server)

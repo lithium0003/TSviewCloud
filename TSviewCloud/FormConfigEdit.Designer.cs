@@ -271,10 +271,10 @@
             this.radioButton_checksize.Checked = true;
             this.radioButton_checksize.Location = new System.Drawing.Point(6, 46);
             this.radioButton_checksize.Name = "radioButton_checksize";
-            this.radioButton_checksize.Size = new System.Drawing.Size(353, 19);
+            this.radioButton_checksize.Size = new System.Drawing.Size(419, 19);
             this.radioButton_checksize.TabIndex = 1;
             this.radioButton_checksize.TabStop = true;
-            this.radioButton_checksize.Text = "Override if it has same size. Otherwize skip upload.";
+            this.radioButton_checksize.Text = "Override if it has different size. Skip upload if sizes are same.";
             this.radioButton_checksize.UseVisualStyleBackColor = true;
             // 
             // radioButton_override

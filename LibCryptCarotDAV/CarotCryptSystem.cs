@@ -432,6 +432,7 @@ namespace TSviewCloudPlugin
                          }
                     );
                     pathlist[ID].SetChildren(ret);
+                    pathlist[ID].LastLoaded = DateTime.Now;
                 }
                 else
                 {
@@ -448,7 +449,7 @@ namespace TSviewCloudPlugin
             if (depth > 0)
                 Parallel.ForEach(pathlist[ID].Children,
                     new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 1.0)) },
-                    (x) => { LoadItems(x.ID, depth - 1).ConfigureAwait(false); });
+                    (x) => { LoadItems(x.ID, depth - 1, deep).ConfigureAwait(false); });
         }
 
         public override Icon GetIcon()

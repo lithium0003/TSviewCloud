@@ -87,8 +87,7 @@ namespace TSviewCloudPlugin
         DateTime? CreatedDate { get; }
         DateTime? AccessDate { get; }
         string Hash { get; }
-
-        DateTime Age { get; }
+        DateTime? LastLoaded { get; }
 
         IEnumerable<IRemoteItem> Parents { get; }
         IEnumerable<IRemoteItem> Children { get; }
@@ -163,13 +162,14 @@ namespace TSviewCloudPlugin
         protected DateTime? accessDate;
         [DataMember(Name = "Hash")]
         protected string hash;
+        [DataMember(Name = "LastLoaded")]
+        protected DateTime? lastLoaded;
 
         [DataMember(Name = "Parents")]
         protected string[] parentIDs;
         [DataMember(Name = "Children")]
         protected string[] ChildrenIDs;
 
-        private DateTime age;
         private bool _isBroken;
 
         public RemoteItemBase()
@@ -181,9 +181,10 @@ namespace TSviewCloudPlugin
             SetParents(parents);
             _server = server;
             serverName = Server;
-            Age = DateTime.Now;
         }
- 
+
+        public DateTime? LastLoaded { get => lastLoaded; set => lastLoaded = value; }
+
 
         public abstract string ID { get; }
         public abstract string Path { get; }
@@ -202,8 +203,6 @@ namespace TSviewCloudPlugin
         public virtual DateTime? AccessDate => accessDate;
         public virtual string Hash => hash;
         public virtual string FullPath => Server + "://" + Path;
-
-        public virtual DateTime Age { get => age; set => age = value; }
 
         protected virtual void SetModifiedDate(DateTime? newdateTime)
         {
@@ -224,25 +223,21 @@ namespace TSviewCloudPlugin
         public void SetParents(IEnumerable<IRemoteItem> newparents)
         {
             parentIDs = newparents?.Select(x => x?.ID).ToArray();
-            Age = DateTime.Now;
         }
 
         public void SetParent(IRemoteItem newparent)
         {
             SetParents(new[] { newparent });
-            Age = DateTime.Now;
         }
 
         public void SetChildren(IEnumerable<IRemoteItem> newchildren)
         {
             ChildrenIDs = newchildren?.Select(x => x?.ID).ToArray();
-            Age = DateTime.Now;
         }
 
 
         public virtual void FixChain(IRemoteServer server)
         {
-            Age = DateTime.Now;
         }
 
         public virtual Job<Stream> DownloadItemRawJob(long offset = 0, bool WeekDepend = false, bool hidden = false, params Job[] prevJob)
@@ -922,7 +917,8 @@ namespace TSviewCloudPlugin
                 if (itemCache.TryGetValue(url, out var v))
                 {
                     current = server.PeakItem(v.ID);
-                    if (reload == ReloadType.Cache && current != null && !ItemControl.ReloadRequest.TryRemove(current.FullPath, out int tmp2))
+                    if (reload == ReloadType.Cache && current != null && !ItemControl.ReloadRequest.TryRemove(current.FullPath, out int tmp2) &&
+                        !(DateTime.Now - current.LastLoaded < TimeSpan.FromMinutes(5) && current.ItemType == RemoteItemType.Folder))
                     {
                         itemCache.AddOrUpdate(url, (server.Name, current.ID), (key, val) => (server.Name, current.ID));
                         return current;
@@ -993,6 +989,10 @@ namespace TSviewCloudPlugin
                     {
                         await server.ReloadItem(child.ID).ConfigureAwait(false);
                     }
+                }
+                else if (DateTime.Now - current.LastLoaded > TimeSpan.FromMinutes(5) && current.ItemType == RemoteItemType.Folder)
+                {
+                    current = await server.ReloadItem(current.ID).ConfigureAwait(false);
                 }
 
                 itemCache.AddOrUpdate(url, (server.Name, current.ID), (key, val) => (server.Name, current.ID));
@@ -1107,6 +1107,10 @@ namespace TSviewCloudPlugin
                     {
                         await server.ReloadItem(child.ID).ConfigureAwait(false);
                     }
+                }
+                else if (DateTime.Now - current.LastLoaded > TimeSpan.FromMinutes(5) && current.ItemType == RemoteItemType.Folder)
+                {
+                    current = await server.ReloadItem(current.ID).ConfigureAwait(false);
                 }
                 return current;
             }
