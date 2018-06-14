@@ -61,7 +61,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Cycle Audio に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncCycleAudio_str {
             get {
@@ -70,7 +70,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Cycle the audio channel に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncCycleAudio_tip_str {
             get {
@@ -79,7 +79,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Cycle Channel に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncCycleChannel_str {
             get {
@@ -88,7 +88,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Cycle the video and associated audio and subtitle に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncCycleChannel_tip_str {
             get {
@@ -97,7 +97,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Cycle Subtitle に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncCycleSubtitle_str {
             get {
@@ -106,7 +106,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Cycle the subtitle channel に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncCycleSubtitle_tip_str {
             get {
@@ -115,7 +115,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Forward Chapter に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncForwardChapter_str {
             get {
@@ -124,7 +124,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Seek to next chapter に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncForwardChapter_tip_str {
             get {
@@ -133,7 +133,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Exit に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncPlayExit_str {
             get {
@@ -142,7 +142,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Close to exit the playback window. に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncPlayExit_tip_str {
             get {
@@ -151,7 +151,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Original Size に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncResizeOriginal_str {
             get {
@@ -160,7 +160,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Resize to original に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncResizeOriginal_tip_str {
             get {
@@ -169,7 +169,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Rewind Chapter に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncRewindChapter_str {
             get {
@@ -178,7 +178,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Seek to previous chapter に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncRewindChapter_tip_str {
             get {
@@ -187,7 +187,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Rewind 10sec に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncSeekMinus10sec_str {
             get {
@@ -196,7 +196,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Rewind 10sec に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncSeekMinus10sec_tip_str {
             get {
@@ -205,7 +205,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Rewind 60sec に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncSeekMinus60sec_str {
             get {
@@ -214,7 +214,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Rewind 60sec に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncSeekMinus60sec_tip_str {
             get {
@@ -223,7 +223,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Forward 10sec に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncSeekPlus10sec_str {
             get {
@@ -232,7 +232,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Forward 10sec に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncSeekPlus10sec_tip_str {
             get {
@@ -241,7 +241,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Forward 60sec に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncSeekPlus60sec_str {
             get {
@@ -250,7 +250,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Forward 60sec に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncSeekPlus60sec_tip_str {
             get {
@@ -259,7 +259,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Audio Normalize に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncSrcAutoVolume_str {
             get {
@@ -268,7 +268,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Dynamic normalize audio with FFmpeg dynaudnorm audio filter に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncSrcAutoVolume_tip_str {
             get {
@@ -277,7 +277,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   SrcVolume Down に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncSrcVolumeDown_str {
             get {
@@ -286,7 +286,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Volume down with FFmpeg audio filter に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncSrcVolumeDown_tip_str {
             get {
@@ -295,7 +295,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   SrcVolume Up に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncSrcVolumeUp_str {
             get {
@@ -304,7 +304,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Volume up with FFmpeg audio filter に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncSrcVolumeUp_tip_str {
             get {
@@ -313,7 +313,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Toggle Display に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncToggleDisplay_str {
             get {
@@ -322,7 +322,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Toggle elapsed time display に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncToggleDisplay_tip_str {
             get {
@@ -331,7 +331,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Toggle Fullscreen に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncToggleFullscreen_str {
             get {
@@ -340,7 +340,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Toggle fullscreen and window に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncToggleFullscreen_tip_str {
             get {
@@ -349,7 +349,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Mute に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncToggleMute_str {
             get {
@@ -358,7 +358,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Mute に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncToggleMute_tip_str {
             get {
@@ -367,7 +367,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Pause に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncTogglePause_str {
             get {
@@ -376,7 +376,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Toggle Pause に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncTogglePause_tip_str {
             get {
@@ -385,7 +385,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Volume Down に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncVolumeDown_str {
             get {
@@ -394,7 +394,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Volume Down に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncVolumeDown_tip_str {
             get {
@@ -403,7 +403,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Volume Up に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncVolumeUp_str {
             get {
@@ -412,7 +412,7 @@ namespace TSviewCloud {
         }
         
         /// <summary>
-        ///    に類似しているローカライズされた文字列を検索します。
+        ///   Volume Up に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string FuncVolumeUp_tip_str {
             get {
