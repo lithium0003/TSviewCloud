@@ -24,8 +24,6 @@ namespace TSviewCloudPlugin
         [DataMember(Name = "Name")]
         private string name;
 
-        DateTime lastLoaded;
-
         public AmazonDriveSystemItem() : base()
         {
 
@@ -81,8 +79,6 @@ namespace TSviewCloudPlugin
         public override string ID => id;
         public override string Path => (isRoot) ? "" : Parents.First().Path + ((Parents.First().Path == "") ? "" : "/") + PathItemName;
         public override string Name => name;
-
-        public DateTime LastLoaded { get => lastLoaded; set => lastLoaded = value; }
     }
 
     [DataContract]
