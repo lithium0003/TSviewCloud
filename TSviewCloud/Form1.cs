@@ -1926,6 +1926,20 @@ namespace TSviewCloud
                         ffplayer.PlayTime = evnt.NewPossition;
                     }
                 };
+                PlayControler.StartDelayChanged += (s, evnt) =>
+                {
+                    if (ffplayer != null)
+                    {
+                        ffplayer.StartSkip = PlayControler.StartDelay;
+                    }
+                };
+                PlayControler.DurationChanged += (s, evnt) =>
+                {
+                    if (ffplayer != null)
+                    {
+                        ffplayer.StopDuration = PlayControler.Duration;
+                    }
+                };
             }
             else if(t == FormPlayer.PlayerTypes.TSsend)
             {
@@ -1981,6 +1995,20 @@ namespace TSviewCloud
                     if (tsplayer != null)
                     {
                         tsplayer.PlayTime = evnt.NewPossition;
+                    }
+                };
+                PlayControler.StartDelayChanged += (s, evnt) =>
+                {
+                    if (tsplayer != null)
+                    {
+                        tsplayer.StartSkip = PlayControler.StartDelay;
+                    }
+                };
+                PlayControler.DurationChanged += (s, evnt) =>
+                {
+                    if (tsplayer != null)
+                    {
+                        tsplayer.StopDuration = PlayControler.Duration;
                     }
                 };
             }

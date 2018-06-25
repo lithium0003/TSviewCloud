@@ -548,7 +548,6 @@ namespace ffmodule {
 		funcs(this),
 		audio_volume(50), av_sync_type(DEFAULT_AV_SYNC_TYPE)
 	{
-
 	}
 
 	_FFplayer::~_FFplayer() 
@@ -577,10 +576,6 @@ namespace ffmodule {
 		}
 
 		screen = std::shared_ptr<SDLScreen>(new SDLScreen);
-
-		avcodec_register_all();
-		avfilter_register_all();
-		av_register_all();
 
 		if (!screen->window) {
 			fprintf(stderr, "SDL: could not set video mode - exiting\n");
@@ -671,15 +666,16 @@ namespace ffmodule {
 		audio_filter_src = { 0 };
 
 		frame_timer = 0;
-		frame_last_pts = 0;
-		frame_last_delay = 10e-3;
+		frame_last_pts = NAN;
+		frame_last_delay = 0;
+		frame_delay_buffer.clear();
 
 		video_st = 0;
 		video_clock = 0;
 		video_current_pts = 0;
 		video_current_pts_time = 0;
 
-		pictq_size, pictq_rindex, pictq_windex = 0;
+		pictq_size = pictq_rindex = pictq_windex = 0;
 
 		font = NULL;
 
@@ -735,7 +731,7 @@ namespace ffmodule {
 		int hw_buf_size, bytes_per_sec, n;
 
 		pts = audio_clock; /* maintained in the audio thread */
-		hw_buf_size = audio_buf_size - audio_buf_index;
+		hw_buf_size = (int)audio_buf_size - (int)audio_buf_index;
 		bytes_per_sec = 0;
 		n = audio_out_channels * 2;
 		if (audio_st) {
@@ -962,12 +958,12 @@ namespace ffmodule {
 						inframe = NULL;
 
 					if (inframe) {
-						auto dec_channel_layout = get_valid_channel_layout(inframe->channel_layout, av_frame_get_channels(inframe));
+						auto dec_channel_layout = get_valid_channel_layout(inframe->channel_layout, inframe->channels);
 						if (!dec_channel_layout)
 							dec_channel_layout = av_get_default_channel_layout(inframe->channels);
 						bool reconfigure =
 							cmp_audio_fmts(audio_filter_src.fmt, audio_filter_src.channels,
-							(enum AVSampleFormat)inframe->format, av_frame_get_channels(inframe)) ||
+							(enum AVSampleFormat)inframe->format, inframe->channels) ||
 							audio_filter_src.channel_layout != dec_channel_layout ||
 							audio_filter_src.freq != inframe->sample_rate ||
 							audio_filter_src.audio_volume_dB != audio_volume_dB ||
@@ -976,7 +972,7 @@ namespace ffmodule {
 
 						if (reconfigure) {
 							audio_filter_src.fmt = (enum AVSampleFormat)inframe->format;
-							audio_filter_src.channels = av_frame_get_channels(inframe);
+							audio_filter_src.channels = inframe->channels;
 							audio_filter_src.channel_layout = dec_channel_layout;
 							audio_filter_src.freq = inframe->sample_rate;
 							audio_filter_src.audio_volume_dB = audio_volume_dB;
@@ -1006,7 +1002,7 @@ namespace ffmodule {
 					while (buf_size > buf_limit && (ret = av_buffersink_get_frame(afilt_out, &audio_frame_out)) >= 0) {
 
 						int64_t pts_t;
-						if ((pts_t = av_frame_get_best_effort_timestamp(&audio_frame_out)) != AV_NOPTS_VALUE) {
+						if ((pts_t = audio_frame_out.best_effort_timestamp) != AV_NOPTS_VALUE) {
 							audio_clock = av_q2d(audio_st->time_base)*pts_t;
 							//av_log(NULL, AV_LOG_INFO, "audio clock %f\n", audio_clock);
 							if (isnan(audio_clock_start)) {
@@ -1157,7 +1153,6 @@ namespace ffmodule {
 			stream += len1;
 			is->audio_buf_index += len1;
 		}
-
 		is->audio_callback_time = (double)av_gettime() / 1000000.0;
 	}
 
@@ -1472,9 +1467,15 @@ namespace ffmodule {
 						} //if src.size != frame.size
 
 						int64_t pts_t;
-						if ((pts_t = av_frame_get_best_effort_timestamp(&frame)) != AV_NOPTS_VALUE) {
+						if ((pts_t = frame.best_effort_timestamp) != AV_NOPTS_VALUE) {
 							pts = pts_t * av_q2d(is->video_st->time_base);
 							//av_log(NULL, AV_LOG_INFO, "video clock %f\n", pts);
+
+							if (is->start_time_org != AV_NOPTS_VALUE &&
+								pts - is->start_time_org / 1000000.0 > 0x1FFFFFFFF / 90000.0) {
+								// rollover
+								is->seek_byte = true;
+							}
 
 							if (isnan(is->video_clock_start)) {
 								is->video_clock_start = pts;
@@ -1694,7 +1695,7 @@ namespace ffmodule {
 			av_log(NULL, AV_LOG_PANIC, "Couldn't copy codec parameter to codec context\n");
 			return -1;
 		}
-		av_codec_set_pkt_timebase(codecCtx.get(), pFormatCtx->streams[stream_index]->time_base);
+		codecCtx.get()->pkt_timebase = pFormatCtx->streams[stream_index]->time_base;
 
 		SDL_AudioSpec wanted_spec, spec;
 
@@ -1770,7 +1771,8 @@ namespace ffmodule {
 			video_clock_start = NAN;
 
 			frame_timer = (double)av_gettime() / 1000000.0;
-			frame_last_delay = 10e-3;
+			frame_last_delay = 0;
+			frame_delay_buffer.clear();
 			video_current_pts_time = av_gettime();
 			
 			{
@@ -1926,6 +1928,8 @@ namespace ffmodule {
 			goto fail; // Couldn't open file
 		}
 
+		pFormatCtx->start_time;
+
 		av_log(NULL, AV_LOG_VERBOSE, "avformat_find_stream_info()\n");
 		//pFormatCtx->max_analyze_duration = 500000;
 		// Retrieve stream information
@@ -1937,6 +1941,13 @@ namespace ffmodule {
 		av_log(NULL, AV_LOG_VERBOSE, "av_dump_format()\n");
 		// Dump information about file onto standard error
 		av_dump_format(pFormatCtx, 0, is->filename, 0);
+
+		if (strcmp("mpegts", pFormatCtx->iformat->name) == 0) {
+			is->seek_byte = false;
+		}
+		else {
+			is->seek_byte = !!(pFormatCtx->iformat->flags & AVFMT_TS_DISCONT) && strcmp("ogg", pFormatCtx->iformat->name);
+		}
 
 		for(unsigned int stream_index = 0; stream_index<pFormatCtx->nb_streams; stream_index++)
 			pFormatCtx->streams[stream_index]->discard = AVDISCARD_ALL;
@@ -2010,12 +2021,24 @@ namespace ffmodule {
 			if (is->IsQuit()) {
 				return 0;
 			}
+			if (is->start_time_org == AV_NOPTS_VALUE && is->pFormatCtx->start_time != AV_NOPTS_VALUE) {
+				is->start_time_org = is->pFormatCtx->start_time;
+			}
 			if (!isnan(is->startskip)) {
-				is->seek_pos = (int64_t)(is->startskip * AV_TIME_BASE);
-				if (is->start_time_org != AV_NOPTS_VALUE)
-					is->seek_pos += is->start_time_org;
+				if (is->seek_byte) {
+					if (pFormatCtx->bit_rate)
+						is->seek_pos = is->startskip * pFormatCtx->bit_rate / 8.0;
+					else
+						is->seek_pos = is->startskip * 180000.0;
+					is->seek_flags = AVSEEK_FLAG_BYTE;
+				}
+				else {
+					is->seek_pos = (int64_t)(is->startskip * AV_TIME_BASE);
+					if (is->start_time_org != AV_NOPTS_VALUE)
+						is->seek_pos += is->start_time_org;
+					is->seek_flags = 0;
+				}
 				is->seek_rel = 0;
-				is->seek_flags = 0;
 				is->seek_req = true;
 				is->startskip_internal = is->startskip;
 				is->startskip = NAN;
@@ -2023,29 +2046,26 @@ namespace ffmodule {
 			// seek stuff goes here
 			if (is->seek_req) {
 				AVRational timebase = { 1, AV_TIME_BASE };
-				av_log(NULL, AV_LOG_INFO, "stream seek request receive %.2f(%lld)\n", (double)(is->seek_pos) * av_q2d(timebase), is->seek_pos);
-				int stream_index = -1;
+				if(is->seek_flags & AVSEEK_FLAG_BYTE)
+					av_log(NULL, AV_LOG_INFO, "stream seek request receive %lld\n", is->seek_pos);
+				else
+					av_log(NULL, AV_LOG_INFO, "stream seek request receive %.2f(%lld)\n", (double)(is->seek_pos) * av_q2d(timebase), is->seek_pos);
 				int64_t seek_target = is->seek_pos;
 				int64_t seek_min = is->seek_rel > 0 ? seek_target - is->seek_rel + 2 : INT64_MIN;
 				int64_t seek_max = is->seek_rel < 0 ? seek_target - is->seek_rel - 2 : INT64_MAX;
 
-				if (is->videoStream >= 0 && DEFAULT_AV_SYNC_TYPE == AV_SYNC_VIDEO_MASTER) stream_index = is->videoStream;
-				else if (is->audioStream >= 0 && DEFAULT_AV_SYNC_TYPE == AV_SYNC_AUDIO_MASTER) stream_index = is->audioStream;
+				if (is->seek_flags & AVSEEK_FLAG_BYTE)
+					av_log(NULL, AV_LOG_INFO, "stream seek min = %lld target = %lld max = %lld\n",
+						seek_min,
+						seek_target,
+						seek_max);
+				else
+					av_log(NULL, AV_LOG_INFO, "stream seek min = %.2f target = %.2f max = %.2f\n",
+						seek_min*av_q2d(timebase),
+						seek_target*av_q2d(timebase),
+						seek_max*av_q2d(timebase));
+				int ret1 = avformat_seek_file(is->pFormatCtx.get(), -1, seek_min, seek_target, seek_max, is->seek_flags);
 
-				if (stream_index >= 0) {
-					AVRational fixtimebase = pFormatCtx->streams[stream_index]->time_base;
-					seek_target = av_rescale_q(seek_target, timebase, fixtimebase);
-					seek_min = is->seek_rel > 0 ? seek_target - is->seek_rel + 2 : INT64_MIN;
-					seek_max = is->seek_rel < 0 ? seek_target - is->seek_rel - 2 : INT64_MAX;
-					timebase = fixtimebase;
-				}
-				av_log(NULL, AV_LOG_INFO, "stream seek min = %.2f target = %.2f max = %.2f\n", 
-					seek_min*av_q2d(timebase), 
-					seek_target*av_q2d(timebase),
-					seek_max*av_q2d(timebase));
-				int ret1 = avformat_seek_file(is->pFormatCtx.get(), stream_index,
-					seek_min, seek_target, seek_max,
-					is->seek_flags);
 				if (ret1 < 0) {
 					char buf[AV_ERROR_MAX_STRING_SIZE];
 					char *errstr = av_make_error_string(buf, AV_ERROR_MAX_STRING_SIZE, ret1);
@@ -2129,9 +2149,6 @@ namespace ffmodule {
 				continue;
 			}
 			error = false;
-			if (is->start_time_org == AV_NOPTS_VALUE && is->pFormatCtx->start_time != AV_NOPTS_VALUE) {
-				is->start_time_org = is->pFormatCtx->start_time;
-			}
 			if(isnan(is->external_clock))
 				is->external_clock = av_gettime() / 1000000.0;
 			// Is this a packet from the video stream?
@@ -2283,20 +2300,20 @@ namespace ffmodule {
 		Redraw();
 		overlay_remove_time = av_gettime() + 3 * 1000 * 1000;
 		
-		stream_seek((int64_t)((get_master_clock() - 0.5) * AV_TIME_BASE), 0);
+		stream_seek((int64_t)((get_master_clock() - 0.5) * AV_TIME_BASE), 0, false);
 	}
 
-	void _FFplayer::stream_seek(int64_t pos, int rel)
+	void _FFplayer::stream_seek(int64_t pos, int rel, bool byteseek)
 	{
 		if (!seek_req) {
 			seek_pos = pos;
-			seek_flags = 0;
+			seek_flags = (byteseek)? AVSEEK_FLAG_BYTE: 0;
 			seek_rel = rel;
 			seek_req = 1;
 		}
 		else {
 			seek_pos_backorder = pos;
-			seek_flags_backorder = 0;
+			seek_flags_backorder = (byteseek) ? AVSEEK_FLAG_BYTE : 0;
 			seek_rel_backorder = rel;
 			seek_req_backorder = 1;
 		}
@@ -2307,9 +2324,40 @@ namespace ffmodule {
 	{
 		int64_t t = (int64_t)(pos * AV_TIME_BASE);
 
-		if (start_time_org != AV_NOPTS_VALUE)
-			t += start_time_org;
-		stream_seek(t, 0);
+		if (seek_byte) {
+			if (start_time_org != AV_NOPTS_VALUE)
+				t += start_time_org;
+
+			uint64_t nowp = avio_tell(pFormatCtx->pb);
+
+			double nowpos = get_master_clock();
+			if (isnan(nowpos))
+				nowpos = prev_pos;
+			else
+				prev_pos = nowpos;
+
+			double value = (double)t / AV_TIME_BASE - nowpos;
+			if (value < 0) {
+				value += 0x1FFFFFFFF / 90000.0;
+			}
+			else if (value > 0x1FFFFFFFF / 90000.0) {
+				value -= 0x1FFFFFFFF / 90000.0;
+			}
+
+			if (pFormatCtx->bit_rate)
+				value *= pFormatCtx->bit_rate / 8.0;
+			else
+				value *= 180000.0;
+			nowp += value;
+
+			stream_seek(nowp, 0, true);
+		}
+		else {
+			if (start_time_org != AV_NOPTS_VALUE)
+				t += start_time_org;
+
+			stream_seek(t, 0, false);
+		}
 	}
 
 	void _FFplayer::seek_chapter(int incr) 
@@ -2340,7 +2388,7 @@ namespace ffmodule {
 		sprintf_s(strbuf, "Seeking to chapter %d", i);
 		overlay_text = strbuf;
 		stream_seek(av_rescale_q(pFormatCtx->chapters[i]->start, pFormatCtx->chapters[i]->time_base,
-			timebase), 0);
+			timebase), 0, false);
 	}
 
 	void _FFplayer::overlay_txt(VideoPicture *vp) {
@@ -2386,19 +2434,16 @@ namespace ffmodule {
 				ns -= video_clock_start / 1000000.0;
 			else if (!isnan(audio_clock_start))
 				ns -= audio_clock_start / 1000000.0;
+			if (ns > 0x1FFFFFFFF / 90000.0) {
+				ns -= 0x1FFFFFFFF / 90000.0;
+			}
 			pos_ratio = ns / pos_ratio;
 			hh = (int)(ns) / 3600;
 			mm = ((int)(ns) % 3600) / 60;
 			ss = ((int)(ns) % 60);
 			ns -= (int)(ns);
-			if (1) {
-				sprintf_s(out_text, "%2d:%02d:%02d.%03d/%2d:%02d:%02d",
-					hh, mm, ss, (int)(ns * 1000), thh, tmm, tss);
-			}
-			else {
-				sprintf_s(out_text, "%2d:%02d:%02d.%03d/%2d:%02d:%02d %.1f",
-					hh, mm, ss, (int)(ns * 1000), thh, tmm, tss, video_delay_to_audio * 1000);
-			}
+			sprintf_s(out_text, "%2d:%02d:%02d.%03d/%2d:%02d:%02d",
+				hh, mm, ss, (int)(ns * 1000), thh, tmm, tss);
 		}
 		SDL_SetRenderDrawColor(screen->renderer.get(), 32, 32, 255, 200);
 		SDL_SetRenderDrawBlendMode(screen->renderer.get(), SDL_BlendMode::SDL_BLENDMODE_BLEND);
@@ -2418,9 +2463,9 @@ namespace ffmodule {
 			text_height = (int)(scale * text_height);
 		}
 		int x = (screen->GetWidth() - text_width) / 2;
-		int y = screen->GetHight() - 30 - text_height;
+		int y = screen->GetHight() - 10 - text_height;
 		x -= x % 50;
-		y -= y % 50;
+		y -= y % 10;
 		SDL_Rect renderQuad = { x, y, text_width, text_height };
 		SDL_RenderCopy(screen->renderer.get(), text.get(), NULL, &renderQuad);
 	}
@@ -2758,6 +2803,9 @@ namespace ffmodule {
 			t -= video_clock_start / 1000000.0;
 		else
 			t -= audio_clock_start / 1000000.0;
+		if (t > 0x1FFFFFFFF / 90000.0) {
+			t -= 0x1FFFFFFFF / 90000.0;
+		}
 		playtime = t;
 		if (!isnan(stopduration) && playtime - (isnan(startskip_internal) ? 0 : startskip_internal) > stopduration)
 			Quit();
@@ -2852,44 +2900,58 @@ namespace ffmodule {
 				double ref_clock = get_master_clock();
 				double diff = vp->pts - ref_clock;
 
-				diff += (audio_callback_time - av_gettime() / 1000000.0);
-				video_delay_to_audio = diff;
+				diff += (audio_callback_time - (double)av_gettime() / 1000000.0);
+
 				/* Skip or repeat the frame. Take delay into account
 				FFPlay still doesn't "know if this is the best guess." */
 				double sync_threshold = (delay > AV_SYNC_THRESHOLD) ? delay : AV_SYNC_THRESHOLD;
 				if (fabs(diff) < AV_NOSYNC_THRESHOLD) {
 					if (diff <= -sync_threshold) {
-						delay = (diff + delay < 0)? 0: diff + delay;
+						delay = ((diff + delay) < 0)? 0: diff + delay;
 					}
 					else if (diff >= sync_threshold && delay > AV_SYNC_FRAMEDUP_THRESHOLD) {
 						delay = diff + delay;
 					}
-					else if (diff >= sync_threshold * 2) {
-						delay = 2 * delay;
-					}
 					else if (diff >= sync_threshold) {
-						delay = (diff / sync_threshold) * delay;
+						delay = 2 * delay;
 					}
 				}
 			}
 			if (delay >= -AV_NOSYNC_THRESHOLD && delay <= AV_NOSYNC_THRESHOLD) {
-				frame_last_delay = (frame_last_delay * 3 + delay * 1) / 4;
+				frame_delay_buffer.push_front(delay);
+				double mean = 0;
+				for (auto d : frame_delay_buffer) {
+					mean += d;
+				}
+				mean /= frame_delay_buffer.size();
+				frame_last_delay = mean;
+
+				if (frame_delay_buffer.size() > VIDEO_PICTURE_QUEUE_SIZE) {
+					frame_delay_buffer.pop_back();
+				}
 			}
 
-
 			frame_timer += delay;
-			const double skepdelay = 0.001;
 			/* computer the REAL delay */
 			double actual_delay = frame_timer - av_gettime() / 1000000.0;
 
-			if (fabs(actual_delay) > AV_NOSYNC_THRESHOLD) {
+			const double eps_t = 0.001;
+			if (actual_delay > AV_NOSYNC_THRESHOLD) {
 				frame_timer += actual_delay;
 			}
 			else if (actual_delay > AV_SYNC_THRESHOLD) {
 				schedule_refresh((int)(actual_delay * 1000));
 			}
-			else if (actual_delay > skepdelay) {
-				schedule_refresh(1);
+			//else if (actual_delay > eps_t) {
+			//	auto start = std::chrono::high_resolution_clock::now();
+			//	auto finish = std::chrono::high_resolution_clock::now();
+			//	while (std::chrono::duration_cast<std::chrono::nanoseconds>(finish - start).count() / 1.0e-9 < actual_delay - eps_t) {
+			//		finish = std::chrono::high_resolution_clock::now();
+			//	}
+			//}
+
+			if (actual_delay > 0)
+			{
 			}
 			/* show the picture! */
 			video_display(vp);
@@ -3018,6 +3080,9 @@ namespace ffmodule {
 				tmpns -= (int64_t)(start_time_org / 1000000.0);
 			else
 				tmpns -= (int64_t)(get_master_clock_start() / 1000000.0);
+			if (tmpns > 0x1FFFFFFFF / 90000.0) {
+				tmpns -= 0x1FFFFFFFF / 90000.0;
+			}
 			ns = (int)(tmpns);
 		}
 		pos_ratio = ns / pos_ratio;
@@ -3038,16 +3103,33 @@ namespace ffmodule {
 		Redraw();
 		if (pre) {
 			if (frac) {
-				av_log(NULL, AV_LOG_INFO, "Seek to %2.0f%% (%2d:%02d:%02d) of total duration(%2d:%02d:%02d)\n", value * 100,
-					hh, mm, ss, thh, tmm, tss);
-				int64_t ts = (int64_t)(value * pFormatCtx->duration);
-				if (start_time_org != AV_NOPTS_VALUE)
-					ts += start_time_org;
-				stream_seek(ts, 0);
+				if (seek_byte) {
+					uint64_t size = avio_size(pFormatCtx->pb);
+					stream_seek(int64_t(size * value), 0, true);
+				}
+				else {
+					av_log(NULL, AV_LOG_INFO, "Seek to %2.0f%% (%2d:%02d:%02d) of total duration(%2d:%02d:%02d)\n", value * 100,
+						hh, mm, ss, thh, tmm, tss);
+					int64_t ts = (int64_t)(value * pFormatCtx->duration);
+					if (start_time_org != AV_NOPTS_VALUE)
+						ts += start_time_org;
+					stream_seek(ts, 0, false);
+				}
 			}
 			else {
-				av_log(NULL, AV_LOG_INFO, "Seek to %.2f (%.2f)\n", pos, value);
-				stream_seek((int64_t)(pos * AV_TIME_BASE), (int)(value));
+				if (seek_byte) {
+					pos = avio_tell(pFormatCtx->pb);
+					if (pFormatCtx->bit_rate)
+						value *= pFormatCtx->bit_rate / 8.0;
+					else
+						value *= 180000.0;
+					pos += value;
+					stream_seek((int64_t)pos, (int)(value), true);
+				}
+				else {
+					av_log(NULL, AV_LOG_INFO, "Seek to %.2f (%.2f)\n", pos, value);
+					stream_seek((int64_t)(pos * AV_TIME_BASE), (int)(value), false);
+				}
 			}
 		}
 	}

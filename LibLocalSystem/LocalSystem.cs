@@ -20,8 +20,6 @@ namespace TSviewCloudPlugin
         [DataMember(Name = "ID")]
         private string fullpath;
 
-        DateTime lastLoaded;
-
         public LocalSystemItem() : base()
         {
 
@@ -102,8 +100,6 @@ namespace TSviewCloudPlugin
         public override string ID => fullpath;
         public override string Path => FullpathToPath(fullpath);
         public override string Name => System.IO.Path.GetFileName(ItemControl.GetLongFilename(fullpath));
-
-        public DateTime LastLoaded { get => lastLoaded; set => lastLoaded = value; }
     }
 
     [DataContract]

@@ -41,23 +41,28 @@ extern "C" {
 #include <functional>
 #include <list>
 #include <fstream>
+#include <deque>
+#include <vector>
+#include <chrono>
+#include <functional>
+#include <fstream>
 
 #include <stdlib.h>
 #include <inttypes.h>
 
-#define SDL_AUDIO_BUFFER_SIZE 4 * 1024
+#define SDL_AUDIO_BUFFER_SIZE 16 * 1024
 #define MAX_AUDIO_FRAME_SIZE 192000
 
 #define FF_REFRESH_EVENT (SDL_USEREVENT)
 #define FF_INTERNAL_REFRESH_EVENT (SDL_USEREVENT + 1)
 #define FF_QUIT_EVENT (SDL_USEREVENT + 2)
 
-#define VIDEO_PICTURE_QUEUE_SIZE 20
+#define VIDEO_PICTURE_QUEUE_SIZE 50
 
 #define MAX_AUDIOQ_SIZE (32 * 1024 * 1024)
-#define MAX_VIDEOQ_SIZE (128 * 1024 * 1024)
+#define MAX_VIDEOQ_SIZE (512 * 1024 * 1024)
 
-#define AV_SYNC_THRESHOLD 0.005
+#define AV_SYNC_THRESHOLD 0.01
 #define AV_NOSYNC_THRESHOLD 4.0
 #define AV_SYNC_FRAMEDUP_THRESHOLD 0.1
 
@@ -150,7 +155,7 @@ namespace ffmodule {
 
 	class _Stream {
 	private:
-		const int buffersize = 4 * 1024 + FF_INPUT_BUFFER_PADDING_SIZE;
+		const int buffersize = 4 * 1024 + AV_INPUT_BUFFER_PADDING_SIZE;
 		gcroot<System::IO::Stream^> stream;
 		std::shared_ptr<uint8_t> buffer;
 		gcroot<System::Threading::CancellationToken^> ct;
@@ -255,6 +260,7 @@ namespace ffmodule {
 		double			pos_ratio;
 		bool            left_seek;
 
+		bool            seek_byte;
 		int64_t         start_time_org;
 		bool            seek_req;
 		int             seek_flags;
@@ -321,9 +327,9 @@ namespace ffmodule {
 		double          frame_timer;
 		double          frame_last_pts;
 		double	        frame_last_delay;
+		std::deque<double> frame_delay_buffer;
 		long            force_draw;
 		long            remove_refresh;
-		double          video_delay_to_audio;
 
 		AVStream        *video_st;
 		std::shared_ptr<AVCodecContext> video_ctx;
@@ -558,7 +564,7 @@ namespace ffmodule {
 		void stream_component_close(int stream_index);
 		static int decode_thread(void *arg);
 		void stream_cycle_channel(int codec_type);
-		void stream_seek(int64_t pos, int rel);
+		void stream_seek(int64_t pos, int rel, bool byteseek);
 		void SeekExternal(double pos);
 		void seek_chapter(int incr);
 		void overlay_txt(VideoPicture *vp);

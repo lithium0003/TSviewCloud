@@ -71,14 +71,6 @@ namespace TSviewCloud
         double? _StreamDuration;
         double? _StreamPossition;
         int _PlayIndex;
-        EventHandler _StartDelayChanged;
-        EventHandler _DurationChanged;
-        EventHandler _PositionRequest;
-        EventHandler _StartCallback;
-        EventHandler _StopCallback;
-        EventHandler _NextCallback;
-        EventHandler _PrevCallback;
-        SeekEventHandler _SeekCallback;
 
         public void ClearCallback()
         {
@@ -187,9 +179,9 @@ namespace TSviewCloud
             set {
                 if(_StartDelay != value)
                 {
+                    _StartDelay = value;
                     StartDelayChanged?.Invoke(this, new EventArgs());
                 }
-                _StartDelay = value;
                 synchronizationContext.Post((o) => {
                     textBox_StartSkip.Text = (double.IsNaN(StartDelay)) ? "" : TimeSpan.FromSeconds(StartDelay).ToString();
                 }, null);
@@ -201,9 +193,9 @@ namespace TSviewCloud
             {
                 if(_Duration != value)
                 {
+                    _Duration = value;
                     DurationChanged?.Invoke(this, new EventArgs());
                 }
-                _Duration = value;
                 synchronizationContext.Post((o) => {
                     textBox_Duration.Text = (double.IsNaN(Duration)) ? "" : TimeSpan.FromSeconds(Duration).ToString();
                 }, null);
@@ -276,14 +268,14 @@ namespace TSviewCloud
         }
 
 
-        public EventHandler StartDelayChanged { get => _StartDelayChanged; set => _StartDelayChanged = value; }
-        public EventHandler DurationChanged { get => _DurationChanged; set => _DurationChanged = value; }
-        public EventHandler PositionRequest { get => _PositionRequest; set => _PositionRequest = value; }
-        public EventHandler StartCallback { get => _StartCallback; set => _StartCallback = value; }
-        public EventHandler StopCallback { get => _StopCallback; set => _StopCallback = value; }
-        public EventHandler NextCallback { get => _NextCallback; set => _NextCallback = value; }
-        public EventHandler PrevCallback { get => _PrevCallback; set => _PrevCallback = value; }
-        public SeekEventHandler SeekCallback { get => _SeekCallback; set => _SeekCallback = value; }
+        public EventHandler StartDelayChanged { get; set; }
+        public EventHandler DurationChanged { get; set; }
+        public EventHandler PositionRequest { get; set; }
+        public EventHandler StartCallback { get; set; }
+        public EventHandler StopCallback { get; set; }
+        public EventHandler NextCallback { get; set; }
+        public EventHandler PrevCallback { get; set; }
+        public SeekEventHandler SeekCallback { get; set; }
         public bool IsPlaying { get => _IsPlaying; }
         public int PlayIndex
         {
@@ -353,7 +345,7 @@ namespace TSviewCloud
         private void ProcessDuration()
         {
             if (textBox_Duration.Text == "")
-                StartDelay = double.NaN;
+                Duration = double.NaN;
             else
             {
                 try
